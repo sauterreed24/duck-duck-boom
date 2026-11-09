@@ -50,15 +50,19 @@
   #roster .list { flex: 1; overflow-y: auto; padding: 6px 8px; }
   #roster .row { display: flex; align-items: center; gap: 10px; padding: 6px 6px; border-radius: 12px; font-size: 26px; font-weight: 800; }
   #roster .row:nth-child(odd) { background: #f6f1e3; }
-  #roster .row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #roster .row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 26px; font-weight: 800; border: 3px solid transparent; background: transparent; padding: 2px 6px; border-radius: 10px; }
+  #roster .row .nm:hover { border-color: #d9cfb8; background: #fff; }
+  #roster .row .nm:focus { border-color: var(--ink); background: #fff; outline: none; }
+  #roster .row:not(.on) .nm { opacity: .55; }
+  #roster .stale { background: #ffe58a; border: 4px solid var(--ink); border-radius: 16px; padding: 6px 14px; font-size: 22px; font-weight: 900; display: flex; align-items: center; gap: 12px; }
   #roster .row select { font-size: 16px; padding: 2px 4px; border-width: 2px; border-radius: 8px; }
   #roster .row .x { border: 0; background: none; font-size: 26px; font-weight: 900; cursor: pointer; color: #b0392b; padding: 0 4px; }
   #roster .row .ammo { font-size: 16px; padding: 2px 6px; }
-  #roster .side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
-  #roster .side .box { border: 5px solid var(--ink); border-radius: 22px; background: #fff; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  #roster .side { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
+  #roster .side .box { border: 5px solid var(--ink); border-radius: 22px; background: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; flex: none; }
   #roster .side h3 { margin: 0; font-size: 24px; }
   #roster .side .hint { font-size: 17px; font-weight: 700; opacity: .75; }
-  #roster .toggles label { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 800; }
+  #roster .toggles label { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800; }
   #roster .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   #roster .total { font-size: 30px; font-weight: 900; }
   #roster .warn { color: #b0392b; font-size: 20px; font-weight: 900; min-height: 24px; }
@@ -697,7 +701,9 @@ function loadRoster() {
   const people = (r && Array.isArray(r.people)) ? r.people : [];
   return people.filter(p => p && p.name).map(p => ({ id: p.id || ('p' + hex8(hash(p.name, p.team || 0))), name: cleanName(p.name), team: clamp(p.team | 0, 0, 2), checked: !!p.checked, ammo: clamp(p.ammo | 0, 0, 3) }));
 }
-function saveRoster() { Store.set('roster', { people: S.roster }); }
+function saveRoster() { Store.set('roster', { people: S.roster, day: localDayKey() }); }
+// the local date the ticks were last changed (to nudge the host to clear yesterday's ticks)
+function rosterDay() { const r = Store.get('roster', null); return r && typeof r.day === 'string' ? r.day : null; }
 
 function loadHistory() {
   const h = Store.get('history', null);
@@ -3068,7 +3074,7 @@ const SFX = (() => {
     const list = ['jingle', 'crank', 'fuse', 'count', 'boom', 'whoosh', 'slide', 'boing', 'splat', 'splash', 'honk', 'bonk', 'ding', 'quack', 'ooh', 'cheer', 'sad', 'fanfare', 'drumroll', 'shutter', 'hold', 'zap', 'portal', 'bing', 'wheel', 'leader', 'record'];
     list.forEach((n, i) => setTimeout(() => { Toast.show('♪ ' + n); play(n, n === 'quack' ? 1 : undefined); }, i * 900));
   }
-  return { init, resume, play, setVolume, setMuted, soundCheck, get ready() { return !!ac; }, get muted() { return muted; } };
+  return { init, resume, play, setVolume, setMuted, soundCheck, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
 })();
 
 /* ---------- announcer voice (Web Speech, off by default) ---------- */
@@ -3474,11 +3480,20 @@ const Caps = {
   say(text, o) {
     if (!text) return;
     o = o || {};
-    const item = { text, min: Math.max(2.2, o.min || 0), at: S.rt + (o.delay || 0), prio: o.prio || 0 };
+    const item = { text, min: Math.max(2.0, o.min || 0), at: S.rt + (o.delay || 0), prio: o.prio || 0 };
+    // Bill never falls behind the action: a newer line replaces anything still waiting at the same or lower priority
+    // (lines scheduled for later at the same priority are a planned sequence and stay)
+    const now = S.rt;
+    this.queue = this.queue.filter(q => q.prio > item.prio || (q.prio === item.prio && q.at > now + 0.05));
     this.queue.push(item);
-    if (this.queue.length > 3) { const i = this.queue.findIndex(q => !q.prio); this.queue.splice(i >= 0 ? i : 0, 1); }
+    if (this.queue.length > 3) this.queue.shift();
   },
-  big(text, o) { o = o || {}; this.bigs.push({ text, t0: S.rt + (o.delay || 0), dur: Math.max(2, o.dur || 2), color: o.color || '#ffd23f', px: o.px || 96, y: o.y || 300, fixedY: !!o.y }); if (this.bigs.length > 2) this.bigs.shift(); },
+  big(text, o) {
+    o = o || {};
+    // one impact caption at a time: the previous one fades out quickly
+    const now = S.rt;
+    for (const b of this.bigs) if (b.t0 <= now && (o.delay || 0) <= 0.05) b.dur = Math.min(b.dur, now - b.t0 + 0.22);
+    this.bigs.push({ text, t0: S.rt + (o.delay || 0), dur: Math.max(2, o.dur || 2), color: o.color || '#ffd23f', px: o.px || 96, y: o.y || 300, fixedY: !!o.y }); if (this.bigs.length > 2) this.bigs.shift(); },
   bubbleSay(text, o) { if (!text) return; this.bubble = { text, t0: S.rt + ((o && o.delay) || 0), dur: Math.max(2, (o && o.dur) || 2.4) }; },
   update() {
     const now = S.rt;
@@ -3657,6 +3672,7 @@ function openSettings(fromPause) {
     '<label class="field"><input type="checkbox" id="sauto"' + (st.autoAdvance ? ' checked' : '') + '> Auto-advance</label>' +
     '<label class="field"><input type="checkbox" id="sbonus"' + (st.bonusAmmo ? ' checked' : '') + '> Bonus Ammo (extra shots, best counts)</label>' +
     '</div>' +
+    (S.race && S.race.stage === 'launch' && S.race.players.some((p, i) => canRemoveNow(i)) ? '<h3>Remove someone who hasn\'t launched yet</h3><div class="row">' + S.race.players.map((p, i) => canRemoveNow(i) ? '<button class="btn small ghost" data-rm="' + i + '">✕ ' + esc(p.name) + '</button>' : '').join('') + '</div>' : '') +
     (canLate ? '<h3>Add a late player (launches last)</h3><div class="row"><input type="text" id="latename" maxlength="40" placeholder="Name" style="width:340px"><select id="lateteam">' + st.teams.map((t, i) => '<option value="' + i + '">' + esc(t.name) + '</option>').join('') + '</select><button class="btn small green" id="lateadd">Add to this show</button></div>' : '') +
     '<h3>Data</h3><div class="row"><button class="btn small blue" id="dexport">Export everything (JSON)</button><button class="btn small blue" id="dimport">Import…</button><input type="file" id="dfile" accept=".json,application/json" class="hidden"><button class="btn small ghost" id="dpaste">Paste import text…</button>' +
     (S.race ? '<button class="btn small danger" id="dabandon">Abandon current show</button>' : '') + '<button class="btn small danger" id="dwipe">Reset all data…</button></div>' +
@@ -3682,6 +3698,7 @@ function openSettings(fromPause) {
       el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); S.roster = []; S.history = []; S.race = null; S.paused = false; go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
       const ab = el.querySelector('#dabandon');
       if (ab) ab.onclick = () => confirmBox('Abandon the current show? Nothing from it will be saved.', 'Abandon show', () => { Store.del('current'); S.race = null; S.paused = false; go('title'); }, () => openSettings(fromPause));
+      el.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => { const pi = +bt.dataset.rm; const nm = S.race.players[pi].name; confirmBox('Take ' + nm + "'s duck out of today's show?", 'Remove', () => { removePlayer(pi); S.paused = false; }, () => openSettings(fromPause)); });
       const la = el.querySelector('#lateadd');
       if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; addLatePlayer(nm, +el.querySelector('#lateteam').value); el.querySelector('#latename').value = ''; };
       el.querySelector('#sclose').onclick = () => Modal.close();
@@ -3719,54 +3736,93 @@ const Roster = {
     if (m && +m[1] >= 1 && +m[1] <= 3) return +m[1] - 1;
     return null;
   },
+  filter: '',
+  rename(id, value) {
+    const p = S.roster.find(x => x.id === id);
+    if (!p) return;
+    const nm = cleanName(value);
+    if (!nm || nm === p.name) return;
+    p.name = this.uniqueName(nm, id);
+    saveRoster();
+  },
+  // "Today's list": tick exactly these people (adding anyone new), untick everyone else
+  applyList(text, only) {
+    const lines = String(text || '').split(/\r?\n|;/);
+    const addTeam = +this.el.querySelector('#addteam').value;
+    const keep = new Set();
+    let added = 0, ticked = 0;
+    for (const ln of lines) {
+      if (!ln.trim()) continue;
+      const parts = ln.split(',');
+      const nm = cleanName(parts[0].replace(/^[\s\-*•\d.)]+/, ''));
+      if (!nm) continue;
+      const tm = this.teamFromText(parts.slice(1).join(','));
+      let p = S.roster.find(x => personKey(x.name) === personKey(nm));
+      if (p) { if (tm != null) p.team = tm; p.checked = true; ticked++; }
+      else { p = this.add(nm, tm == null ? addTeam : tm); if (p) added++; }
+      if (p) keep.add(p.id);
+    }
+    if (only) S.roster.forEach(p => { if (!keep.has(p.id)) p.checked = false; });
+    saveRoster();
+    return { added, ticked, total: keep.size };
+  },
   render() {
     const T = S.settings.teams;
     const checked = S.roster.filter(p => p.checked).length;
+    const f = personKey(this.filter);
+    const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     const col = i => {
-      const people = S.roster.filter(p => p.team === i);
+      const people = S.roster.filter(p => p.team === i).sort(byName);
+      const shown = f ? people.filter(p => personKey(p.name).includes(f)) : people;
       return '<div class="team"><div class="team-head" style="background:' + T[i].color + '"><span class="tname">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
         '<button class="btn small ghost" data-all="' + i + '">All</button><button class="btn small ghost" data-none="' + i + '">None</button></div><div class="list">' +
-        (people.length ? people.map(p => '<div class="row"><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + '><span class="nm" title="' + esc(p.name) + '">' + esc(p.name) + '</span>' +
+        (shown.length ? shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '"><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
           (S.settings.bonusAmmo ? '<select class="ammo" data-ammo="' + p.id + '" title="Bonus Ammo: extra shots, best counts">' + [0, 1, 2, 3].map(n => '<option value="' + n + '"' + (p.ammo === n ? ' selected' : '') + '>' + (n ? '+' + n + ' shot' + (n > 1 ? 's' : '') : 'no bonus') + '</option>').join('') + '</select>' : '') +
-          '<select data-move="' + p.id + '">' + T.map((t, j) => '<option value="' + j + '"' + (j === i ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') + '</select><button class="x" data-del="' + p.id + '" title="Remove">×</button></div>').join('') : '<div class="row" style="opacity:.6">Nobody yet</div>') +
+          '<select data-move="' + p.id + '" title="Team">' + T.map((t, j) => '<option value="' + j + '"' + (j === i ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') + '</select><button class="x" data-del="' + p.id + '" title="Remove from the roster">×</button></div>').join('')
+          : '<div class="row" style="opacity:.6">' + (people.length ? 'No match' : 'Nobody yet') + '</div>') +
         '</div></div>';
     };
+    const lastDay = rosterDay();
+    const today = S.dbg.day || S.day;
+    const stale = checked > 0 && lastDay && lastDay < localDayKey();
     this.el.innerHTML =
-      '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(S.dbg.day || S.day)) + ' · tick everyone who booked a meeting · up to 40 ducks</div></div>' +
-      '<div style="text-align:right"><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (checked > 40 ? 'Only the first 40 ticked people will fly.' : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
+      '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick everyone who booked a meeting · click a name to fix it · up to 40 ducks</div></div>' +
+      '<div style="text-align:right"><div class="bar" style="justify-content:flex-end;margin-bottom:6px"><button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (checked > 40 ? 'Only the first 40 ticked people will fly.' : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
+      (stale ? '<div class="stale">These ticks are from ' + esc(prettyDate(lastDay)) + '. New day? <button class="btn small" id="rfresh">Untick everyone</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
-      '<div class="box"><h3>Add person</h3><div class="bar"><input type="text" id="addname" maxlength="40" placeholder="Name" style="flex:1;min-width:0"><select id="addteam">' + T.map((t, j) => '<option value="' + j + '">' + esc(t.name) + '</option>').join('') + '</select><button class="btn small green" id="addbtn">Add</button></div></div>' +
-      '<div class="box"><h3>Paste a list</h3><div class="hint">One name per line, optional ", Team" (for example "Jamie, Team 2")</div><textarea id="paste" rows="4"></textarea><div class="bar"><button class="btn small green" id="pastebtn">Add these</button></div></div>' +
+      '<div class="box"><h3>Today\'s list</h3><div class="hint">One name per line, optional ", Team 2". New names join the roster.</div><textarea id="paste" rows="4" placeholder="Jamie&#10;Sam, Team 2&#10;Robin"></textarea>' +
+      '<div class="bar"><button class="btn small green" id="onlybtn" title="Tick exactly these people and untick everyone else">Tick only these</button><button class="btn small ghost" id="pastebtn" title="Tick these people and keep everyone already ticked">Add to ticked</button></div></div>' +
+      '<div class="box"><h3>Add one person</h3><div class="bar"><input type="text" id="addname" maxlength="40" placeholder="Name" style="flex:1;min-width:0"><select id="addteam">' + T.map((t, j) => '<option value="' + j + '">' + esc(t.name) + '</option>').join('') + '</select><button class="btn small green" id="addbtn">Add</button></div>' +
+      '<div class="bar"><input type="text" id="rfind" placeholder="Find a name…" value="' + esc(this.filter) + '" style="flex:1;min-width:0"></div></div>' +
       '<div class="box toggles"><label><input type="checkbox" id="tpractice"' + (S.settings.practice ? ' checked' : '') + '> Practice race (not saved)</label><label><input type="checkbox" id="tauto"' + (S.settings.autoAdvance ? ' checked' : '') + '> Auto-advance</label><label><input type="checkbox" id="tturbo"' + (S.settings.turboDefault ? ' checked' : '') + '> Turbo (2x)</label>' +
-      '<div class="bar"><button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button><button class="btn small ghost" id="rall">Tick all</button><button class="btn small ghost" id="rnone">Untick all</button></div></div>' +
+      '<div class="bar"><button class="btn small ghost" id="rall">Tick all</button><button class="btn small ghost" id="rnone">Untick all</button></div></div>' +
       '</div></div>';
     const $ = s => this.el.querySelector(s);
     const save = () => { saveRoster(); this.render(); };
     this.el.querySelectorAll('[data-chk]').forEach(cb => cb.onchange = () => { const p = S.roster.find(x => x.id === cb.dataset.chk); if (p) p.checked = cb.checked; save(); });
+    this.el.querySelectorAll('[data-name]').forEach(inp => {
+      inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { const p = S.roster.find(x => x.id === inp.dataset.name); inp.value = p ? p.name : inp.value; inp.blur(); } };
+      inp.onblur = () => { const p = S.roster.find(x => x.id === inp.dataset.name); if (!p) return; const before = p.name; this.rename(p.id, inp.value); if (p.name !== before) Toast.show('Renamed to ' + p.name); inp.value = p.name; };
+    });
     this.el.querySelectorAll('[data-move]').forEach(sel => sel.onchange = () => { const p = S.roster.find(x => x.id === sel.dataset.move); if (p) p.team = +sel.value; save(); });
     this.el.querySelectorAll('[data-ammo]').forEach(sel => sel.onchange = () => { const p = S.roster.find(x => x.id === sel.dataset.ammo); if (p) p.ammo = +sel.value; saveRoster(); });
-    this.el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { S.roster = S.roster.filter(x => x.id !== b.dataset.del); save(); });
+    this.el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const p = S.roster.find(x => x.id === b.dataset.del); S.roster = S.roster.filter(x => x.id !== b.dataset.del); save(); if (p) Toast.show('Removed ' + p.name); });
     this.el.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.all) p.checked = true; }); save(); });
     this.el.querySelectorAll('[data-none]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.none) p.checked = false; }); save(); });
-    const addOne = () => { const nm = $('#addname').value; if (this.add(nm, +$('#addteam').value)) { save(); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
+    const addOne = () => { const nm = $('#addname').value; const p = this.add(nm, +$('#addteam').value); if (p) { save(); Toast.show('Added ' + p.name); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
     $('#addbtn').onclick = addOne;
     $('#addname').onkeydown = e => { if (e.key === 'Enter') addOne(); };
-    $('#pastebtn').onclick = () => {
-      const lines = $('#paste').value.split(/\r?\n/);
-      let n = 0;
-      for (const ln of lines) {
-        if (!ln.trim()) continue;
-        const parts = ln.split(',');
-        const nm = parts[0], tm = this.teamFromText(parts.slice(1).join(','));
-        const existing = S.roster.find(p => personKey(p.name) === personKey(nm));
-        if (existing && tm == null) { existing.checked = true; n++; continue; }
-        if (existing && tm != null && existing.team === tm) { existing.checked = true; n++; continue; }
-        if (this.add(nm, tm == null ? +$('#addteam').value : tm)) n++;
-      }
-      Toast.show('Added ' + n + ' name' + (n === 1 ? '' : 's'));
-      save();
+    const useList = only => {
+      const r = this.applyList($('#paste').value, only);
+      if (!r.total) { Toast.show('Type or paste some names first'); return; }
+      Toast.show((only ? 'Ticked only these ' : 'Ticked ') + r.total + (r.added ? ' (' + r.added + ' new)' : ''), 2200);
+      this.render();
     };
+    $('#onlybtn').onclick = () => useList(true);
+    $('#pastebtn').onclick = () => useList(false);
+    $('#rfind').oninput = e => { this.filter = e.target.value; const pos = e.target.selectionStart; this.render(); const fi = this.el.querySelector('#rfind'); fi.focus(); fi.setSelectionRange(pos, pos); };
+    const fr = $('#rfresh'); if (fr) fr.onclick = () => { S.roster.forEach(p => p.checked = false); save(); };
     $('#tpractice').onchange = e => { S.settings.practice = e.target.checked; saveSettings(); };
     $('#tauto').onchange = e => { S.settings.autoAdvance = e.target.checked; saveSettings(); };
     $('#tturbo').onchange = e => { S.settings.turboDefault = e.target.checked; saveSettings(); };
@@ -3866,9 +3922,35 @@ function addLatePlayer(name, team) {
   if (firstBonus >= 0) R.queue.splice(Math.max(firstBonus, R.idx), 0, entry); else R.queue.push(entry);
   if (!S.roster.some(p => personKey(p.name) === personKey(nm))) { S.roster.push({ id: 'p' + hex8(hash(nm, Date.now())), name: nm, team, checked: true, ammo: 0 }); saveRoster(); }
   rememberNames(R.day, [pl.duck.name]);
+  if (S.screen === 'reveal') { RV.flipped.push(true); RV.flipAt.push(0); }
   saveRace();
   Toast.show(nm + "'s duck " + pl.duck.name + ' will launch last!', 2600);
 }
+// Take someone out of a show in progress (ticked by mistake). Only ducks that haven't launched yet.
+function canRemoveNow(pi) {
+  const R = S.race;
+  if (!R || R.stage !== 'launch') return false;
+  const cur = R.queue[R.idx];
+  const launching = cur && cur.p === pi && S.screen === 'launch' && (L.phase === 'countdown' || L.phase === 'flight');
+  return !R.players[pi].out && !R.results[R.players[pi].key] && !launching && R.queue.slice(R.idx).some(q => q.p === pi);
+}
+function removePlayer(pi) {
+  const R = S.race;
+  if (!canRemoveNow(pi)) return false;
+  const pl = R.players[pi];
+  const wasLoaded = R.queue[R.idx] && R.queue[R.idx].p === pi;
+  R.queue = R.queue.slice(0, R.idx).concat(R.queue.slice(R.idx).filter(q => q.p !== pi));
+  pl.out = true;
+  saveRace();
+  Toast.show(pl.name + "'s duck is out of today's show");
+  if (wasLoaded && S.screen === 'launch') {
+    if (R.idx < R.queue.length) loadDuck(false);
+    else if (standings().length) { L.phase = 'idle'; setBig('SEE RESULTS', true); }
+    else { Store.del('current'); S.race = null; go('title'); }
+  }
+  return true;
+}
+function activePlayers() { return S.race ? S.race.players.filter(p => !p.out) : []; }
 function standings() {
   const R = S.race;
   if (!R) return [];
@@ -3980,7 +4062,7 @@ function finalizeRace() {
       id: R.id, date: R.day, ts: Date.now(), n: st.length,
       cond: { wind: S.cond.wind.kind + ' ' + S.cond.wind.mph, sky: S.cond.sky, mod: S.cond.mod },
       teams: teams().map(t => t.name),
-      res: st.map(e => ({ p: e.pl.name, t: e.pl.team, d: e.pl.duck.name, r: e.pl.duck.rarity, dist: Math.round(e.dist * 10) / 10, alt: e.r.alt })),
+      res: st.map(e => ({ p: e.pl.name, t: e.pl.team, d: e.pl.duck.name, r: e.pl.duck.rarity, dist: Math.round(e.dist * 100) / 100, alt: e.r.alt })),
       awards: awards.map(a => ({ id: a.id, p: a.e.pl.name })),
       hl: computeHighlights(R).slice(0, 3),
       legend: R.legend.slice(0, 12),
@@ -4279,7 +4361,7 @@ function onImpact(e) {
   if (e.id === 'replyall') burst('envelope', 6, { x: s.x, y: s.y + 20, a0: -Math.PI / 2, spread: 0.6, sp0: 20, sp1: 40, l0: 1, l1: 1.5, extra: { ws: true, g: -30 } });
   // Bill reacts a beat later; the duck talks back
   const pool = 'ev_' + e.id;
-  if (C.LINES[pool]) say(pool, vars, { delay: 0.6, prio: 1 });
+  if (C.LINES[pool]) say(pool, vars, { delay: 0.45, prio: 1 });
   if (C.DUCK_LINES[e.id]) quip(e.id, { delay: 0.35 });
   else if (def.kind === 'obstacle' && fx.chance(0.5)) quip('dizzy', { delay: 0.35 });
 }
@@ -4371,6 +4453,7 @@ function toResults() {
 
 /* ---------- per-frame update for the launch screen ---------- */
 function updateLaunch(dt) {
+  if (!S.race) return;
   const pace = PACE();
   L.pt += dt;
   L.squash = Math.max(0, (L.squash || 0) - dt);
@@ -4457,6 +4540,7 @@ function pieceStateFn(t) {
 
 function drawLaunch(ctx, dt) {
   const R = S.race;
+  if (!R) return;
   const t = L.pb ? L.pb.simT : 0;
   const V = makeView(L.cam.cx, L.cam.gy, L.cam.z);
   const tb = S.cond.mod === 'throwback';
@@ -4738,7 +4822,7 @@ function drawLaunchHUD(ctx, V, t) {
   // altitude + distance
   if ((ph === 'flight' || ph === 'result' || ph === 'idle') && L.tl && L.pb) {
     const s = L.tl ? sampleTL(L.tl, ph === 'flight' ? t : L.tl.endT) : { x: 0, y: 0 };
-    drawOdometer(ctx, ph === 'flight' && !L.pb.done ? s.x : Math.round(L.tl.final));
+    drawOdometer(ctx, ph === 'flight' && !L.pb.done ? (s.x < 0 && s.x > -40 && L.tl.special !== 'backfire' ? 0 : s.x) : Math.round(L.tl.final));
     if (ph === 'flight' && gaugeVis < 1) { ctx.save(); ctx.globalAlpha = 1 - gaugeVis; drawAltimeter(ctx, Math.max(0, s.y - SIM.groundY(s.x))); ctx.restore(); }
   }
   // intro card
@@ -4903,7 +4987,7 @@ function drawSidebar(ctx) {
   const h = 70 + rows.length * rh + (showCur ? rh + 10 : 0) + 56;
   rr(ctx, x, y, w, h, 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
-  txt(ctx, st.length + '/' + R.players.length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
+  txt(ctx, st.length + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
   let yy = y + 66;
   const row = (e, rank, hl) => {
     const pl = e.pl;
@@ -4933,7 +5017,7 @@ function go(screen) {
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
   if (screen === 'results') startResults();
-  if (screen === 'fame') { FM.page = 0; FM.t = 0; setBig('NEXT PAGE', true); }
+  if (screen === 'fame') { Particles.clear(); FM.page = 0; FM.t = 0; setBig('NEXT PAGE', true); }
   if (screen === 'gallery') { GL.seed = freshSeed(); setBig('NEW BATCH', true); }
 }
 function savedShow() { const c = Store.get('current', null); return c && c.stage && c.stage !== 'done' && Array.isArray(c.players) && c.players.length ? c : null; }
@@ -5062,6 +5146,8 @@ function drawReveal(ctx, dt) {
     if (RV.done && RV.shuf < 0) S.buttons.push({ id: 'card' + i, x: rc.x, y: rc.y, w: rc.w, h: rc.h, fn: () => { rerollDuck(i); RV.rerollAt[i] = S.rt; SFX.play('flip'); SFX.play('sting', R.players[i].duck.rarity); Toast.show('Rerolled ' + pl.name + "'s duck"); } });
   });
   if (RV.fc >= 0) drawForecast(ctx, RV.fc > 50 ? 1 : easeBack(clamp(RV.fc / 0.5, 0, 1)));
+  // a name is wrong or someone is missing: go back to the roster (the race hasn't started yet)
+  if (RV.shuf < 0) button(ctx, 'editnames', 40, 948, 330, 76, '◀ Edit names', { bg: '#fff8e6', fn: () => { Store.del('current'); S.race = null; Caps.reset(); go('roster'); Toast.show('Fix the names, then press REVEAL DUCKS again'); } });
 }
 function drawCard(ctx, rc, pl, flipK, num) {
   const { x, y, w, h } = rc;
