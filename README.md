@@ -8,7 +8,7 @@ A daily cannon-launch duck game for team calls. Everyone who booked a meeting to
 
 1. **Check off who booked today.** The roster is saved, so it's a few clicks each day.
 2. **Reveal the ducks.** Everyone gets a new duck every day, with its own look, a ridiculous name and a rarity, from Common up to Legendary.
-3. **Launch.** One duck at a time: the cannon tilts, the power gauge spins, and "FIRE IN THE DUCK!" Trampolines, geese, UFOs, bread and plenty of other surprises decide how far each duck flies.
+3. **Launch.** One duck at a time: hit the big red button, the fuse lights, 3, 2, 1, and "FIRE IN THE DUCK!" Trampolines, geese, UFOs, bread and plenty of other surprises decide how far each duck flies.
 4. **Results.** A podium, awards for everyone's funniest moments, a highlights list, and a short summary you can paste into the team chat.
 
 A round with 10 players takes about 3.5 minutes. Turbo mode speeds up the quiet parts for big days.
@@ -29,7 +29,7 @@ A round with 10 players takes about 3.5 minutes. Turbo mode speeds up the quiet 
 
 | Key | Action |
 | --- | --- |
-| Space | Next step (one press plays a whole launch) |
+| Big red button or Space | Light the fuse / next duck (one press plays a whole launch) |
 | R | Instant replay of the last flight |
 | T | Turbo (2x speed) |
 | S | Skip to this flight's result |
