@@ -22,10 +22,21 @@ It is one self-contained file, `index.html`. There are no frameworks, CDNs, web 
 There are five screens, and the **big red button** (or **Space**) is the only control you need.
 
 1. **Title:** the animated logo, Ol' Thunderbill idling with a smoldering fuse, today's date and the Pond Forecast teaser. If a show was interrupted, the button reads **RESUME SHOW**.
-2. **Who booked today?** A saved roster grouped by three teams. Tick who booked, add people one at a time, or paste a list (one name per line, optional `, Team 2`). Duplicate names get an automatic suffix. Up to 40 ducks. You can also tick **Practice race** (not saved), **Auto-advance** and **Turbo** here.
-3. **Duck reveal:** cards flip in a cascade and pause on Epic and Legendary ducks. Click any card to reroll that duck. **LOCK IN & SHUFFLE** shuffles the launch order on screen, then the **Pond Forecast** appears.
+2. **Who booked today?** A saved roster grouped by three teams, up to 40 ducks. See [Editing today's names](#editing-todays-names) below. You can also tick **Practice race** (not saved), **Auto-advance** and **Turbo** here.
+3. **Duck reveal:** cards flip in a cascade and pause on Epic and Legendary ducks. Click any card to reroll that duck. Spotted a typo or a missing person? **◀ Edit names** goes back to the roster before anything starts. **LOCK IN & SHUFFLE** shuffles the launch order on screen, then the **Pond Forecast** appears.
 4. **Launches:** one duck at a time. **NEXT DUCK** plays the intro card and the ladder climb. The safety cover flips open, then **LIGHT THE FUSE** runs the 3-2-1 countdown, the launch call "FIRE IN THE DUCK!", the flight, the landing and the leaderboard update.
 5. **Results:** a podium with the Golden Loaf and the Participation Feather, then awards and highlights, then a panorama of every landing flag with **Copy results** for the team chat.
+
+### Editing today's names
+
+The roster is saved in the browser, so you only build it once. Each day you just change who's ticked.
+
+- **Today's list** (the quickest way): paste or type who booked today, one name per line. Add `, Team 2` (or a team's name) to set the team. **Tick only these** ticks exactly those people and unticks everyone else. **Add to ticked** keeps the people already ticked. New names are added to the roster automatically, and bullets or numbers at the start of a line are ignored, so you can paste straight from a chat message.
+- **Fix a name:** click it and type. Enter saves, Esc undoes. A blank name goes back to the old one, and a name that's already taken gets a `(2)` suffix.
+- **Tick or untick** anyone with the checkbox, or a whole team with **All** / **None**. Use the dropdown to move someone to another team and **×** to remove them from the roster.
+- **Find a name** filters the lists when the roster gets long. Names are sorted alphabetically within each team.
+- **New day:** if the ticks are left over from an earlier day, a yellow banner offers **Untick everyone**.
+- **During the show** (press **P**): **Add a late player** launches them last, and **Remove someone who hasn't launched yet** takes out a duck that was ticked by mistake.
 
 ### Keys
 
@@ -37,7 +48,7 @@ There are five screens, and the **big red button** (or **Space**) is the only co
 | S | Skip to this flight's result (silent) |
 | M | Mute |
 | F | Fullscreen |
-| P | Pause, settings and adding a late player. P again resumes. |
+| P | Pause and settings: add a late player, remove a duck that hasn't launched, teams, volume, data. P again resumes. |
 
 Hotkeys are ignored while you're typing in a text field. Esc stays the browser's fullscreen exit.
 

@@ -4410,8 +4410,8 @@ function onResult() {
   SFX.play('quack', d.pitch, 1);
   if (L.drum) SFX.play('cymbal');
   if (tl.special === 'backfire') { SFX.play('sad'); }
-  else if (newRecord) { setTimeout(() => SFX.play('record'), 200); SFX.play('fireworks'); SFX.play('cheer', 2); Caps.big('NEW POND RECORD!', { px: 100, color: '#ffd23f', dur: 3 }); say('newRecord', { duck: d.name }, { prio: 2, delay: 0.3 }); fireworks(); }
-  else if (newLeader) { SFX.play('leader'); SFX.play('cheer', 1.2); Caps.big('NEW LEADER!', { px: 110, color: '#ffd23f', dur: 2.4 }); say('newLeader', { duck: d.name }, { prio: 2, delay: 0.3 }); }
+  else if (newRecord) { setTimeout(() => SFX.play('record'), 200); SFX.play('fireworks'); SFX.play('cheer', 2); Caps.big('NEW POND RECORD!', { px: 100, color: '#ffd23f', dur: 3, y: 535 }); say('newRecord', { duck: d.name }, { prio: 2, delay: 0.3 }); fireworks(); }
+  else if (newLeader) { SFX.play('leader'); SFX.play('cheer', 1.2); Caps.big('NEW LEADER!', { px: 110, color: '#ffd23f', dur: 2.4, y: 535 }); say('newLeader', { duck: d.name }, { prio: 2, delay: 0.3 }); }
   else if (D > 2000) { SFX.play('cheer', 1.4); }
   else if (D < 300) { SFX.play('aww'); }
   if (!newRecord && !newLeader) say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', { duck: d.name, distance: fmtFt(D) }, { delay: 0.2 });
