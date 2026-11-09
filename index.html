@@ -58,7 +58,7 @@
   #roster .row select { font-size: 16px; padding: 2px 4px; border-width: 2px; border-radius: 8px; }
   #roster .row .x { border: 0; background: none; font-size: 26px; font-weight: 900; cursor: pointer; color: #b0392b; padding: 0 4px; }
   #roster .row .ammo { font-size: 16px; padding: 2px 6px; }
-  #roster .row .tm { flex: none; width: 34px; height: 34px; border: 3px solid var(--ink); border-radius: 50%; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; padding: 0; text-shadow: 0 1px 0 rgba(0,0,0,.5); opacity: .8; }
+  #roster .row .tm { flex: none; width: 26px; height: 26px; border: 3px solid var(--ink); border-radius: 50%; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; padding: 0; text-shadow: 0 1px 0 rgba(0,0,0,.5); opacity: .8; }
   #roster .row .tm:hover { opacity: 1; transform: scale(1.1); }
   #roster .side { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
   #roster .side .box { border: 5px solid var(--ink); border-radius: 22px; background: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; flex: none; }
@@ -475,10 +475,10 @@ C.LINES = {
   launch: [
     'And {duck} is AIRBORNE!', 'Look at {duck} go!', "That's a lot of duck in a lot of air!", '{duck} has left the cannon. Emphatically.',
     'Thunderbill delivers!', 'Up and OVER!', 'Clean launch! Beautiful form! Mostly screaming!', 'We have liftoff!', 'Wings out, {duck}! Wings OUT!',
-    'A textbook launch. If the textbook was about ducks.',, 'BOOM! {duck} is away!', 'There goes {duck}!', '{duck} has been DELIVERED!'],
+    'A textbook launch. If the textbook was about ducks.', 'BOOM! {duck} is away!', 'There goes {duck}!', '{duck} has been DELIVERED!'],
   quiet: [
     'Look at that form.', 'Aerodynamically speaking, that is a duck.', "That's some serious hang time.", 'The crowd is on its feet. Webbed feet.',
-    'Still climbing!', 'Somewhere, a pond is very proud.', 'I love this sport.', 'That duck has somewhere to be.',, 'Fly, little duck, fly!', 'The judges are watching closely.', 'Steady... steady...'],
+    'Still climbing!', 'Somewhere, a pond is very proud.', 'I love this sport.', 'That duck has somewhere to be.', 'Fly, little duck, fly!', 'The judges are watching closely.', 'Steady... steady...'],
   fakeout: ['Uh oh. The fuse went out.', 'Hold on, folks... the crew is checking...', 'Is it...? Is it out?'],
   fakeoutBoom: ['Oh, it was NOT out!', 'NOPE! Still lit!', "Folks, I'm going to need a minute."],
   misfire: ['Oh no. That is a misfire.', "{duck} just plopped out. That's not how cannons work.", 'Misfire! The crew is adding more powder!'],
@@ -494,7 +494,7 @@ C.LINES = {
   photoLost: ['Just {margin} short! So close!', 'Heartbreaker! {margin} short of the lead!', 'The photo says... {margin} short. Oof.'],
   closeWin: ['And the Golden Loaf goes to {duck}... by just {margin}!', '{duck} wins it by {margin}! What a finish!'],
   wrongWay: ['Well, that is one direction.', 'Bold. Backwards, but bold.', 'The scoreboard is confused. So am I.'],
-  champIntro: ['Our defending champion! {player}\'s duck, {duck}!', 'Yesterday\'s Golden Loaf winner is back: {player}\'s duck, {duck}!'],
+  champIntro: ['Our defending champion! {player}\'s duck, {duck}!', 'Last show\'s Golden Loaf winner is back: {player}\'s duck, {duck}!'],
   streakIntro: ['{player} is going for {n} in a row! Here comes {duck}!'],
   personalBest: ['A new personal best for {player}!', 'That is {player}\'s best flight EVER!'],
   photoFinish: ["It's close... it's CLOSE...", 'Photo finish! Get the camera!', "Too close to call! Let's go to the replay booth!"],
@@ -505,7 +505,7 @@ C.LINES = {
   billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
   billPickWon: ['Called it! Bill\'s pick, {duck}, took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick, {duck}, WON! Nobody tell my editor.'],
   billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board."],
-  countInFirst: ['First launch of the day! Count it down with me, folks!', 'First duck of the day! Everybody count it down!'],
+  countInFirst: ['First launch of the show! Count it down with me, folks!', 'First duck of the show! Everybody count it down!'],
   countIn: ['Everybody, count it down!', 'Here we go! Three, two, one...', 'Count it with me, folks!', 'Fingers on the countdown, everyone!', 'Say it with me!'],
   teamDay: ['{team} takes Team of the Day!', 'Team of the Day goes to {team}. Synchronized flapping pays off.'],
   solo: ["Just one duck today, and it's {duck} versus the record!", "A solo flight! {duck} is up against history."],
@@ -561,11 +561,12 @@ C.DUCK_LINES = {
   generic: ['I REGRET NOTHING', 'Per my last quack...', 'Is this a team-building exercise?', 'I can see my pond from here!', 'Tell my pond I love them', 'Wheeeee—wait', "I'm a duck, not a pilot!", 'Worth it.', 'Circle back? CIRCLE BACK?!', "Mom, I'm on TV!",
     'Is this the line for bread?', "Nobody said there'd be a cannon!", 'This was NOT in the meeting invite!', 'Can we take this offline?', 'QUAAAACK!', 'Totally on purpose.', 'Do I get frequent flyer miles?', 'Weeeee!', "Who's driving this thing?!", 'Gravity, we need to talk.',
     'Okay, NOW I am awake.', 'I can fly! I CAN FLY! I cannot fly.', "Sorry, you're breaking up!", 'Brb, flying.', 'Watch this!', 'Calculated.', 'Did anyone get that on camera?', 'Hi everyone!', 'Wing it! WING IT!', 'Out of office! Literally!',
-    'New personal best!', "I'll be in my pond.", 'Never again. Okay, maybe tomorrow.', 'Is it over? Did I win?', 'Ten out of ten. Would launch again.', "Let's touch base. On the ground. Soon."],
+    'Stuck the landing!', "I'll be in my pond.", 'Never again. Okay, maybe tomorrow.', 'Is it over? Did I win?', 'Ten out of ten. Would launch again.', "Let's touch base. On the ground. Soon."],
   launch: ['Wheeeee—wait', 'AAAAAAA', "I'm a duck, not a pilot!", 'Wing it! WING IT!', 'Weeeee!', "Who's driving this thing?!", 'I REGRET NOTHING'],
   peek: ['Is it too late to reschedule?', 'Can I get a window seat?', 'Okay. Okay. Okay.', "Let's do this. Probably.", 'Tell the pond I said hi.', 'Is this thing on?'],
-  landGood: ['Calculated.', 'Nailed it.', 'Smooth landing!', 'New personal best!', 'Ten out of ten. Would launch again.', 'Did anyone get that on camera?'],
+  landGood: ['Calculated.', 'Nailed it.', 'Smooth landing!', 'Right where I wanted to be.', 'Ten out of ten. Would launch again.', 'Did anyone get that on camera?'],
   wrongWay: ['Wrong way?! Says who?', 'I prefer to call it reverse.', 'Okay, which way is the pond?'],
+  pb: ['New personal best!', 'Best. Flight. EVER.', 'Did anyone get that on camera?!'],
   landBad: ['Totally on purpose.', "I'm fine! I'm fine!", 'Is it over? Did I win?', 'Worth it.', "I'll be in my pond.", 'That was a warm-up.'],
   tree: ['Little help?', 'I live here now.'],
   bread: ['Carbs!', 'Worth it.'],
@@ -645,9 +646,11 @@ const Store = (() => {
     if (!warned && typeof Toast !== 'undefined') { warned = true; setTimeout(() => Toast.show('Browser storage is full, so changes are not being saved. Export your data (Settings), then clear some site data.', 6000), 0); }
   }
 
+  // this session's copy wins: set() always writes mem first, so a save that failed (storage full) is still what we read and export
   function readRaw(key) {
-    if (ls) { try { const v = ls.getItem(PREFIX + key); if (v != null) return v; } catch (e) { /* fall through */ } }
-    return mem[key] == null ? null : mem[key];
+    if (mem[key] != null) return mem[key];
+    if (ls) { try { const v = ls.getItem(PREFIX + key); if (v != null) { mem[key] = v; return v; } } catch (e) { /* fall through */ } }
+    return null;
   }
   function get(key, fallback) {
     try {
@@ -672,7 +675,7 @@ const Store = (() => {
       // probably quota: trim history and retry once
       if (key === 'history' && data && Array.isArray(data.races) && data.races.length > 30) {
         data.races = data.races.slice(-Math.floor(data.races.length * 0.7));
-        try { ls.setItem(PREFIX + key, JSON.stringify({ schema: SCHEMA, data })); return true; } catch (e2) { /* ignore */ }
+        try { const r2 = JSON.stringify({ schema: SCHEMA, data }); ls.setItem(PREFIX + key, r2); mem[key] = r2; return true; } catch (e2) { /* ignore */ }
       }
       failed();
       return false;
@@ -698,7 +701,7 @@ const Store = (() => {
     for (const k of KEYS) { const v = get(k, null); if (v != null) out.data[k] = v; }
     return out;
   }
-  function importAll(obj) {
+  function importAll(obj, dryRun) {
     if (!obj || typeof obj !== 'object' || obj.app !== 'duck-duck-boom' || !obj.data || typeof obj.data !== 'object') throw new Error('Not a Duck Duck BOOM! backup file.');
     if (obj.schema !== SCHEMA) throw new Error('Backup is from an unknown version (' + obj.schema + ').');
     const D = obj.data, isObj = v => v && typeof v === 'object' && !Array.isArray(v);
@@ -710,6 +713,7 @@ const Store = (() => {
     };
     const bad = KEYS.filter(k => k in D && D[k] != null && !valid[k](D[k]));
     if (bad.length) throw new Error('The backup looks damaged (' + bad.join(', ') + ').');
+    if (dryRun) return 0;
     // a backup is a full restore: our keys that aren't in it are cleared
     let n = 0;
     for (const k of KEYS) { if (k in D && D[k] != null) { set(k, D[k]); n++; } else del(k); }
@@ -735,10 +739,13 @@ function saveSettings() { Store.set('settings', S.settings); }
 function loadRoster() {
   const r = Store.get('roster', null);
   const people = (r && Array.isArray(r.people)) ? r.people : [];
-  return people.filter(p => p && p.name).map(p => ({ id: p.id || ('p' + hex8(hash(p.name, p.team || 0))), name: cleanName(p.name), team: clamp(p.team | 0, 0, 2), checked: !!p.checked, ammo: clamp(p.ammo | 0, 0, 3) }));
+  const day = r && typeof r.day === 'string' ? r.day : null;
+  // td = the day this person was ticked (older saves only have the roster-wide day)
+  return people.filter(p => p && p.name).map(p => ({ id: p.id || ('p' + hex8(hash(p.name, p.team || 0))), name: cleanName(p.name), team: clamp(p.team | 0, 0, 2), checked: !!p.checked, ammo: clamp(p.ammo | 0, 0, 3), td: p.checked ? (typeof p.td === 'string' ? p.td : day) : null }));
 }
 // ticksChanged: only deliberate tick edits move the 'ticks are from <day>' date forward
 function saveRoster(ticksChanged) {
+  for (const p of S.roster) if (!p.checked) p.td = null;
   const prev = rosterDay();
   Store.set('roster', { people: S.roster, day: ticksChanged || !prev ? localDayKey() : prev });
 }
@@ -819,6 +826,7 @@ function computeFame(races, todayKey) {
   // current streak: consecutive most-recent races won by the same person
   let streak = null;
   for (let i = races.length - 1; i >= 0; i--) {
+    if (races[i].res.length < 2) continue;   // a solo run isn't a win over anyone
     const w = races[i].res.slice().sort((a, b) => b.dist - a.dist)[0];
     if (!w) break;
     if (!streak) streak = { name: w.p, n: 1, key: personKey(w.p) };
@@ -1081,7 +1089,7 @@ function generateCourse(dayKey, cond) {
     let x = f.x;
     for (let k = 0; k < 8 && !free(x, x + f.w); k++) x += 120;
     occupied.push([x, x + f.w]);
-    if (f.type === 'pond') add('pond', x, { ev: 'skip', w: Math.round(f.w), h: 0, chance: 0.55 });
+    if (f.type === 'pond') { const p = add('pond', x, { ev: 'skip', w: Math.round(f.w), h: 0, chance: 0.55 }); if (cond && cond.mod === 'ice' && (hash(dayKey, 'frozen', p.id) & 1)) p.data.frozen = true; }
     else if (f.type === 'walkway') add('walkway', x, { ev: 'walkway', w: Math.round(f.w), h: 5, chance: 0.9 });
     else if (f.type === 'bench') add('bench', x, { ev: 'bread', w: 46, h: 16, chance: 0.3 });
     else if (f.type === 'minicannon') add('minicannon', x, { ev: 'cannonception', w: 46, h: 26, chance: 0.2 });
@@ -1234,11 +1242,17 @@ const SIM = (() => {
       s.sc = null; s.mode = nextMode == null ? MODE.air : nextMode; s.cool = s.t + 0.7;
       if (s.mode === MODE.air) s.pose = POSE.fly;
     }
-    function deadStop(pose) {
-      // a faster duck skids farther past the obstacle, so stops spread out instead of piling up at one spot
-      const d = clamp(Math.abs(s.vx) * 0.5 + rng.range(2, 48), 5, 90);
+    // o.held: the duck was already parked at the obstacle (desk, bench, hammock, billboard): just a small wobble.
+    // Otherwise a faster duck skids farther (forward only), so stops spread out instead of piling up at one spot.
+    // o.maxX keeps a pond or mud stop inside the piece. The wobble never starts faster than the duck arrived.
+    function deadStop(pose, o) {
+      o = o || {};
+      const v = o.held ? 0 : Math.max(0, s.vx);
+      let d = o.held ? rng.range(3, 22) : clamp(v * 0.5 + rng.range(2, 48), 5, 90);
+      if (o.maxX != null) d = clamp(o.maxX - s.x, 0, d);
+      const dur = Math.max(rng.range(0.9, 1.4), o.held ? 0 : 3 * d / Math.max(v, 20));
       s.vx = 0; s.vy = 0;
-      startScript('wobble', rng.range(0.9, 1.4), { d, pose: pose == null ? POSE.stand : pose, x0: s.x });
+      startScript('wobble', dur, { d, pose: pose == null ? POSE.stand : pose, x0: s.x });
     }
     function finish() { s.mode = MODE.done; s.vx = 0; s.vy = 0; }
 
@@ -1250,11 +1264,11 @@ const SIM = (() => {
       clothesline(pc) { emit('clothesline', { piece: pc.id }); s.vx *= 0.42; s.vy = Math.min(s.vy, 0) * 0.4; s.extra.sockT = s.t; s.pose = POSE.dizzy; },
       tree(pc) { const d = rng.range(1.9, 2.5); emit('tree', { piece: pc.id }, d); startScript('stuck', d, { x0: s.x, y0: clamp(s.y, pc.h * 0.5, pc.h * 0.9), rel: rng.range(8, 22) }); s.pose = POSE.stuck; },
       billboard(pc) { emit('billboard', { piece: pc.id }); startScript('slidedown', 9, { x0: pc.x - 3 }); s.pose = POSE.dizzy; },
-      onhold(pc) { emit('onhold', { piece: pc.id }, 3.2); startScript('hold', 3.2, { x0: pc.x + pc.w / 2, y0: 12 }); s.pose = POSE.stand; },
+      onhold(pc) { emit('onhold', { piece: pc.id }, 3.2); startScript('hold', 3.2, { x0: pc.x + pc.w / 2, y0: 12, maxX: pc.x + pc.w - 2 }); s.pose = POSE.stand; },
       gatekeeper(pc) { emit('gatekeeper', { piece: pc.id }, 1.7); startScript('pause', 1.7, { x0: Math.min(s.x, pc.x - 4), y0: groundY(pc.x) }); s.pose = POSE.stand; },
-      hammock(pc) { emit('hammock', { piece: pc.id }, 2.1); startScript('nap', 2.1, { x0: s.x, y0: s.y, tx: clamp(s.x, pc.x + 14, pc.x + pc.w - 14), ty: pc.h * 0.55 }); s.pose = POSE.sleep; },
+      hammock(pc) { emit('hammock', { piece: pc.id }, 2.1); startScript('nap', 2.1, { x0: s.x, y0: s.y, tx: clamp(s.x, pc.x + 14, pc.x + pc.w - 14), ty: pc.h * 0.55, maxX: pc.x + pc.w - 2 }); s.pose = POSE.sleep; },
       bread(pc) { emit('bread', { piece: pc.id }, 2.3); startScript('dive', 2.3, { x0: s.x, y0: s.y, tx: pc.x - 8, ty: 0 }); s.pose = POSE.eat; },
-      mud(pc) { emit('mud', { piece: pc.id }); s.extra.mudT = s.t; s.y = 0; deadStop(POSE.stand); },
+      mud(pc) { emit('mud', { piece: pc.id }); s.extra.mudT = s.t; s.y = 0; deadStop(POSE.stand, { maxX: pc.x + pc.w - 4 }); },
       cannonception(pc) { emit('cannonception', { piece: pc.id }, 1.4); startScript('reload', 1.4, { x0: pc.x + pc.w * 0.6, y0: 18, vx: rng.range(150, 178), vy: rng.range(140, 165) }); s.vis = 0; },
       banana(pc) { emit('banana', { piece: pc.id }); s.slick = true; s.slickT = s.t; s.vx = Math.max(s.vx, 0) + rng.range(22, 34); s.spin = 9; s.y = 0; s.mode = MODE.ground; s.pose = POSE.slide; },
       walkway(pc) { emit('walkway', { piece: pc.id, end: pc.x + pc.w }, Math.max(0.5, (pc.x + pc.w - s.x) / 38)); s.y = groundY(s.x); startScript('walkway', 30, { end: pc.x + pc.w, speed: 38 }); s.pose = POSE.stand; },
@@ -1262,14 +1276,14 @@ const SIM = (() => {
         const forcePlop = opts.force === 'plop';
         const fast = opts.force === 'skip' ? s.vx > 8 : s.vx > 40 && (s.mode === MODE.ground || -s.vy < s.vx * 1.4);
         if (!forcePlop && rolled && fast && s.skipN < 6) {
-          if (!s.skipEv) s.skipEv = emit('skip', { piece: pc.id, n: 0 });
-          s.skipN++; s.skipEv.data.n = s.skipN; s.skipEv.tEnd = s.t;
+          if (!s.skipEv) s.skipEv = emit('skip', { piece: pc.id, n: 0, ts: [] });
+          s.skipN++; s.skipEv.data.n = s.skipN; s.skipEv.tEnd = s.t; s.skipEv.data.ts.push(+s.t.toFixed(3));
           s.y = 0.5; s.vy = Math.abs(s.vy) * 0.5 + 16; s.vx *= 0.9; s.mode = MODE.air; s.pose = POSE.scared;
           return true;
         }
-        if (s.skipEv && s.skipN > 0 && !forcePlop && s.mode === MODE.air && s.vx > 18 && s.skipN < 9) { s.y = 0.5; s.vy = 10; s.vx *= 0.85; s.skipN++; s.skipEv.data.n = s.skipN; s.skipEv.tEnd = s.t; return true; }
+        if (s.skipEv && s.skipN > 0 && !forcePlop && s.mode === MODE.air && s.vx > 18 && s.skipN < 9) { s.y = 0.5; s.vy = 10; s.vx *= 0.85; s.skipN++; s.skipEv.data.n = s.skipN; s.skipEv.tEnd = s.t; s.skipEv.data.ts.push(+s.t.toFixed(3)); return true; }
         if (s.nDist < 5 && !s.used.has('plop')) emit('plop', { piece: pc.id });
-        s.y = 0; deadStop(POSE.swim); return true;
+        s.y = 0; deadStop(POSE.swim, { maxX: pc.x + pc.w - 6 }); return true;
       },
       pinball(pc) {
         const n = rng.int(3, 6), pts = [];
@@ -1356,31 +1370,31 @@ const SIM = (() => {
         }
         case 'slidedown': {
           s.x = approach(s.x, sc.x0, 14, dt); s.vy = -14; s.y += s.vy * dt; s.rot = 0.4; s.pose = POSE.dizzy;
-          if (s.y <= groundY(s.x)) { s.y = groundY(s.x); deadStop(POSE.dizzy); }
+          if (s.y <= groundY(s.x)) { s.y = groundY(s.x); deadStop(POSE.dizzy, { held: true }); }
           return;
         }
         case 'hold': {
           // glide into the booth instead of popping there
           s.x = approach(s.x, sc.x0, 10, dt); s.y = approach(s.y, u > 0.85 ? groundY(s.x) : sc.y0, 10, dt); s.rot = 0; s.pose = POSE.stand;
-          if (u >= 1) { s.vx = 0; s.vy = 0; s.y = groundY(s.x); deadStop(POSE.stand); }
+          if (u >= 1) { s.vx = 0; s.vy = 0; s.y = groundY(s.x); deadStop(POSE.stand, { held: true, maxX: sc.maxX }); }
           return;
         }
         case 'pause': {
           s.x = approach(s.x, sc.x0, 12, dt); s.y = approach(s.y, sc.y0, 10, dt); s.rot = 0; s.pose = POSE.stand;
-          if (u >= 1) { s.y = sc.y0; deadStop(POSE.stand); }
+          if (u >= 1) { s.y = sc.y0; deadStop(POSE.stand, { held: true }); }
           return;
         }
         case 'nap': {
           const k = easeOut(Math.min(1, u * 4));
           s.x = lerp(sc.x0, sc.tx, k); s.y = lerp(sc.y0, sc.ty, k); s.rot = lerp(0, -0.25, k); s.pose = POSE.sleep;
           if (u > 0.82) s.y = lerp(sc.ty, groundY(s.x), easeInOut((u - 0.82) / 0.18));   // climb down before waking
-          if (u >= 1) { s.y = groundY(s.x); deadStop(POSE.sleep); }
+          if (u >= 1) { s.y = groundY(s.x); deadStop(POSE.sleep, { held: true, maxX: sc.maxX }); }
           return;
         }
         case 'dive': {
           const k = easeInOut(Math.min(1, u * 2.2));
           s.x = lerp(sc.x0, sc.tx, k); s.y = lerp(sc.y0, sc.ty, k) + Math.sin(k * Math.PI) * 8; s.rot = (1 - k) * 0.6; s.pose = POSE.eat;
-          if (u >= 1) { s.y = groundY(s.x); deadStop(POSE.eat); }
+          if (u >= 1) { s.y = groundY(s.x); deadStop(POSE.eat, { held: true }); }
           return;
         }
         case 'reload': {
@@ -1590,8 +1604,8 @@ const SIM = (() => {
         if (only && only !== 'skip' && only !== 'plop') return false;
         // the pond is water: you either skip or you plop (no free pass)
         if (s.used.has('plop')) return false;
-        // Ice Rink: the pond is frozen half the time and fast sliders skate right across
-        if (cond.mod === 'ice' && s.mode === MODE.ground && Math.abs(s.vx) > 30 && !only && (hash(seed, 'skate', pc.id) & 1)) return false;
+        // Ice Rink: some ponds are frozen for the whole day (drawn as ice): ducks bounce and slide on them like the field
+        if (pc.data && pc.data.frozen && only !== 'skip' && only !== 'plop') return false;
         if (s.mode === MODE.ground && Math.abs(s.vx) < 6) return FX.pond(pc, false);   // slow sliders still get wet
         return FX.pond(pc, pieceRoll[i] && (s.skipEv != null || canFire()));
       }
@@ -1847,6 +1861,8 @@ function runSelfTest() {
   check('no flight runs into the time cap or ends in mid-air', capped === 0 && aloft === 0, capped + ' capped, ' + aloft + ' aloft of 400 Ice Rink flights');
   // content lint: nothing Bill or a duck says trips the blocklist
   const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES);
+  const holes = [].concat(...[C.LINES, C.DUCK_LINES].map(T => Object.entries(T).filter(([k, a]) => Object.keys(a).length !== a.length || a.some(x => typeof x !== 'string' || !x.trim())).map(([k]) => k)));
+  check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
   return out;
@@ -2561,10 +2577,12 @@ ART.piece = {
   },
   pond(ctx, pc, V, st) {
     const L = wlw(V), w = pc.w;
-    ell(ctx, w / 2, 1, w / 2 + 4, 7); fillStroke(ctx, '#3f9fe0', L);
-    ctx.fillStyle = '#7cc8ff'; ell(ctx, w * 0.45, 0, w * 0.3, 2.2); ctx.fill();
+    const ice = pc.data && pc.data.frozen;   // Ice Rink day: a frozen pond, so it reads as ice, not water
+    ell(ctx, w / 2, 1, w / 2 + 4, 7); fillStroke(ctx, ice ? '#d8f1ff' : '#3f9fe0', L);
+    ctx.fillStyle = ice ? '#ffffff' : '#7cc8ff'; ell(ctx, w * 0.45, 0, w * 0.3, 2.2); ctx.fill();
+    if (ice) { ctx.lineWidth = L * 0.5; ctx.strokeStyle = '#9cc9e6'; ctx.beginPath(); ctx.moveTo(w * 0.15, 2); ctx.lineTo(w * 0.3, -1); ctx.moveTo(w * 0.62, 3); ctx.lineTo(w * 0.8, 0); ctx.stroke(); }
     // lily pads + reeds
-    for (const lx of [0.2, 0.7]) { ell(ctx, w * lx, 0, 6, 2); fillStroke(ctx, '#5cbf4a', L * 0.6); }
+    if (!ice) for (const lx of [0.2, 0.7]) { ell(ctx, w * lx, 0, 6, 2); fillStroke(ctx, '#5cbf4a', L * 0.6); }
     for (const rx of [-4, w + 3]) for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(rx + k * 2, 0); ctx.lineTo(rx + k * 2 - 1, -12 - k * 3); ctx.lineWidth = L * 0.6; ctx.strokeStyle = '#3f8f3a'; ctx.stroke(); }
     if (st.ripples) for (const r of st.ripples) { const k = r.k; ell(ctx, r.x - pc.x, 0, 6 + k * 30, 2 + k * 5); ctx.lineWidth = L * 0.5 * (1 - k); ctx.strokeStyle = 'rgba(255,255,255,' + (1 - k) + ')'; ctx.stroke(); }
   },
@@ -3029,7 +3047,8 @@ const SFX = (() => {
   }
   // pause freezes every scheduled sound in step with the game
   let held = false;
-  function pause(on) { held = !!on; try { if (!ac) return; if (on && ac.state === 'running') ac.suspend(); else if (!on && ac.state === 'suspended') ac.resume(); } catch (e) { /* ignore */ } }
+  // no state checks: suspend()/resume() apply in call order, so a quick off-on (Cancel in a confirm box) still ends suspended
+  function pause(on) { held = !!on; try { if (!ac || ac.state === 'closed') return; if (held) ac.suspend().catch(() => {}); else ac.resume().catch(() => {}); } catch (e) { /* ignore */ } }
   function resume() { try { if (!ac) init(); if (ac && ac.state === 'suspended' && !held) ac.resume(); } catch (e) { /* ignore */ } }
   function setVolume(v) { vol = clamp(v, 0, 1); if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.05); }
   function setMuted(m) { muted = !!m; if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.03); }
@@ -3186,7 +3205,7 @@ const SFX = (() => {
   };
   const LONG = new Set(['fuse', 'drumroll', 'hold', 'plane', 'scream', 'rocket', 'wind', 'zap', 'ring']);
   function play(name, ...args) {
-    if (!ac || muted || vol <= 0) return;
+    if (!ac || muted || vol <= 0 || held) return;   // nothing queues up behind a pause
     D = LONG.has(name) ? fbus : bus;
     try { if (S[name]) S[name](...args); } catch (e) { /* never let audio break the show */ }
     D = null;
@@ -3711,7 +3730,7 @@ const Lines = {
   reset(seed) { this.bags = {}; this.rng = new Rng(hash('lines', seed >>> 0)); this.used = new Set(); this.last = {}; },
   fill(text, vars) { return String(text).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : m)); },
   next(pool, vars, isDuck) {
-    const src = isDuck ? C.DUCK_LINES[pool] : C.LINES[pool];
+    const src = ((isDuck ? C.DUCK_LINES[pool] : C.LINES[pool]) || []).filter(l => typeof l === 'string' && l);
     if (!src || !src.length) return null;
     const bk = (isDuck ? 'd:' : 'b:') + pool;
     let bag = this.bags[bk];
@@ -3755,7 +3774,7 @@ function setPaused(on) {
   on = !!on;
   if (on === S.paused) return;
   if (on) { S.pauseAt = S.rt; if (S.screen === 'launch') { SFX.pause(true); Voice.pause(true); } }
-  else { Caps.shift(S.rt - (S.pauseAt || S.rt)); Big.changedAt = S.rt; SFX.pause(false); Voice.pause(false); }
+  else { Caps.shift(S.rt - (S.pauseAt || S.rt)); Big.changedAt = S.rt; SFX.pause(false); Voice.pause(false); if (S.previewVol) { S.previewVol = false; SFX.play('quack', 1.2); } }
   S.paused = on;
 }
 
@@ -3808,9 +3827,20 @@ function downloadText(text, filename) {
   } catch (e) { fallback(); }
 }
 function exportData() { downloadText(JSON.stringify(Store.exportAll(), null, 1), 'duck-duck-boom-backup-' + localDayKey() + '.json'); }
-function importDataFromText(text) {
+function importDataFromText(text, confirmed) {
   try {
     const obj = JSON.parse(text);
+    Store.importAll(obj, true);   // check it first: nothing is written if the backup is damaged
+    // a restore replaces everything: say so before anything saved here would be lost
+    const D = obj.data, lose = [];
+    const theirs = D.history && Array.isArray(D.history.races) ? D.history.races.length : 0;
+    if (S.history.length > theirs) lose.push(S.history.length + ' saved race' + (S.history.length === 1 ? '' : 's') + ' (the backup has ' + theirs + ')');
+    if (!D.current && savedShow()) lose.push('the show in progress');
+    if (!(D.roster && D.roster.people && D.roster.people.length) && S.roster.length) lose.push('the roster of ' + S.roster.length);
+    if (lose.length && !confirmed) {
+      confirmBox('Importing replaces everything saved in this browser with the backup. This would erase ' + lose.join(', ') + '. Export first if you are not sure.', 'Replace my data', () => importDataFromText(text, true));
+      return false;
+    }
     const n = Store.importAll(obj);
     S.settings = loadSettings(); S.roster = loadRoster(); S.history = loadHistory();
     SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted);
@@ -3851,7 +3881,8 @@ function openSettings(fromPause) {
       // picking a colour another team already has swaps the two, so teams never share a colour
       el.querySelectorAll('.sw').forEach(sw => sw.onclick = () => { const ti = +sw.dataset.ti, c = sw.dataset.c, other = st.teams.findIndex((t, j) => j !== ti && t.color.toLowerCase() === c.toLowerCase()); if (other >= 0) st.teams[other].color = st.teams[ti].color; st.teams[ti].color = c; saveSettings(); openSettings(fromPause); });
       el.querySelector('#svol').oninput = e => { st.volume = e.target.value / 100; el.querySelector('#svolv').textContent = e.target.value + '%'; SFX.setVolume(st.volume); saveSettings(); };
-      el.querySelector('#svol').onchange = () => SFX.play('quack', 1.2);
+      // during a paused show the sound is held: the level check plays once the show resumes
+    el.querySelector('#svol').onchange = () => { if (S.paused && S.screen === 'launch') S.previewVol = true; else SFX.play('quack', 1.2); };
       el.querySelector('#smute').onchange = e => { st.muted = e.target.checked; SFX.setMuted(st.muted); if (st.muted) Voice.stop(); saveSettings(); };
       el.querySelector('#sshake').onchange = e => { st.shake = e.target.checked; saveSettings(); };
       el.querySelector('#svoice').onchange = e => { st.voice = e.target.checked; saveSettings(); if (st.voice) { Voice.pause(false); Voice.speak('Bill Featherstone here. Testing, testing.'); } else Voice.stop(); };
@@ -3865,7 +3896,7 @@ function openSettings(fromPause) {
       el.querySelector('#dpaste').onclick = () => Modal.open('<h2>Import from text</h2><div class="note">Paste the contents of a Duck Duck BOOM! backup file:</div><textarea class="out" id="ptext"></textarea><div class="row"><button class="btn green" id="pgo">Import</button><button class="btn ghost" id="pcancel">Cancel</button></div>', e2 => { e2.querySelector('#pgo').onclick = () => { if (importDataFromText(e2.querySelector('#ptext').value)) Modal.close(); }; e2.querySelector('#pcancel').onclick = () => Modal.close(); });
       el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); S.roster = []; S.history = []; S.race = null; setPaused(false); go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
       const ab = el.querySelector('#dabandon');
-      if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? 'Close these results and go back to the title? They are already saved in the Waddle of Fame.' : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
+      if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? (S.race.practice ? 'Close these practice results and go back to the title? (Practice races are not saved.)' : 'Close these results and go back to the title? They are already saved in the Waddle of Fame.') : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
       el.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => { const pi = +bt.dataset.rm; const nm = S.race.players[pi].name; confirmBox('Take ' + nm + "'s duck out of today's show?", 'Remove', () => { removePlayer(pi); setPaused(false); }, () => openSettings(fromPause)); });
       const la = el.querySelector('#lateadd');
       if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; addLatePlayer(nm, +el.querySelector('#lateteam').value); el.querySelector('#latename').value = ''; };
@@ -3888,10 +3919,11 @@ const Roster = {
     while (taken.has(personKey(n))) { const suf = ' (' + (i++) + ')'; n = Array.from(base).slice(0, NAME_MAX - suf.length).join('').trim() + suf; }
     return n;
   },
+  tick(p) { if (p) { if (!p.checked) p.td = localDayKey(); p.checked = true; } },
   add(name, team, checked) {
     name = cleanName(name);
     if (!name) return null;
-    const p = { id: 'p' + hex8(hash(name, S.roster.length, Date.now())), name: this.uniqueName(name), team: clamp(team | 0, 0, 2), checked: checked !== false, ammo: 0 };
+    const p = { id: 'p' + hex8(hash(name, S.roster.length, Date.now())), name: this.uniqueName(name), team: clamp(team | 0, 0, 2), checked: checked !== false, ammo: 0, td: checked !== false ? localDayKey() : null };
     S.roster.push(p);
     return p;
   },
@@ -3900,9 +3932,9 @@ const Roster = {
     if (!t) return null;
     const idx = S.settings.teams.findIndex(x => x.name.toLowerCase() === t);
     if (idx >= 0) return idx;
-    const m = /(\d)/.exec(t);
-    if (m && +m[1] >= 1 && +m[1] <= 3) return +m[1] - 1;
-    return null;
+    // the whole cell has to be a team ('Team 2', 'team2', 'T2', '2'): dates, times and '3 meetings' are not
+    const m = /^(?:team\s*|t)?([1-3])$/.exec(t);
+    return m ? +m[1] - 1 : null;
   },
   filter: '',
   rename(id, value) {
@@ -3918,10 +3950,13 @@ const Roster = {
     const lines = String(text || '').split(/\r?\n|;/);
     const addTeam = +this.el.querySelector('#addteam').value;
     const keep = new Set();
+    const extra = [];
     let added = 0, ticked = 0;
-    for (let ln of lines) {
+    for (let ln of lines.concat([extra])) {
+      if (Array.isArray(ln)) { if (!ln.length) continue; for (const nm of ln) { const p = S.roster.find(x => personKey(x.name) === personKey(nm)); if (p) { this.tick(p); ticked++; keep.add(p.id); } } continue; }
       // Outlook / Teams attendee lists: "Jamie Rivera <jamie@x.com>" or a bare address
       ln = ln.replace(/<[^>]*@[^>]*>/g, ' ').replace(/\(([^)]*@[^)]*)\)/g, ' ');
+      ln = ln.replace(/^\s*["']\s*|\s*["']\s*$/g, '');   // "Display Name" <address>
       if (/^\s*[^\s@,]+@[^\s@,]+\s*$/.test(ln)) ln = ln.trim().split('@')[0].replace(/[._]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       if (!ln.trim()) continue;
       // spreadsheet columns arrive tab-separated; "Name, Team 2" uses a comma
@@ -3931,16 +3966,24 @@ const Roster = {
       let tm = null;
       for (const c of parts.slice(1)) { const t = this.teamFromText(c); if (t != null) { tm = t; break; } }
       // "Smith, John" (no team after the comma, one word each side) -> John Smith
-      if (tm == null && parts.length === 2 && !/\t/.test(ln) && !/\s/.test(first) && /^[^\s\d]+$/.test(parts[1])) first = parts[1] + ' ' + first;
+      // "Smith, John" -> John Smith, but only when nothing says otherwise: a known "John Smith", or two names nobody has yet
+      if (tm == null && parts.length === 2 && !/\t/.test(ln) && !/\s/.test(first) && /^[^\s\d]+$/.test(parts[1]) && !/^team$/i.test(parts[1])) {
+        const known = n => S.roster.some(x => personKey(x.name) === personKey(cleanName(n)));
+        const swapped = parts[1] + ' ' + first;
+        if (known(swapped)) first = swapped;                                    // "Rivera, Jamie" -> the known Jamie Rivera
+        else if (known(first) && known(parts[1])) { if (!extra.includes(parts[1])) extra.push(parts[1]); }   // "Jamie, Sam": two people
+        else if (!known(first) && known(parts[1])) first = parts[1];            // "Rivera, Jamie" with a first-name roster -> Jamie
+        else if (!known(first)) first = swapped;                                // two new words: assume Last, First
+      }
       const nm = cleanName(first);
       if (!nm) continue;
       let p = S.roster.find(x => personKey(x.name) === personKey(nm));
-      if (p) { if (tm != null) p.team = tm; p.checked = true; ticked++; }
+      if (p) { if (tm != null) p.team = tm; this.tick(p); ticked++; }
       else { p = this.add(nm, tm == null ? addTeam : tm); if (p) added++; }
       if (p) keep.add(p.id);
     }
     if (only) S.roster.forEach(p => { if (!keep.has(p.id)) p.checked = false; });
-    saveRoster(only);
+    saveRoster(true);
     return { added, ticked, total: keep.size };
   },
   render() {
@@ -3962,20 +4005,24 @@ const Roster = {
       const shown = people;
       return '<div class="team"><div class="team-head" style="background:' + T[i].color + '"><span class="tname">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
         '<button class="btn small ghost" data-all="' + i + '">All</button><button class="btn small ghost" data-none="' + i + '">None</button></div><div class="list">' +
-        (shown.length ? shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '" data-key="' + esc(personKey(p.name)) + '"' + (f && !personKey(p.name).includes(f) ? ' style="display:none"' : '') + '><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
+        (shown.length ? '<div class="row nomatch" style="opacity:.6;display:' + (f && !shown.some(p => personKey(p.name).includes(f)) ? 'flex' : 'none') + '">No match</div>' + shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '" data-key="' + esc(personKey(p.name)) + '"' + (f && !personKey(p.name).includes(f) ? ' style="display:none"' : '') + '><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
           (S.settings.bonusAmmo ? '<select class="ammo" data-ammo="' + p.id + '" title="Bonus Ammo: extra shots, best counts">' + [0, 1, 2, 3].map(n => '<option value="' + n + '"' + (p.ammo === n ? ' selected' : '') + '>' + (n ? '+' + n + ' shot' + (n > 1 ? 's' : '') : 'no bonus') + '</option>').join('') + '</select>' : '') +
-          '<button class="tm" data-move="' + p.id + '" style="background:' + T[(i + 1) % 3].color + '" title="Move to ' + esc(T[(i + 1) % 3].name) + '">➜</button><button class="x" data-del="' + p.id + '" title="Remove from the roster">×</button></div>').join('')
+          [1, 2].map(k => { const j = (i + k) % 3; return '<button class="tm" data-move="' + p.id + '" data-to="' + j + '" style="background:' + T[j].color + '" title="Move to ' + esc(T[j].name) + '"></button>'; }).join('') + '<button class="x" data-del="' + p.id + '" title="Remove from the roster">×</button></div>').join('')
           : '<div class="row" style="opacity:.6">' + (people.length ? 'No match' : 'Nobody yet') + '</div>') +
         '</div></div>';
     };
     const lastDay = rosterDay();
     const today = S.dbg.day || S.day;
-    const stale = checked > 0 && lastDay && lastDay < localDayKey();
+    // only ticks left over from an earlier day count: people ticked or added today never trigger the banner
+    const todayK = localDayKey();
+    const oldTicks = S.roster.filter(p => p.checked && (p.td || lastDay || todayK) < todayK);
+    const stale = oldTicks.length > 0;
+    const oldDay = stale ? oldTicks.map(p => p.td || lastDay).sort()[oldTicks.length - 1] : null;
     const over = checked > 40 ? S.roster.filter(p => p.checked).sort((a, b) => a.team - b.team || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(40).map(p => p.name) : [];
     this.el.innerHTML =
-      '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick everyone who booked a meeting · click a name to fix it · up to 40 ducks</div></div>' +
+      '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick everyone who booked a meeting · click a name to fix it · coloured dots move teams · up to 40 ducks</div></div>' +
       '<div style="text-align:right"><div class="bar" style="justify-content:flex-end;margin-bottom:6px"><button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (over.length ? 'Only 40 fit. Sitting out: ' + esc(over.join(', ')) : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
-      (stale ? '<div class="stale">These ticks are from ' + esc(prettyDate(lastDay)) + '. New day? <button class="btn small" id="rfresh">Untick everyone</button></div>' : '') +
+      (stale ? '<div class="stale">' + (oldTicks.length === checked ? 'These ticks are' : oldTicks.length + ' of the ticks are') + ' from ' + esc(prettyDate(oldDay)) + '. New day? <button class="btn small" id="rfresh">' + (oldTicks.length === checked ? 'Untick everyone' : 'Untick those ' + oldTicks.length) + '</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
       '<div class="box"><h3>Today\'s list</h3><div class="hint">One name per line, optional ", Team 2". New names join the roster.</div><textarea id="paste" rows="4" placeholder="Jamie&#10;Sam, Team 2&#10;Robin"></textarea>' +
@@ -3989,17 +4036,18 @@ const Roster = {
     for (const id in kept) { const e = $('#' + id); if (e) e.value = kept[id]; }
     if (focusId) { const e = $('#' + focusId); if (e) { e.focus(); try { e.setSelectionRange(selS, selE); } catch (er) { /* select */ } } }
     const save = ticks => { saveRoster(!!ticks); this.render(); };
-    this.el.querySelectorAll('[data-chk]').forEach(cb => cb.onchange = () => { const p = S.roster.find(x => x.id === cb.dataset.chk); if (p) p.checked = cb.checked; save(true); });
+    this.el.querySelectorAll('[data-chk]').forEach(cb => cb.onchange = () => { const p = S.roster.find(x => x.id === cb.dataset.chk); if (p) { if (cb.checked) this.tick(p); else p.checked = false; } save(true); });
     this.el.querySelectorAll('[data-name]').forEach(inp => {
       inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { const p = S.roster.find(x => x.id === inp.dataset.name); inp.value = p ? p.name : inp.value; inp.blur(); } };
       inp.onblur = () => { const p = S.roster.find(x => x.id === inp.dataset.name); if (!p) return; const before = p.name; this.rename(p.id, inp.value); if (p.name !== before) Toast.show('Renamed to ' + p.name); inp.value = p.name; };
     });
-    this.el.querySelectorAll('[data-move]').forEach(b => b.onclick = () => { const p = S.roster.find(x => x.id === b.dataset.move); if (p) { p.team = (p.team + 1) % 3; Toast.show(p.name + ' → ' + T[p.team].name); } save(); });
+    // each row has one chip per other team, so the host picks the destination directly (no cycling, no shifting rows)
+    this.el.querySelectorAll('[data-move]').forEach(b => b.onclick = () => { if (performance.now() - (this._mvAt || 0) < 450) return; this._mvAt = performance.now(); const p = S.roster.find(x => x.id === b.dataset.move); if (p) { p.team = +b.dataset.to; Toast.show(p.name + ' → ' + T[p.team].name); } save(); });
     this.el.querySelectorAll('[data-ammo]').forEach(sel => sel.onchange = () => { const p = S.roster.find(x => x.id === sel.dataset.ammo); if (p) p.ammo = +sel.value; saveRoster(); });
     this.el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const p = S.roster.find(x => x.id === b.dataset.del); S.roster = S.roster.filter(x => x.id !== b.dataset.del); save(); if (p) Toast.show('Removed ' + p.name); });
-    this.el.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.all) p.checked = true; }); save(true); });
+    this.el.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.all) this.tick(p); }); save(true); });
     this.el.querySelectorAll('[data-none]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.none) p.checked = false; }); save(true); });
-    const addOne = () => { const nm = $('#addname').value; const p = this.add(nm, +$('#addteam').value); if (p) { $('#addname').value = ''; save(); Toast.show('Added ' + p.name); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
+    const addOne = () => { const nm = $('#addname').value; const p = this.add(nm, +$('#addteam').value); if (p) { $('#addname').value = ''; save(true); Toast.show('Added ' + p.name); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
     $('#addbtn').onclick = addOne;
     $('#addname').onkeydown = e => { if (e.key === 'Enter') addOne(); };
     const useList = only => {
@@ -4012,14 +4060,14 @@ const Roster = {
     $('#onlybtn').onclick = () => useList(true);
     $('#pastebtn').onclick = () => useList(false);
     // find: just hide rows, no re-render
-    $('#rfind').oninput = e => { this.filter = e.target.value; const q = personKey(this.filter); this.el.querySelectorAll('.list .row[data-key]').forEach(r => { r.style.display = !q || r.dataset.key.includes(q) ? '' : 'none'; }); };
-    const fr = $('#rfresh'); if (fr) fr.onclick = () => { S.roster.forEach(p => p.checked = false); save(true); };
+    $('#rfind').oninput = e => { this.filter = e.target.value; const q = personKey(this.filter); this.el.querySelectorAll('.list .row[data-key]').forEach(r => { r.style.display = !q || r.dataset.key.includes(q) ? '' : 'none'; }); this.el.querySelectorAll('.team .list').forEach(l => { const nm = l.querySelector('.nomatch'); if (nm) nm.style.display = [...l.querySelectorAll('.row[data-key]')].some(r => r.style.display !== 'none') ? 'none' : 'flex'; }); };
+    const fr = $('#rfresh'); if (fr) fr.onclick = () => { oldTicks.forEach(p => { p.checked = false; }); save(true); };
     $('#tpractice').onchange = e => { S.settings.practice = e.target.checked; saveSettings(); };
     $('#tauto').onchange = e => { S.settings.autoAdvance = e.target.checked; saveSettings(); };
     $('#tturbo').onchange = e => { S.settings.turboDefault = e.target.checked; saveSettings(); };
     $('#rback').onclick = () => go('title');
     $('#rset').onclick = () => openSettings(false);
-    $('#rall').onclick = () => { S.roster.forEach(p => p.checked = true); save(true); };
+    $('#rall').onclick = () => { S.roster.forEach(p => this.tick(p)); save(true); };
     $('#rnone').onclick = () => { S.roster.forEach(p => p.checked = false); save(true); };
     setBig('REVEAL DUCKS', checked > 0);
   },
@@ -4124,9 +4172,15 @@ function addLatePlayer(name, team) {
   const pl = makePlayer(nm, team, rer[personKey(nm)] || 0, nameCtx(null), R.day);
   pl.late = true;
   R.players.push(pl);
+  // late arrivals get the same personal-best and streak callbacks as everyone else
+  if (!R.pbs) R.pbs = {};
+  const F = computeFame(S.history, R.day);
+  const fp = F.players.find(p => personKey(p.name) === pl.key);
+  if (fp && R.pbs[pl.key] == null) R.pbs[pl.key] = Math.round(fp.best);
+  if (!R.streak && F.streak && F.streak.n >= 2 && F.streak.key === pl.key) R.streak = { key: F.streak.key, n: F.streak.n };
   // launches last among the main round (before any bonus shots)
   R.queue.splice(insertAt(), 0, { p: R.players.length - 1, s: 0 });
-  if (!S.roster.some(p => personKey(p.name) === personKey(nm))) { S.roster.push({ id: 'p' + hex8(hash(nm, Date.now())), name: nm, team, checked: true, ammo: 0 }); saveRoster(); }
+  if (!S.roster.some(p => personKey(p.name) === personKey(nm))) { S.roster.push({ id: 'p' + hex8(hash(nm, Date.now())), name: nm, team, checked: true, ammo: 0, td: localDayKey() }); saveRoster(); }
   rememberNames(R.day, [pl.duck.name]);
   if (S.screen === 'reveal') { RV.flipped.push(true); RV.flipAt.push(0); }
   saveRace();
@@ -4170,14 +4224,16 @@ function refreshIdleBig() {
   setBig(last ? 'SEE RESULTS' : (R.queue[R.idx].bonus ? 'BONUS SHOT' : 'NEXT DUCK'), true);
 }
 // standings distance: a tenth of a foot is shown only when two neighbours would otherwise look tied
+function showsTenths(st, i) { const r = Math.round(st[i].dist); return !!((st[i - 1] && Math.round(st[i - 1].dist) === r) || (st[i + 1] && Math.round(st[i + 1].dist) === r)); }
 function fmtDist(st, i) {
-  const d = st[i].dist, r = Math.round(d);
-  const tie = (st[i - 1] && Math.round(st[i - 1].dist) === r) || (st[i + 1] && Math.round(st[i + 1].dist) === r);
-  if (!tie) return fmtFt(d);
-  const a = Math.abs(d);
-  return (d < 0 ? '-' : '') + fmtInt(Math.floor(a)) + '.' + Math.floor((a % 1) * 10) + ' ft';
+  const d = st[i].dist;
+  if (!showsTenths(st, i)) return fmtFt(d);
+  const t = Math.abs(Math.round(d * 10));
+  return (d < 0 && t ? '-' : '') + fmtInt(Math.floor(t / 10)) + '.' + (t % 10) + ' ft';
 }
-function marginText(m) { return m < 1 ? m.toFixed(1) + ' ft' : fmtFt(m); }
+// the gap between two distances as the audience sees them (rounded the same way the numbers on screen are)
+function shownGap(a, b, tenths) { return tenths ? (Math.round(a * 10) - Math.round(b * 10)) / 10 : Math.round(a) - Math.round(b); }
+function marginText(m) { return m <= 0 ? 'a whisker' : m < 1 ? m.toFixed(1) + ' ft' : fmtFt(m); }
 function activePlayers() { return S.race ? S.race.players.filter(p => !p.out) : []; }
 function standings() {
   const R = S.race;
@@ -4347,6 +4403,7 @@ function loadDuck(first) {
   const R = S.race, q = curQ();
   if (!q) { toResults(); return; }
   const go2 = () => {
+    if (!S.race || S.screen !== 'launch') return;
     const q2 = curQ();
     if (!q2) { if (standings().length) { L.phase = 'idle'; setBig('SEE RESULTS', true); } return; }
     const q = q2;
@@ -4505,6 +4562,8 @@ function startFlight(replay) {
   L.phase = 'flight'; L.pt = 0;
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   boomFX(tl.special === 'misfire');
+  // the final-duck drumroll is decided at launch, so skips and late players can't make it wrong
+  if (!replay) L.drum = isLastShot() && S.race.queue.length > 1 && !L.q.bonus;
   if (L.drum && !replay) SFX.startDrum(pbDuration(tl, L.pb));
 }
 function boomFX(misfire) {
@@ -4533,6 +4592,7 @@ function boomFX(misfire) {
 }
 
 /* ---------- flight playback (renderer only plays the timeline back) ---------- */
+function s0x(tl, t) { const i = clamp(Math.round(t * tl.fps), 0, tl.n - 1); return tl.x[i]; }
 function sampleTL(tl, t) {
   const f = clamp(t * tl.fps, 0, tl.n - 1), i = Math.floor(f), j = Math.min(tl.n - 1, i + 1), k = f - i;
   const x = lerp(tl.x[i], tl.x[j], k), y = lerp(tl.y[i], tl.y[j], k);
@@ -4560,12 +4620,21 @@ function updateFlight(dt) {
     if (e.id === 'space' && !pb.fired.has('s1' + i) && t >= e.t + 1.8) { pb.fired.add('s1' + i); SFX.play('beep'); Caps.say('Is that a satellite waving?', { prio: 1 }); }
     if (e.id === 'space' && !pb.fired.has('s2' + i) && t >= e.t + 3.6) { pb.fired.add('s2' + i); SFX.play('parachute'); Caps.say('Parachute is open! ' + L.pl.duck.name + ' is coming home!', { prio: 1 }); }
     if (e.id === 'walkway' && !pb.fired.has('w' + i) && t >= e.tEnd - 0.2 && e.tEnd > e.t + 0.5) { pb.fired.add('w' + i); SFX.play('walkway'); Caps.big('The moving walkway\nis ending.', { px: 64, color: '#ffffff', y: 420 }); }
-    if (e.id === 'skip' && e.data.n > 1) { const k = Math.floor(clamp((t - e.t) / Math.max(0.01, e.tEnd - e.t), 0, 1) * (e.data.n - 1)); if (!pb.fired.has('sk' + i + ':' + k) && k > 0) { pb.fired.add('sk' + i + ':' + k); SFX.play('skip', k); Caps.big('SKIP ×' + (k + 1), { px: 76, color: '#ffffff', y: 430, dur: 2 }); } }
+    // each SKIP caption lands on its real bounce (older saved timelines without bounce times fall back to even spacing)
+    if (e.id === 'skip' && e.data.n > 1) {
+      const ts = e.data.ts && e.data.ts.length ? e.data.ts : null;
+      for (let k = 1; k < e.data.n; k++) {
+        const at = ts ? ts[k] : e.t + (e.tEnd - e.t) * k / (e.data.n - 1);
+        if (at != null && t >= at && !pb.fired.has('sk' + i + ':' + k)) { pb.fired.add('sk' + i + ':' + k); SFX.play('skip', k); Caps.big('SKIP ×' + (k + 1), { px: 76, color: '#ffffff', y: 430, dur: 2 }); }
+      }
+    }
     if (e.id === 'tree' && !pb.fired.has('sq' + i) && t >= e.tEnd - 1.0) { pb.fired.add('sq' + i); SFX.play('squirrel'); }
     // sounds tied to the timeline (not the wall clock), so they stay in sync with pause, turbo and the impact hold
     if (e.id === 'onhold' && !pb.fired.has('oh' + i) && t >= e.t + 0.5) { pb.fired.add('oh' + i); SFX.play('hold'); }
     if (e.id === 'cannonception' && !pb.fired.has('cc' + i) && t >= e.t + 1.4) { pb.fired.add('cc' + i); SFX.play('boom'); Shake.add(5); }
   });
+  // a duck sliding across a frozen pond gets its moment
+  if (!pb.fired.has('ice')) { const fz = S.course.pieces.find(pc => pc.type === 'pond' && pc.data && pc.data.frozen && s0x(tl, t) >= pc.x && s0x(tl, t) <= pc.x + pc.w); if (fz && sampleTL(tl, t).y < 3) { pb.fired.add('ice'); Caps.big("IT'S FROZEN!", { px: 70, color: '#d8f1ff' }); SFX.play('slide', 0.8); } }
   tl.gags.forEach((g, i) => {
     if (!pb.fired.has('g' + i) && t >= g.t - (C.EVENTS[g.id].antic || 0)) { pb.fired.add('g' + i); onGag(g); }
     if (g.id === 'shades' && !pb.fired.has('gc' + i) && t >= g.t + 0.6) { pb.fired.add('gc' + i); SFX.play('cool'); }
@@ -4686,7 +4755,7 @@ function onResult() {
   }
   // the margin: how far ahead of (or short of) the lead this flight finished
   let margin = null;
-  if (st.length > 1 && counted) margin = lead.pl.key === pl.key ? D - (st[1] ? st[1].dist : D) : D - lead.dist;
+  if (st.length > 1 && counted) { const ref = lead.pl.key === pl.key ? st[1].dist : lead.dist; margin = shownGap(D, ref, Math.round(D) === Math.round(ref)); }
   const pbBefore = R.pbs && R.pbs[pl.key];
   const personalBest = !R.practice && pbBefore != null && D > pbBefore && D > 0 && !L.q.bonus;
   if (personalBest) R.pbs[pl.key] = Math.round(D);
@@ -4705,9 +4774,11 @@ function onResult() {
   else if (wrongWay) say('wrongWay', { duck: d.name }, { delay: 0.3 });
   else if (!newRecord && !newLeader) say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', { duck: d.name, distance: fmtFt(D) }, { delay: 0.2 });
   if (personalBest && !newRecord) say('personalBest', { player: pl.name, duck: d.name }, { delay: 2.2 });
-  if (tl.hat && tl.hat.wins) { say('hatWins', {}, { prio: 2, delay: 1.2 }); quip('hatwin', { delay: 1.4 }); }
-  else if (wrongWay) quip('wrongWay', { delay: 0.6 });
-  else quip(D > 1500 || (rank <= 3 && st.length >= 5) ? 'landGood' : 'landBad', { delay: 0.6 });
+  // the duck pipes up once a NEW LEADER / RECORD banner has had its moment
+  const qd = newRecord ? 3.1 : newLeader ? 2.5 : 0.6;
+  if (tl.hat && tl.hat.wins) { say('hatWins', {}, { prio: 2, delay: 1.2 }); quip('hatwin', { delay: Math.max(1.4, qd) }); }
+  else if (wrongWay) quip('wrongWay', { delay: qd });
+  else quip(personalBest ? 'pb' : D > 1500 || (rank <= 3 && st.length >= 5) ? 'landGood' : 'landBad', { delay: qd });
   if (D > 1500 || newLeader) burst('confetti', 40, { x: 960, y: 260, sp0: 200, sp1: 520, l0: 1.4, l1: 2.2, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
 }
 function fireworks() {
@@ -4742,7 +4813,7 @@ function toResults() {
   SFX.stopLong(0.2);
   finalizeRace();
   saveRace();
-  Iris.start(() => { go('results'); }, 960, 540);
+  Iris.start(() => { if (S.race) go('results'); }, 960, 540);
 }
 
 /* ---------- per-frame update for the launch screen ---------- */
@@ -4859,6 +4930,7 @@ function drawLaunch(ctx, dt) {
 /* ---------- landing flags + ghost lines ---------- */
 function drawFieldMarks(ctx, V) {
   const R = S.race;
+  L.curLabel = null;
   if (!R) return;
   const flagH = clamp(18 * V.z, 70, 120);
   const marks = [];
@@ -4908,6 +4980,7 @@ function drawFieldMarks(ctx, V) {
     if (sx < -100 || sx > 2020) continue;
     const fh = m.cur ? Math.max(flagH, duckPx(V.z) * 1.35) : flagH;
     drawFlag(ctx, sx - (m.cur ? duckPx(V.z) * 0.12 : 0), sy + (1 - m.rise) * fh, fh * m.rise, teamOf(m.pl), labeled.has(m) ? m.pl.duck.name : null, { t: S.time, px: 26, maxW: 320 });
+    if (m.cur && labeled.has(m)) L.curLabel = [sx - duckPx(V.z) * 0.12, sy + (1 - m.rise) * fh, fh * m.rise, teamOf(m.pl), m.pl.duck.name];
   }
 }
 
@@ -5179,7 +5252,11 @@ function drawLaunchHUD(ctx, V, t) {
   // a quiet reminder of the host keys
   if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
   Caps.drawBigs(ctx, L.duckScreen && (ph === 'flight' || ph === 'result') ? L.duckScreen.y : null);
-  if (L.duckScreen && (ph === 'flight' || ph === 'result' || ph === 'idle')) Caps.drawBubble(ctx, L.duckScreen.x, L.duckScreen.y, ph !== 'flight' && L.duckScreen.x > 640);
+  // after landing the bubble goes up-left of the duck, unless NEW LEADER / RECORD is up there: then it sits low as before
+  const bannerLive = Caps.bigs.some(b => b.fixedY && S.rt >= b.t0 && S.rt < b.t0 + b.dur);
+  if (L.duckScreen && (ph === 'flight' || ph === 'result' || ph === 'idle')) Caps.drawBubble(ctx, L.duckScreen.x, L.duckScreen.y, ph !== 'flight' && L.duckScreen.x > 640 && !bannerLive);
+  // the landed duck's own name plate goes back on top of the bubble's tail
+  if (L.curLabel && ph !== 'flight') drawFlag(ctx, ...L.curLabel, { t: S.time, px: 26, maxW: 320, labelOnly: true });
   else if (ph === 'armed' || ph === 'countdown' || ph === 'ladder') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
 }
 function rarityColor(r) { return C.RARITIES[RARITY_INDEX[r] || 0].color; }
@@ -5298,7 +5375,7 @@ function drawResultPanel(ctx, r) {
   if (L.tl && L.tl.hat && L.tl.hat.wins) rank = 'Technically, the hat wins';
   rr(ctx, 960 - 330, y + 204, 660, 54, 18); fillStroke(ctx, r.rank === 1 ? '#ffd23f' : '#e9eef5', 4);
   txt(ctx, rank, 960, y + 232, { px: 32, minPx: 24, color: OUT, sw: 0, maxW: 630 });
-  if (r.personalBest) { ctx.save(); ctx.translate(x + w - 30, y + 10); ctx.rotate(0.1); rr(ctx, -150, -24, 210, 48, 14); fillStroke(ctx, '#e8412c', 5); txt(ctx, 'PERSONAL BEST!', -45, 1, { px: 26, color: '#fff', sw: 0 }); ctx.restore(); }
+  if (r.personalBest) { ctx.save(); ctx.translate(x + w - 50, y + 10); ctx.rotate(0.1); rr(ctx, -170, -24, 250, 48, 14); fillStroke(ctx, '#e8412c', 5); txt(ctx, 'PERSONAL BEST!', -45, 1, { px: 26, minPx: 18, color: '#fff', sw: 0, maxW: 226 }); ctx.restore(); }
   ctx.restore();
 }
 const SB = { seen: {} };
@@ -5361,7 +5438,8 @@ function go(screen) {
   S.screen = screen;
   Big.changedAt = S.rt;
   if (screen !== 'roster') Roster.hide();
-  if (screen === 'title') { RS.back = false; S.race = null; checkDayRollover(); refreshWorld(); const c = savedShow(); setBig(c && c.day === todayKey() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); stopShowAudio(); }
+  // leaving for the title cancels any screen wipe still waiting (e.g. one frozen by a pause)
+  if (screen === 'title') { Iris.t = -1; Iris.mid = null; RS.back = false; S.race = null; checkDayRollover(); refreshWorld(); const c = savedShow(); setBig(c && c.day === todayKey() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); stopShowAudio(); }
   if (screen === 'roster') { checkDayRollover(); refreshWorld(); Roster.show(); }
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
@@ -5409,6 +5487,8 @@ function resumeRace(c) {
 let titleDuck = null;
 const DEMO = { cyc: -1, duck: null };
 function drawTitle(ctx, dt) {
+  // left open past midnight: re-enter the title so the date, forecast and button label all follow the clock
+  if (S.screen === 'title' && !S.race && !S.dbg.day && !Modal.isOpen && Iris.t < 0 && localDayKey() !== S.day) go('title');
   const t = S.time;
   const V = makeView(150, GROUND_Y + 30, 4.2);
   drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0 });
@@ -5469,7 +5549,7 @@ function revealPrimary() {
   const R = S.race;
   if (!RV.done) { RV.flipped = RV.flipped.map(() => true); RV.done = true; R.revealDone = true; saveRace(); setBig('LOCK IN & SHUFFLE', true); SFX.play('flip'); return; }
   if (RV.shuf < 0) { RV.shuf = 0; R.shuffled = true; R.stage = 'forecast'; saveRace(); SFX.play('whoosh', 1.2); setBig("LET'S LAUNCH!", false); return; }
-  if (RV.fc >= 0.6 || RV.fc > 50) { SFX.play('click'); Iris.start(() => launchBegin(), 960, 540); }
+  if (RV.fc >= 0.6 || RV.fc > 50) { SFX.play('click'); Iris.start(() => { if (S.race) launchBegin(); }, 960, 540); }
 }
 function updateReveal(dt) {
   const R = S.race;
@@ -5572,7 +5652,7 @@ function drawCard(ctx, rc, pl, flipK, num, pick) {
     const lines = room >= npx * 2.2 ? wrapText(ctx, d.name, w - 20, 2) : [d.name];
     const mid = top + room / 2;
     lines.forEach((ln, i) => txt(ctx, ln, x + w / 2, mid + (i - (lines.length - 1) / 2) * npx * 1.05, { px: npx, minPx: 16, color: OUT, sw: 0, maxW: w - 16 }));
-    if (pick) { ctx.save(); ctx.translate(x + w - 10, y + 22); ctx.rotate(0.12); const tw = Math.min(150, w * 0.7); rr(ctx, -tw, -16, tw + 6, 32, 10); fillStroke(ctx, '#e8412c', 4); txt(ctx, "BILL'S PICK", -tw / 2 + 3, 1, { px: 20, color: '#fff', sw: 0, maxW: tw - 8 }); ctx.restore(); }
+    if (pick) { ctx.save(); ctx.translate(x + w - 10, y + 22); ctx.rotate(0.12); const tw = Math.min(150, w * 0.7); rr(ctx, -tw, -16, tw + 6, 32, 10); fillStroke(ctx, '#e8412c', 4); txt(ctx, "BILL'S PICK", -tw / 2 + 3, 1, { px: 20, minPx: 14, color: '#fff', sw: 0, maxW: tw - 8 }); ctx.restore(); }
   } else {
     rr(ctx, x, y, w, h, 22); fillStroke(ctx, '#e8412c', 5);
     rr(ctx, x + 10, y + 10, w - 20, h - 20, 16); ctx.lineWidth = 4; ctx.strokeStyle = '#ffd23f'; ctx.stroke();
@@ -5626,7 +5706,7 @@ function startResults() {
   const st = standings();
   if (st.length) {
     SFX.play('fanfare'); setTimeout(() => SFX.play('cheer', 2), 300);
-    const margin = st.length > 1 ? st[0].dist - st[1].dist : null;
+    const margin = st.length > 1 ? shownGap(st[0].dist, st[1].dist, showsTenths(st, 0) || showsTenths(st, 1)) : null;
     RS.margin = margin != null && margin < 25 ? margin : null;
     if (RS.margin != null) say('closeWin', { duck: st[0].pl.duck.name, margin: marginText(RS.margin) }, { prio: 2, delay: 0.6 });
     else say('winner', { duck: st[0].pl.duck.name }, { prio: 2, delay: 0.6 });
@@ -5729,8 +5809,8 @@ function drawPodium(ctx, st) {
     rr(ctx, x, y, 400, 60 + rows * 44 + (pages > 1 ? 36 : 0), 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
     txt(ctx, 'ALSO FLEW', x + 200, y + 32, { px: 26, color: '#6b6577', sw: 0 });
     const fade = pages > 1 ? clamp(Math.min(((k - 1.5) % 4 + 4) % 4, 4 - ((k - 1.5) % 4 + 4) % 4) / 0.3, 0, 1) : 1;
-    ctx.globalAlpha = k < 1.5 ? 1 : fade;
-    rest.forEach((e, i) => { const r = pg * PER + i + 4; txt(ctx, r + '. ' + e.pl.name, x + 20, y + 76 + i * 44, { px: 28, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: 250 }); txt(ctx, fmtDist(st, r - 1), x + 380, y + 76 + i * 44, { px: 28, color: OUT, sw: 0, align: 'right' }); });
+    ctx.globalAlpha = k < 3 ? 1 : fade;
+    rest.forEach((e, i) => { const r = pg * PER + i + 4; txt(ctx, r + '. ' + e.pl.name, x + 20, y + 76 + i * 44, { px: 28, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: 228 }); txt(ctx, fmtDist(st, r - 1), x + 380, y + 76 + i * 44, { px: 28, color: OUT, sw: 0, align: 'right' }); });
     ctx.globalAlpha = 1;
     if (pages > 1) txt(ctx, 'page ' + (pg + 1) + ' of ' + pages, x + 200, y + 76 + rows * 44 - 6, { px: 22, color: '#6b6577', sw: 0 });
   }
@@ -5836,7 +5916,7 @@ function drawFame(ctx, dt) {
     panel(980, 540, 900, 340, 'DUCK OF THE MONTH · ' + MONTHS[parseDayKey(S.day).getMonth()].toUpperCase());
     if (F.monthBest) { txt(ctx, F.monthBest.d, 1430, 624, { px: 34, color: OUT, sw: 0, maxW: 840 }); txt(ctx, F.monthBest.p + ' · ' + fmtFt(F.monthBest.dist) + ' · longest launch this month', 1430, 664, { px: 26, color: '#6b6577', sw: 0, maxW: 840, weight: 800 }); }
     F.monthly.slice(0, 4).forEach((m, i) => { const y = 724 + i * 40; txt(ctx, (i + 1) + '. ' + m.name, 1020, y, { px: 28, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, m.pts + ' pts · ' + m.wins + ' W', 1840, y, { px: 28, color: '#4a4458', sw: 0, align: 'right' }); });
-    txt(ctx, F.races + ' race' + (F.races === 1 ? '' : 's') + ' on record · podium points 3/2/1', 960, 908, { px: 26, color: '#fff', sw: 5 });
+    txt(ctx, F.races + ' race' + (F.races === 1 ? '' : 's') + ' on record · podium points 3/2/1', 300, 986, { px: 26, color: '#fff', sw: 5, align: 'left', maxW: 540 });
   } else {
     panel(40, 120, 1060, 760, 'TOP 10 LONGEST LAUNCHES');
     F.top10.forEach((l, i) => { const y = 196 + i * 68; txt(ctx, (i + 1) + '. ' + l.d, 80, y, { px: 30, minPx: 24, color: OUT, sw: 0, align: 'left', maxW: 700 }); txt(ctx, l.p + ' · ' + shortDate(l.date), 80, y + 32, { px: 26, color: '#6b6577', sw: 0, align: 'left', maxW: 700, weight: 800 }); txt(ctx, fmtFt(l.dist), 1060, y + 14, { px: 34, color: OUT, sw: 0, align: 'right' }); });
