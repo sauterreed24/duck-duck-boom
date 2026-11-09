@@ -11,7 +11,7 @@ A daily cannon-launch duck game for team calls. Everyone who booked a meeting to
 3. **Launch.** One duck at a time: the cannon tilts, the power gauge spins, and "FIRE IN THE DUCK!" Trampolines, geese, UFOs, bread and plenty of other surprises decide how far each duck flies.
 4. **Results.** A podium, awards for everyone's funniest moments, a highlights list, and a short summary you can paste into the team chat.
 
-A round with 10 players takes about 3 minutes, or about 2 in turbo mode.
+A round with 10 players takes about 3.5 minutes. Turbo mode speeds up the quiet parts for big days.
 
 ## Play it
 
@@ -23,18 +23,19 @@ A round with 10 players takes about 3 minutes, or about 2 in turbo mode.
 1. Turn on Do Not Disturb so notification sounds don't play through the share.
 2. In Teams, click **Share** and turn on **Include sound**.
 3. Share the browser window and press **F** for fullscreen.
+4. Keep the game window uncovered while you share. Browsers slow down windows that are hidden behind others.
 
 ## Controls
 
 | Key | Action |
 | --- | --- |
-| Space | Next step / launch |
+| Space | Next step (one press plays a whole launch) |
 | R | Instant replay of the last flight |
 | T | Turbo (2x speed) |
 | S | Skip to this flight's result |
 | M | Mute |
 | F | Fullscreen |
-| Esc | Pause and settings |
+| P | Pause and settings |
 
 ## Fair play
 
