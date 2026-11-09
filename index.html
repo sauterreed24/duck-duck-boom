@@ -3590,6 +3590,13 @@ const Modal = {
   close() { if (!this.el) return; this.el.classList.add('hidden'); this.el.innerHTML = ''; if (S.paused) { S.paused = false; } },
   get isOpen() { return this.el && !this.el.classList.contains('hidden'); },
 };
+// In-page yes/no box: some hosted frames refuse window.confirm
+function confirmBox(message, yesLabel, onYes, onNo) {
+  Modal.open('<h2>Are you sure?</h2><div style="font-size:26px;font-weight:800">' + esc(message) + '</div><div class="row" style="justify-content:flex-end"><button class="btn ghost" id="cno">Cancel</button><button class="btn danger" id="cyes">' + esc(yesLabel) + '</button></div>', el => {
+    el.querySelector('#cyes').onclick = () => { Modal.close(); onYes(); };
+    el.querySelector('#cno').onclick = () => { Modal.close(); if (onNo) onNo(); };
+  });
+}
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 // Copy text with a fallback text box (some hosted frames block the clipboard)
 function copyText(text, title) {
@@ -3602,6 +3609,10 @@ function copyText(text, title) {
 }
 function downloadText(text, filename) {
   const fallback = () => Modal.open('<h2>Export data</h2><div class="note">Downloads are blocked here. Copy this text and save it as <b>' + esc(filename) + '</b>:</div><textarea class="out" readonly>' + esc(text) + '</textarea><div class="row"><button class="btn" id="mclose">Close</button></div>', el => { const ta = el.querySelector('textarea'); ta.focus(); ta.select(); el.querySelector('#mclose').onclick = () => Modal.close(); });
+  let framed = false;
+  try { framed = window.self !== window.top; } catch (e) { framed = true; }
+  // sandboxed frames (hosted previews, artifact viewers) silently drop downloads: go straight to the text box
+  if (framed) return fallback();
   try {
     const blob = new Blob([text], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -3611,8 +3622,6 @@ function downloadText(text, filename) {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     Toast.show('Exported ' + filename);
-    // sandboxed frames silently ignore downloads: always offer the text too
-    setTimeout(() => { if (window.self !== window.top) fallback(); }, 400);
   } catch (e) { fallback(); }
 }
 function exportData() { downloadText(JSON.stringify(Store.exportAll(), null, 1), 'duck-duck-boom-backup-' + localDayKey() + '.json'); }
@@ -3670,9 +3679,9 @@ function openSettings(fromPause) {
       el.querySelector('#dimport').onclick = () => file.click();
       file.onchange = () => { const f = file.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { if (importDataFromText(String(rd.result))) Modal.close(); }; rd.readAsText(f); };
       el.querySelector('#dpaste').onclick = () => Modal.open('<h2>Import from text</h2><div class="note">Paste the contents of a Duck Duck BOOM! backup file:</div><textarea class="out" id="ptext"></textarea><div class="row"><button class="btn green" id="pgo">Import</button><button class="btn ghost" id="pcancel">Cancel</button></div>', e2 => { e2.querySelector('#pgo').onclick = () => { if (importDataFromText(e2.querySelector('#ptext').value)) Modal.close(); }; e2.querySelector('#pcancel').onclick = () => Modal.close(); });
-      el.querySelector('#dwipe').onclick = () => { if (confirm('Erase the roster, settings and the whole Waddle of Fame from this browser? (Export first if you want a backup.)')) { Store.wipe(); S.settings = loadSettings(); S.roster = []; S.history = []; S.race = null; Modal.close(); go('title'); Toast.show('All Duck Duck BOOM! data erased.'); } };
+      el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); S.roster = []; S.history = []; S.race = null; S.paused = false; go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
       const ab = el.querySelector('#dabandon');
-      if (ab) ab.onclick = () => { if (confirm('Abandon the current show? Nothing from it will be saved.')) { Store.del('current'); S.race = null; Modal.close(); go('title'); } };
+      if (ab) ab.onclick = () => confirmBox('Abandon the current show? Nothing from it will be saved.', 'Abandon show', () => { Store.del('current'); S.race = null; S.paused = false; go('title'); }, () => openSettings(fromPause));
       const la = el.querySelector('#lateadd');
       if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; addLatePlayer(nm, +el.querySelector('#lateteam').value); el.querySelector('#latename').value = ''; };
       el.querySelector('#sclose').onclick = () => Modal.close();
@@ -4976,7 +4985,7 @@ function drawTitle(ctx, dt) {
   if (S.screen !== 'title') return;
   button(ctx, 'fame', 40, 948, 330, 76, 'Waddle of Fame', { fn: () => { FM.back = 'title'; go('fame'); } });
   button(ctx, 'settings', 390, 948, 210, 76, 'Settings', { fn: () => openSettings(false) });
-  if (c) button(ctx, 'newshow', 1460, 948, 420, 76, 'Start a new show instead', { px: 26, bg: '#fff8e6', fn: () => { if (confirm('Start over? The show in progress will be discarded.')) { Store.del('current'); setBig('START', true); go('roster'); } } });
+  if (c) button(ctx, 'newshow', 1460, 948, 420, 76, 'Start a new show instead', { px: 26, bg: '#fff8e6', fn: () => confirmBox('Start over? The show in progress will be discarded.', 'Start a new show', () => { Store.del('current'); S.paused = false; setBig('START', true); go('roster'); }) });
   if (!SFX.ready) txt(ctx, 'Click anywhere to turn on sound', px, py + 186 + (c ? 40 : 0), { px: 26, color: '#fff', sw: 6 });
 }
 
