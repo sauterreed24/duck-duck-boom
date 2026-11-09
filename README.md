@@ -42,21 +42,22 @@ If the laptop struggles while screen-sharing, the game notices the dropped frame
 
 There are five screens, and the **big red button** (or **Space**) is the only control you need.
 
-1. **Title:** the animated logo, Ol' Thunderbill idling with a smoldering fuse, today's date and the Pond Forecast teaser. If a show was interrupted, the button reads **RESUME SHOW**.
-2. **Who booked today?** A saved roster grouped by three teams, up to 40 ducks. See [Editing today's names](#editing-todays-names) below. You can also tick **Practice race** (not saved), **Auto-advance** and **Turbo** here.
+1. **Title:** the animated logo, Ol' Thunderbill idling with a smoldering fuse, today's date and the Pond Forecast teaser. If today's show was interrupted, the button reads **RESUME SHOW**. A finished show never comes back on the big button: it's already in the Waddle of Fame, and **Last results** reopens its panorama for copying. An unfinished show from an earlier day leaves the big button on **START** and gets its own dated **Resume** button instead.
+2. **Who booked today?** A saved roster grouped by three teams, up to 40 ducks. See [Editing today's names](#editing-todays-names) below. You can also tick **Practice race** (not saved, and it switches itself off when the page reloads), **Auto-advance** and **Turbo** here.
 3. **Duck reveal:** cards flip in a cascade and pause on Epic and Legendary ducks. Click any card to reroll that duck. Spotted a typo or a missing person? **◀ Edit names** goes back to the roster before anything starts. **LOCK IN & SHUFFLE** shuffles the launch order on screen, then the **Pond Forecast** appears.
 4. **Launches:** one duck at a time. **NEXT DUCK** plays the intro card and the ladder climb. The safety cover flips open, then **LIGHT THE FUSE** runs the 3-2-1 countdown, the launch call "FIRE IN THE DUCK!", the flight, the landing and the leaderboard update.
-5. **Results:** a podium with the Golden Loaf and the Participation Feather, then awards and highlights, then a panorama of every landing flag with **Copy results** for the team chat.
+5. **Results:** a podium with the Golden Loaf (with the winning margin when it's close), the Good Sport Feather and a list of everyone else, then awards and highlights, then a panorama of every landing flag with **Copy results** for the team chat.
 
 ### Editing today's names
 
 The roster is saved in the browser, so you only build it once. Each day you just change who's ticked.
 
-- **Today's list** (the quickest way): paste or type who booked today, one name per line. Add `, Team 2` (or a team's name) to set the team. **Tick only these** ticks exactly those people and unticks everyone else. **Add to ticked** keeps the people already ticked. New names are added to the roster automatically, and bullets or numbers at the start of a line are ignored, so you can paste straight from a chat message.
+- **Today's list** (the quickest way): paste or type who booked today, one name per line. Add `, Team 2` (or a team's name) to set the team. Rows copied from a spreadsheet (tab-separated), `Last, First` names and Outlook attendee lists (`Name <email>` or bare addresses) are understood too. **Tick only these** ticks exactly those people and unticks everyone else. **Add to ticked** keeps the people already ticked. New names are added to the roster automatically, and bullets or numbers at the start of a line are ignored, so you can paste straight from a chat message.
 - **Fix a name:** click it and type. Enter saves, Esc undoes. A blank name goes back to the old one, and a name that's already taken gets a `(2)` suffix.
-- **Tick or untick** anyone with the checkbox, or a whole team with **All** / **None**. Use the dropdown to move someone to another team and **×** to remove them from the roster.
+- **Tick or untick** anyone with the checkbox, or a whole team with **All** / **None**. The coloured **➜** button moves someone to the next team, and **×** removes them from the roster. Anything half-typed in the side boxes stays put while you tick and untick.
 - **Find a name** filters the lists when the roster gets long. Names are sorted alphabetically within each team.
-- **New day:** if the ticks are left over from an earlier day, a yellow banner offers **Untick everyone**.
+- **New day:** if the ticks are left over from an earlier day, a yellow banner offers **Untick everyone**. It stays up until you change the ticks themselves.
+- **More than 40 ticked:** the warning names who sits out (the roster's own order: team, then name), and so does a note when the show starts.
 - **During the show** (press **P**): **Add a late player** launches them last, and **Remove someone who hasn't launched yet** takes out a duck that was ticked by mistake.
 
 ### Keys
@@ -69,7 +70,7 @@ The roster is saved in the browser, so you only build it once. Each day you just
 | S | Skip to this flight's result (silent) |
 | M | Mute |
 | F | Fullscreen |
-| P | Pause and settings: add a late player, remove a duck that hasn't launched, teams, volume, data. P again resumes. |
+| P | Pause and settings: add a late player, remove a duck that hasn't launched, teams, volume, data. Pause freezes everything, sound included. P again resumes. |
 
 Hotkeys are ignored while you're typing in a text field. Esc stays the browser's fullscreen exit.
 
@@ -81,11 +82,11 @@ At 1x, each duck takes roughly 21 seconds: intro 1.5 s, ladder and gauges 2.5 s,
 
 - **Ducks:** seeded per player per day (local date + name), so a reload gives the same duck. There are 5 base types (mallard, classic rubber duck, fluffy duckling, white farm duck, Carolina duck), 16 colors, 6 patterns, 16 hats, 17 accessories and 8 eye styles. Rarities are Common 60%, Uncommon 25%, Rare 10%, Epic 4% and Legendary 1%. The six legendaries are Golden Duck, Disco Ball Duck, Robo-Duck, Ghost Duck, Pixel Duck and Definitely A Duck (a goose in a duck costume). Names mix templates with 96 handwritten one-offs and avoid names used on recent days. Every generated name, bio and caption goes through a blocklist, and any duck name containing a first name from the roster is rerolled. Looks never affect distance.
 - **Events:** 12 boosts, 12 obstacles (pond plop included), 7 wildcards and 9 gags. Each one is a data entry in `C.EVENTS` with its trigger, physics effect, art, sound and caption. Ground set pieces come from the day's course and trigger on a seeded chance per flight. Air events trigger by chance in their altitude band. Gags never change distance.
-- **Cannon moments:** misfire with a bonus-powder comeback (about 1.3%), backfire to a negative distance (about 1%) and the fake-out fizzle (about 2%, cosmetic only). Other flight touches are the hat that flies off and sometimes beats its duck, a photo finish in slow motion when a duck lands within 25 ft of the leader, and a drumroll for a last duck who can still win.
+- **Cannon moments:** misfire with a bonus-powder comeback (about 1.3%), backfire to a negative distance (about 1%) and the fake-out fizzle (about 2%, cosmetic only). Other flight touches are the hat that flies off and sometimes beats its duck, a photo finish in slow motion when a duck lands within 25 ft of the leader (with the margin called out), **personal bests**, and a drumroll for a last duck who can still win that ends right on the landing cymbal.
 - **Daily conditions:** wind (calm, tailwind or headwind, up to 20 mph), sky (sunny, overcast, drizzle, fog, sunset or night) and a modifier of the day on about half of days: Low Gravity, Bouncy Day, Goose Migration, Trampoline Park, Ice Rink, Big Head Mode, Throwback Mode or Turbo Cannon. Fridays add Fri-Yay party mode. Seasonal themes come from the date: pumpkins and bats in October, falling leaves in autumn, a turkey in a duck disguise during Thanksgiving week, snow and twinkle lights from December to February, flowers and rain in spring, and a beach in summer. The course changes daily too.
 - **Commentary:** Bill Featherstone narrates in a lower-third caption bar (about 200 lines), and the ducks talk back in speech bubbles (about 115 lines). Lines are drawn from shuffled bags so nothing repeats within a show, and Bill always talks about what's happening now instead of falling behind. Commentary roasts the duck, never the player. An optional announcer voice uses the Web Speech API and is off by default.
-- **Show moments:** the next few ducks wait their turn on the hill (**UP NEXT**) and hop when the cannon fires, and each duck waddles over to the ladder. Bill invites the call to count down the first launch, announces **Bill's pick** to win after the Pond Forecast and owns up at the end, and the results crown a **Team of the Day** (the team whose ducks flew farthest on average). Leaderboard rows slide into place when a duck takes the lead. On the title screen, Thunderbill lobs a demo duck every few seconds while people join.
-- **Sound:** fuse sizzle, crank clicks, the cannon BOOM, whoosh, slide whistle, BOING, splat, honk, bonk, bell DING, per-duck quacks, crowd ooh and cheer, sad trombone and a kazoo fanfare. All melodies are original. Everything runs through one master compressor, and the default volume is 60%.
+- **Show moments:** the next few ducks wait their turn on the hill (**UP NEXT**) and hop when the cannon fires, and each duck waddles over to the ladder. Bill invites the call to count down the first launch, welcomes back yesterday's champion and anyone on a winning streak, announces **Bill's pick** to win after the Pond Forecast (it's also tagged on that duck's card) and owns up at the end, and the results crown a **Team of the Day** (the team whose ducks flew farthest on average). Leaderboard rows slide into place when a duck takes the lead. On the title screen, Thunderbill lobs a demo duck every few seconds while people join.
+- **Sound:** fuse sizzle, crank clicks, the cannon BOOM, whoosh, slide whistle, BOING, splat, honk, bonk, bell DING, per-duck quacks, crowd ooh and cheer, sad trombone and a kazoo fanfare. All melodies are original. Everything runs through one compressor and a limiter, and the volume slider scales the whole mix evenly. The default volume is 60%. Long sounds stop when you skip a flight or leave the screen.
 - **Waddle of Fame:** wins per player and per team, the current win streak, the top 10 longest launches, Duck of the Month standings and a log of legendary moments. The last real race's winner gets a small crown, and a new pond record gets fireworks.
 - **Bonus Ammo** (off by default): in Settings, turn it on, then give a player up to 3 extra shots on the roster screen. Bonus shots launch at the end, and each player's best shot counts.
 
@@ -101,8 +102,8 @@ At 1x, each duck takes roughly 21 seconds: intro 1.5 s, ladder and gauges 2.5 s,
 ## Data
 
 - Everything is saved in `localStorage` under keys starting with `ddb.v1.`, wrapped as `{schema, data}`. `localStorage.clear()` is never called, because all of a github.io account's sites share one storage origin. Reset only removes `ddb.v1.*` keys.
-- If storage is blocked, the game still runs and keeps everything in memory for the session.
-- **Settings → Export everything** downloads a JSON backup, and **Import…** or **Paste import text…** restores it. When a hosted frame blocks downloads or the clipboard, the game shows a text box you can copy from.
+- If storage is blocked, the game still runs and keeps everything in memory for the session. If storage is full, the saved roster and history still load, and the title screen and Settings warn that new changes aren't being saved.
+- **Settings → Export everything** downloads a JSON backup, and **Import…** or **Paste import text…** restores it (a full restore: it checks the backup first and refuses a damaged one). When a hosted frame blocks downloads or the clipboard, the game shows a text box you can copy from.
 
 ## QA tools
 
@@ -110,15 +111,15 @@ At 1x, each duck takes roughly 21 seconds: intro 1.5 s, ladder and gauges 2.5 s,
 - `index.html?gallery` shows 24 random ducks on one screen. Press Space for a new batch.
 - In the browser console:
   - `DDB.balance(10000)` simulates N flights across a year of daily conditions. It prints the distance spread, how often each event fires, how many events each flight got, and how often the winner of a 10-duck race had each event.
-  - `DDB.selfTest()` runs a 40-player race twice with the same seed and checks that the results match exactly with no NaN values. It also checks that launch order and looks don't change distances and that rerolls and same-day ducks behave.
+  - `DDB.selfTest()` runs a 40-player race twice with the same seed and checks that the results match exactly with no NaN values. It also checks that launch order and looks don't change distances, that rerolls and same-day ducks behave, that no flight ends in mid-air or at the time cap, and that every commentary line and name part passes the content blocklist.
 
 Latest balance run (10,000 flights):
 
 ```text
-distance  min -697  p10 724  p25 1,038  median 1,370  p75 1,866  p90 2,512  p99 4,631  max 8,985 ft
-past 2,500 ft: 10.2%   past 5,000 ft: 6.4 per 1,000   backfire: 0.91%   misfire: 1.26%
-distance-changing events per flight: 1.97 avg   0: 14.8%  1: 32.5%  2: 21.6%  3: 13.4%  4: 8.0%  5: 9.8%
-most decisive events: jet stream (the winner had it in 35% of races) and spicy pepper (33%)
+distance  min -632  p10 743  p25 1,054  median 1,377  p75 1,849  p90 2,458  p99 4,153  max 6,862 ft
+past 2,500 ft: 9.2%   past 5,000 ft: 2.4 per 1,000   backfire: 0.91%   misfire: 1.26%
+distance-changing events per flight: 1.94 avg   0: 15.2%  1: 32.7%  2: 21.6%  3: 13.3%  4: 7.8%  5: 9.3%
+most decisive events: jet stream (the winner had it in 36% of races) and spicy pepper (33%)
 ```
 
 ## Code layout
