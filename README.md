@@ -36,6 +36,8 @@ Your roster, settings and Waddle of Fame are saved in the browser for whichever 
 4. Click once before the call starts. Browsers only allow audio after the first click.
 5. Turn on **Auto-advance** if you want it to run hands-free, or leave it off and banter between ducks.
 
+If the laptop struggles while screen-sharing, the game notices the dropped frames and quietly renders at a lower internal resolution, then steps back up when things are smooth again. You don't need to change anything.
+
 ## The show
 
 There are five screens, and the **big red button** (or **Space**) is the only control you need.

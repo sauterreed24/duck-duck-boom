@@ -3658,6 +3658,7 @@ function importDataFromText(text) {
     S.race = null;
     Toast.show('Imported ' + n + ' sections. ' + S.history.length + ' races in history.');
     if (cur && cur.stage !== 'done') Toast.show('Imported. A saved show can be resumed from the title screen.', 2600);
+    Modal.close(); go('title');
     return true;
   } catch (e) { Toast.show('Import failed: ' + e.message, 3000); return false; }
 }
@@ -3917,17 +3918,20 @@ function addLatePlayer(name, team) {
   const R = S.race;
   if (!R) return;
   const key = personKey(name);
+  const loadedNow = S.screen === 'launch' && L.q && R.queue[R.idx] === L.q && L.phase !== 'idle' && L.phase !== 'result';
+  const insertAt = () => { const fb = R.queue.findIndex((q, i) => q.bonus && i >= R.idx); return fb >= 0 ? Math.max(fb, R.idx + (loadedNow ? 1 : 0)) : R.queue.length; };
+  // putting back someone who was removed by mistake: same person, same duck
+  const back = R.players.findIndex(p => p.key === key && p.out && !R.results[p.key]);
+  if (back >= 0) { R.players[back].out = false; R.queue.splice(insertAt(), 0, { p: back, s: 0 }); saveRace(); Toast.show(R.players[back].name + "'s duck is back in and will launch last!", 2600); return; }
   let nm = name, i = 2;
   while (R.players.some(p => p.key === personKey(nm))) nm = name + ' (' + (i++) + ')';
-  if (R.players.length >= 40) { Toast.show('The cannon tops out at 40 ducks.'); return; }
+  if (activePlayers().length >= 40) { Toast.show('The cannon tops out at 40 ducks.'); return; }
   const rer = loadRerolls(R.day);
   const pl = makePlayer(nm, team, rer[personKey(nm)] || 0, nameCtx(null), R.day);
   pl.late = true;
   R.players.push(pl);
   // launches last among the main round (before any bonus shots)
-  const firstBonus = R.queue.findIndex(q => q.bonus);
-  const entry = { p: R.players.length - 1, s: 0 };
-  if (firstBonus >= 0) R.queue.splice(Math.max(firstBonus, R.idx), 0, entry); else R.queue.push(entry);
+  R.queue.splice(insertAt(), 0, { p: R.players.length - 1, s: 0 });
   if (!S.roster.some(p => personKey(p.name) === personKey(nm))) { S.roster.push({ id: 'p' + hex8(hash(nm, Date.now())), name: nm, team, checked: true, ammo: 0 }); saveRoster(); }
   rememberNames(R.day, [pl.duck.name]);
   if (S.screen === 'reveal') { RV.flipped.push(true); RV.flipAt.push(0); }
@@ -3946,7 +3950,7 @@ function removePlayer(pi) {
   const R = S.race;
   if (!canRemoveNow(pi)) return false;
   const pl = R.players[pi];
-  const wasLoaded = R.queue[R.idx] && R.queue[R.idx].p === pi;
+  const wasLoaded = S.screen === 'launch' && L.q && R.queue[R.idx] === L.q && L.q.p === pi && (L.phase === 'intro' || L.phase === 'ladder' || L.phase === 'armed');
   R.queue = R.queue.slice(0, R.idx).concat(R.queue.slice(R.idx).filter(q => q.p !== pi));
   pl.out = true;
   saveRace();
@@ -4033,6 +4037,7 @@ function teamOfDay(R) {
   return Object.assign(best, { name: teams()[best.team].name, color: teams()[best.team].color, shape: teams()[best.team].shape });
 }
 function billPickKey(R) {
+  if (R.pick !== undefined) return R.pick && R.players.some(p => p.key === R.pick && !p.out) ? R.pick : null;
   const act = R.players.filter(p => !p.out);
   if (act.length < 3) return null;
   return act[hash(R.seed, 'billpick') % act.length].key;
@@ -4123,6 +4128,9 @@ function loadDuck(first) {
   const R = S.race, q = curQ();
   if (!q) { toResults(); return; }
   const go2 = () => {
+    const q2 = curQ();
+    if (!q2) { if (standings().length) { L.phase = 'idle'; setBig('SEE RESULTS', true); } return; }
+    const q = q2;
     L.q = q; L.pi = q.p; L.pl = R.players[q.p];
     L.tl = null; L.pb = null; L.result = null; L.replay = false; L.photo = false; L.drum = false; L.fuseOut = false; L.boomed = false;
     L.gauge = { a: 45, p: 85, locked: false, lockAt: 0 };
@@ -4245,6 +4253,7 @@ function rateAt(pb, t) { for (const s of pb.segs) if (t < s.b) return s.r; retur
 
 function startFlight(replay) {
   const tl = L.tl;
+  if (!replay) { L.barrel = tl.angle; L.gauge.locked = true; L.gauge.a = tl.angle; L.gauge.p = Math.round(tl.power * 100); }
   const lead = leaderEntry();
   L.photo = !replay && lead && S.race.players.length > 1 && Math.abs(tl.final - lead.dist) < 25 && lead.pl.key !== L.pl.key;
   if (replay) L.photo = L.result && L.result.photo;
@@ -4464,6 +4473,8 @@ function skipFlight() {
 }
 function replayFlight() {
   if (!L.tl || !(L.phase === 'idle' || L.phase === 'result' || L.phase === 'flight')) return;
+  // a duck that's still in the air hasn't been scored yet: replay only once it has landed
+  if (L.phase === 'flight' && !L.replay) { Toast.show('Replay is ready once this duck lands'); return; }
   if (L.phase === 'result') { setPhase('idle'); }
   Caps.reset(); Particles.clear();
   L.cam = { cx: 30, gy: GROUND_Y, z: 5.2 };
@@ -4505,7 +4516,6 @@ function updateLaunch(dt) {
       const T = 3 * pace;
       const tick = Math.floor(L.pt / (T / 3));
       if (tick !== L.ticks && tick < 3) { L.ticks = tick; SFX.play('count', 3 - tick); }
-      if (L.pt < 0.05) L.ticks = -1;
       const lockAt = T * 2 / 3 + 0.15 * pace;
       if (!L.gauge.locked && L.pt >= lockAt) { L.gauge.locked = true; L.gauge.a = L.tl.angle; L.gauge.p = Math.round(L.tl.power * 100); L.barrelFrom = L.barrel; L.lockT = L.pt; SFX.play('crank', 3); }
       if (L.gauge.locked) L.barrel = lerp(L.barrelFrom, L.tl.angle, easeInOut((L.pt - L.lockT) / 0.3));
@@ -4824,8 +4834,13 @@ function drawScream(ctx, x, y, text, rt) {
   const w = ctx.measureText(text).width + 40, h = 58;
   const bx = clamp(x + 40, 20, 1480 - w), by = clamp(y - 120, 130, 760);
   ctx.beginPath(); ctx.moveTo(bx + 30, by + h - 4); ctx.lineTo(clamp(x + 10, bx, bx + w), by + h + 30); ctx.lineTo(bx + 60, by + h - 4); ctx.closePath(); fillStroke(ctx, '#fff', 5);
-  burstPath(ctx, bx + w / 2, by + h / 2, w * 0.56, w * 0.48, 14, rt * 2); ctx.fillStyle = '#fff'; ctx.fill();
-  rr(ctx, bx, by, w, h, 20); fillStroke(ctx, '#ffffff', 5);
+  // a shouty bubble: small spikes along the edges, red outline
+  ctx.beginPath();
+  const spikes = Math.max(6, Math.round(w / 34));
+  for (let i = 0; i <= spikes; i++) { const xx = bx + (w * i) / spikes; ctx.lineTo(xx, by - (i % 2 ? 12 : 2)); }
+  for (let i = spikes; i >= 0; i--) { const xx = bx + (w * i) / spikes; ctx.lineTo(xx, by + h + (i % 2 ? 12 : 2)); }
+  ctx.closePath(); fillStroke(ctx, '#ffffff', 5, '#e8412c');
+  rr(ctx, bx, by, w, h, 20); ctx.fillStyle = '#ffffff'; ctx.fill();
   txt(ctx, text, bx + w / 2, by + h / 2 + 2, { px: 34, color: '#e8412c', sw: 0 });
   ctx.restore();
 }
@@ -5076,7 +5091,7 @@ function drawSidebar(ctx) {
 function go(screen) {
   S.screen = screen;
   if (screen !== 'roster') Roster.hide();
-  if (screen === 'title') { S.race = null; refreshWorld(); setBig(savedShow() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); }
+  if (screen === 'title') { RS.back = false; S.race = null; refreshWorld(); setBig(savedShow() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); }
   if (screen === 'roster') { refreshWorld(); Roster.show(); }
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
@@ -5192,6 +5207,7 @@ function updateReveal(dt) {
       RV.fc = 0; SFX.play('ding');
       Caps.say('Pond Forecast: ' + conditionsSummary(S.cond) + '. Same for every duck today!', { prio: 1 });
       const pk = billPickKey(R), pp = pk && R.players.find(p => p.key === pk);
+      R.pick = pk || null; saveRace();
       if (pp) say('billPick', { player: pp.name, duck: pp.duck.name }, { prio: 1, delay: 2.4 });
     }
   }
@@ -5598,13 +5614,16 @@ const CV = document.getElementById('cv');
 const CTX = CV.getContext('2d');
 const STAGE = document.getElementById('stage');
 let VIEW = { scale: 1, ox: 0, oy: 0, k: 1 };
+// Adaptive quality: if frames run slow (weak laptop, busy screen share), render at a lower internal
+// resolution and use fewer particles; step back up after a long smooth stretch.
+const QUAL = { k: 1, slow: 0, fast: 0 };
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   const scale = Math.min(w / 1920, h / 1080);
   const ox = (w - 1920 * scale) / 2, oy = (h - 1080 * scale) / 2;
   STAGE.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
   const dpr = window.devicePixelRatio || 1;
-  const k = clamp(scale * dpr, 0.5, 1.25);
+  const k = Math.max(0.42, clamp(scale * dpr, 0.5, 1.25) * QUAL.k);
   const bw = Math.round(1920 * k), bh = Math.round(1080 * k);
   if (CV.width !== bw || CV.height !== bh) { CV.width = bw; CV.height = bh; }
   VIEW = { scale, ox, oy, k: bw / 1920 };
@@ -5687,6 +5706,12 @@ function frame(now) {
   lastNow = now;
   const dt = Math.min(0.05, Math.max(0, raw));
   if (raw > 0) S.fps = lerp(S.fps, 1 / Math.max(raw, 0.001), 0.05);
+  if (raw > 0 && raw < 0.4 && !document.hidden) {
+    if (raw > 1 / 40) QUAL.slow += raw; else QUAL.slow = Math.max(0, QUAL.slow - raw * 0.5);
+    QUAL.fast = raw < 1 / 54 ? QUAL.fast + raw : 0;
+    if (QUAL.slow > 1.5 && QUAL.k > 0.55) { QUAL.k = Math.max(0.55, QUAL.k - 0.15); QUAL.slow = 0; QUAL.fast = 0; Particles.max = QUAL.k < 0.8 ? 150 : 260; resize(); }
+    else if (QUAL.fast > 25 && QUAL.k < 1) { QUAL.k = Math.min(1, QUAL.k + 0.15); QUAL.fast = 0; Particles.max = QUAL.k < 0.8 ? 150 : 260; resize(); }
+  }
   S.rt += dt;
   if (!S.paused) { S.time += dt; try { update(dt); } catch (err) { console.error(err); } Particles.update(dt); Shake.update(dt); }
   Caps.update(); Iris.update(dt);
