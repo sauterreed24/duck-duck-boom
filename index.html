@@ -58,6 +58,8 @@
   #roster .row select { font-size: 16px; padding: 2px 4px; border-width: 2px; border-radius: 8px; }
   #roster .row .x { border: 0; background: none; font-size: 26px; font-weight: 900; cursor: pointer; color: #b0392b; padding: 0 4px; }
   #roster .row .ammo { font-size: 16px; padding: 2px 6px; }
+  #roster .row .tm { flex: none; width: 34px; height: 34px; border: 3px solid var(--ink); border-radius: 50%; color: #fff; font-size: 16px; font-weight: 900; cursor: pointer; padding: 0; text-shadow: 0 1px 0 rgba(0,0,0,.5); opacity: .8; }
+  #roster .row .tm:hover { opacity: 1; transform: scale(1.1); }
   #roster .side { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; }
   #roster .side .box { border: 5px solid var(--ink); border-radius: 22px; background: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; flex: none; }
   #roster .side h3 { margin: 0; font-size: 24px; }
@@ -225,7 +227,9 @@ function fmtFt(n) { return fmtInt(n) + ' ft'; }
 function ordinal(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 // normalized key for a person (case/space-insensitive)
 function personKey(name) { return String(name || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase(); }
-function cleanName(name) { return String(name || '').normalize('NFC').replace(/[\u0000-\u001f<>]/g, '').trim().replace(/\s+/g, ' ').slice(0, 48); }
+const NAME_MAX = 40;
+// tabs/newlines become spaces; cut by code point so an emoji is never split in half
+function cleanName(name) { return Array.from(String(name || '').normalize('NFC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>]/g, '').trim().replace(/\s+/g, ' ')).slice(0, NAME_MAX).join('').trim(); }
 function firstWord(name) { return (cleanName(name).split(' ')[0] || '').toLowerCase(); }
 function deepClone(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
 
@@ -295,13 +299,13 @@ C.LEGEND_NAME_PREFIX = { golden: ['The Golden', 'Gilded', 'Solid Gold'], disco: 
 
 /* ---------- names ---------- */
 C.TITLES = ['Admiral', 'Captain', 'Sir', 'Dame', 'Professor', 'Commodore', 'Baron', 'Baroness', 'Duke', 'Duchess', 'Count', 'Countess', 'Doctor', 'Coach', 'Sheriff', 'Detective', 'Agent', 'Chef', 'Major', 'General', 'Colonel', 'Lieutenant', 'Sergeant', 'Commander', 'Grand Admiral', 'The Honorable', 'Judge', 'Ranger', 'Skipper', 'Archduke', 'Viscount', 'Marquis', 'Squire', 'Maestro', 'Wing Commander', 'Inspector', 'Navigator', 'Pond Marshal', 'Trailblazer', 'Lifeguard'];
-C.FIRSTS = ['Puddles', 'Waddles', 'Flapjack', 'Biscuit', 'Noodle', 'Pickles', 'Dumpling', 'Crouton', 'Pancake', 'Sprinkles', 'Bubbles', 'Splash', 'Quackers', 'Drizzle', 'Pretzel', 'Waffle', 'Toast', 'Bagel', 'Sourdough', 'Paddles', 'Beaky', 'Feathers', 'Gizmo', 'Mochi', 'Doodle', 'Wobble', 'Ripple', 'Snorkel', 'Thimble', 'Wiggles', 'Sprout', 'Pebble', 'Breadstick', 'Croissant', 'Dabble', 'Splish', 'Splosh', 'Quibble', 'Bumble', 'Fizzle', 'Nibbles', 'Turnip', 'Radish', 'Parsnip', 'Kazoo', 'Tumble', 'Jellybean', 'Marshmallow', 'Gumdrop', 'Pudding', 'Popcorn', 'Teacup', 'Zucchini', 'Sprocket', 'Widget', 'Button', 'Pumpernickel', 'Brioche', 'Ciabatta', 'Focaccia', 'Baguette', 'Lilypad', 'Cattail', 'Plunk', 'Kerplunk', 'Sploosh', 'Flipper', 'Bloop', 'Honkers', 'Rumble'];
-C.SURNAMES = ['Puddlesworth', 'Soggybottom', 'Breadcrumbs', 'Fluffington', 'Honkington', 'McFlap', 'Splashington', 'Dabbleton', 'Waddlesby', 'Drizzlewick', 'Paddlefoot', 'Ripplestone', 'Crumbsworth', 'Flapperton', 'Muddlesworth', 'Puddleby', 'Quackmore', 'Wobbleton', 'Breadley', 'Ploppington', 'Tailfeather', 'Webfoot', 'Pondlebury', 'McWaddle', 'von Quack', 'de la Puddle', 'Splashdown', 'Beakworth', 'Dunkington', 'Fluffbeak', 'Crustworth', 'Loafington', 'Flapperly', 'Quacklebury', 'Bubbleworth', 'Pebblebeak', 'Wobbleworth', 'Drizzleton', 'Mudsworth', 'Puddingham', 'Crumbleton', 'Flutterby', 'Bagelsworth', 'Sproutington', 'Cloudhopper', 'Skyflap', 'Windwhistle', 'Lilypadder', 'Downfeather', 'Reedwhistle', 'Splatterly', 'Paddleton', 'Crumbcatcher', 'Breezeby', 'Ducksbury', 'Quackington', 'Floatsworth', 'Dewdrop'];
+C.FIRSTS = ['Puddles', 'Waddles', 'Flapjack', 'Biscuit', 'Noodle', 'Pickles', 'Dumpling', 'Crouton', 'Pancake', 'Sprinkles', 'Bubbles', 'Splash', 'Quackers', 'Drizzle', 'Pretzel', 'Waffle', 'Toast', 'Bagel', 'Sourdough', 'Paddles', 'Beaky', 'Feathers', 'Gizmo', 'Mochi', 'Doodle', 'Wobble', 'Ripple', 'Snorkel', 'Thimble', 'Wiggles', 'Sprout', 'Pebble', 'Breadstick', 'Croissant', 'Dabble', 'Splish', 'Splosh', 'Quibble', 'Bumble', 'Fizzle', 'Nibbles', 'Turnip', 'Radish', 'Parsnip', 'Kazoo', 'Tumble', 'Jellybean', 'Marshmallow', 'Gumdrop', 'Pudding', 'Popcorn', 'Teacup', 'Zucchini', 'Sprocket', 'Widget', 'Button', 'Pumpernickel', 'Brioche', 'Ciabatta', 'Focaccia', 'Baguette', 'Lilypad', 'Cattail', 'Plunk', 'Kerplunk', 'Sploosh', 'Flipper', 'Bloop', 'Nugget', 'Rumble'];
+C.SURNAMES = ['Puddlesworth', 'Soggyfeather', 'Breadcrumbs', 'Fluffington', 'Honkington', 'McFlap', 'Splashington', 'Dabbleton', 'Waddlesby', 'Drizzlewick', 'Paddlefoot', 'Ripplestone', 'Crumbsworth', 'Flapperton', 'Muddlesworth', 'Puddleby', 'Quackmore', 'Wobbleton', 'Breadley', 'Ploppington', 'Tailfeather', 'Webfoot', 'Pondlebury', 'McWaddle', 'von Quack', 'de la Puddle', 'Splashdown', 'Beakworth', 'Dunkington', 'Fluffbeak', 'Crustworth', 'Loafington', 'Flapperly', 'Quacklebury', 'Bubbleworth', 'Pebblebeak', 'Wobbleworth', 'Drizzleton', 'Mudsworth', 'Puddingham', 'Crumbleton', 'Flutterby', 'Bagelsworth', 'Sproutington', 'Cloudhopper', 'Skyflap', 'Windwhistle', 'Lilypadder', 'Downfeather', 'Reedwhistle', 'Splatterly', 'Paddleton', 'Crumbcatcher', 'Breezeby', 'Ducksbury', 'Quackington', 'Floatsworth', 'Dewdrop'];
 C.SUFFIXES = ['III', 'IV', 'Jr.', 'the Bold', 'the Brave', 'the Magnificent', 'the Unflappable', 'of the Pond', 'Esq.', 'the Third', 'the Swift', 'the Damp', 'the Fluffy', 'the Undefeated', 'PhD', 'the Mighty', 'the Valiant', 'of House Puddle', 'the Aerodynamic', 'the Unbothered', 'the Bread-Minded', 'of the Reeds', 'the Splashy'];
 C.ONE_OFFS = [
-  'Admiral Puddlesworth III', 'Captain Soggybottom', 'Sir Reginald Breadcrumbs', 'Dame Pondelope Fluffington', 'Professor Flapjack Honkington', "Le Duc d'Orange", 'Commodore Dabble', 'The Honorable Judge Bread', 'Waddles McGee', 'Beakon Bits', 'Gerald (Just Gerald)',
-  'Per My Last Quack', 'Circle Back', 'Quick Sync', 'Reply-All', 'Out of Office', 'Action Item', 'Low-Hanging Fruit', 'Calendar Invite', 'Booked Solid', 'Warm Lead', 'Follow-Up #7', 'Voicemail Full', 'Synergy',
-  'Touch Base', 'Hard Stop', 'Deep Dive', 'Bandwidth', 'Net New', 'Elevator Pitch', 'Value Add', 'Take It Offline', "You're On Mute", 'Next Steps', 'Quick Question', 'Win-Win', 'Sticky Note', 'Lunch and Learn', 'Stand-Up', 'Swim Lane', 'Ping Me', 'Inbox Zero', 'Auto-Reply', 'Kickoff', 'Huddle', 'Whiteboard', 'Breakout Room', 'Speakerphone', 'Dial Tone', 'Double Booked', 'Agenda Item', 'Desk Plant', 'Pivot Table', 'Mail Merge', 'Water Cooler', 'Hold Please', 'Snooze Button', 'Coffee Run', 'Read Receipt', 'Status Update', 'Quick Win', 'Bullet Point', 'Paper Jam', 'Rubber Stamp', 'Name Tag', 'Swivel Chair', 'Screen Share', 'FWD: FWD: FWD:',
+  'Admiral Puddlesworth III', 'Captain Soggybill', 'Sir Reginald Breadcrumbs', 'Dame Pondelope Fluffington', 'Professor Flapjack Honkington', "Le Duc d'Orange", 'Commodore Dabble', 'The Honorable Judge Bread', 'Waddles McGee', 'Beakon Bits', 'Gerald (Just Gerald)',
+  'Per My Last Quack', 'Circle Back', 'Quick Sync', 'Reply-All', 'Five-Star Review', 'Action Item', 'Low-Hanging Fruit', 'Calendar Invite', 'Booked Solid', 'Warm Lead', 'Follow-Up #7', 'Fresh Pot of Coffee', 'Synergy',
+  'Touch Base', 'Hard Stop', 'Deep Dive', 'Bandwidth', 'Net New', 'Elevator Pitch', 'Value Add', 'Take It Offline', "You're On Mute", 'Next Steps', 'Quick Question', 'Win-Win', 'Sticky Note', 'Lunch and Learn', 'Stand-Up', 'Swim Lane', 'Ping Me', 'Inbox Zero', 'Auto-Reply', 'Kickoff', 'Huddle', 'Whiteboard', 'Breakout Room', 'Speakerphone', 'Dial Tone', 'Double Booked', 'Agenda Item', 'Calendar Hero', 'Pivot Table', 'Mail Merge', 'Water Cooler', 'Hold Please', 'Golden Lead', 'Coffee Run', 'Read Receipt', 'Status Update', 'Quick Win', 'Bullet Point', 'Paper Jam', 'Stapler Supreme', 'Name Tag', 'Swivel Chair', 'Screen Share', 'FWD: FWD: FWD:',
   'The Pond Baron', 'Duchess of Drizzle', 'Sir Splashington', 'Captain Crumbs', 'Puddle Jumper', 'Her Royal Fluffiness', 'His Royal Dampness', 'The Bread Enthusiast', 'Sir Honksworth', 'Professor Paddles', 'Doctor Dabbles', 'Sergeant Splash', 'Colonel Crumb', 'Agent Webfoot', 'Inspector Ripple', 'Captain Kerplunk', 'Lady Lilypad', 'Emperor Waddles', 'King Crumb', 'Queen of the Puddles', 'The Crumb Collector', 'Loaf Legend', 'Crouton Commander', 'Pumpernickel Prime', 'Pancake Stack', 'Puddle Pirate', 'Noodle Doodle', 'Quackers Supreme',
 ];
 
@@ -378,7 +382,7 @@ C.SEASONS = {
 C.FRIYAY = { name: 'Fri-Yay!', blurb: 'Party hats, disco sky, extra confetti.' };
 
 /* ---------- world flavor ---------- */
-C.BILLBOARDS = ['LOST: Sense of Direction', 'PONDS: Now 20% Wetter', 'BREAD. You know you want it.', 'THIS SIGN IS A SIGN', 'YOU ARE HERE (Probably)', 'Now Hiring: Puddle Inspector', 'Honk If You Can Read This', 'Caution: Low-Flying Ducks', 'Did You Remember Your Hat?', 'Bread Sale: Today Only', 'Puddles Ahead: Jump Anyway', 'Clouds: Fluffy Since Forever'];
+C.BILLBOARDS = ['LOST: Sense of Direction', 'PONDS: Now 20% Wetter', 'BREAD: Now With More Bread.', 'THIS SIGN IS A SIGN', 'YOU ARE HERE (Probably)', 'Now Hiring: Puddle Inspector', 'Honk If You Can Read This', 'Caution: Low-Flying Ducks', 'Did You Remember Your Hat?', 'Bread Sale: Today Only', 'Puddles Ahead: Jump Anyway', 'Clouds: Fluffy Since Forever'];
 C.COMPARISONS = [
   { one: 'loaf of bread', many: 'loaves of bread', ft: 1 },
   { one: 'baguette', many: 'baguettes', ft: 2.2 },
@@ -415,7 +419,7 @@ C.EVENTS = {
   pelican: { name: 'Pelican Express', kind: 'boost', trig: 'air', band: [25, 170], rate: 0.034, desc: true, fx: 'pelican', art: 'pelican', sfx: 'pelican', cap: 'PELICAN EXPRESS!', antic: 0.9, dist: true, hl: '{duck} caught the Pelican Express at {x}' },
   migration: { name: 'Migration Express', kind: 'boost', trig: 'air', band: [110, 900], rate: 0.03, season: 'autumn', fx: 'migration', art: 'migration', sfx: 'honk', cap: 'MIGRATION EXPRESS!', antic: 0.9, dist: true, hl: '{duck} joined a V of ducks heading south at {x}' },
   glider: { name: 'Hang Glider', kind: 'boost', trig: 'air', band: [60, 280], rate: 0.026, desc: true, fx: 'glider', art: 'glider', sfx: 'whoosh', cap: 'HANG GLIDER!', antic: 0.8, dist: true, hl: '{duck} grabbed a hang glider at {x} for a long, lazy glide' },
-  skip: { name: 'Water Skip', kind: 'boost', trig: 'piece', fx: 'skip', art: 'pond', sfx: 'skip', cap: 'SKIP! SKIP! SKIP!', antic: 0.3, dist: true, hl: '{duck} skipped across the pond {n} times' },
+  skip: { name: 'Water Skip', kind: 'boost', trig: 'piece', fx: 'skip', art: 'pond', sfx: 'skip', cap: 'SKIP! SKIP! SKIP!', antic: 0.3, dist: true, hl: '{duck} skipped across the pond {times}' },
   plop: { name: 'Pond Plop', kind: 'obstacle', trig: 'piece', fx: 'plop', art: 'pond', sfx: 'splash', cap: 'SPLASH!', antic: 0.3, dist: true, hl: '{duck} landed in the pond at {x} and decided to just swim' },
   banana: { name: 'Banana Peel', kind: 'boost', trig: 'piece', fx: 'banana', art: 'banana', sfx: 'slip', cap: 'SLIPPED!', antic: 0.3, dist: true, hl: '{duck} slipped on a banana peel at {x} and slid for days' },
   walkway: { name: 'Moving Walkway', kind: 'boost', trig: 'piece', fx: 'walkway', art: 'walkway', sfx: 'walkway', cap: 'MOVING WALKWAY!', antic: 0.3, dist: true, hl: '{duck} rode the moving walkway at {x}' },
@@ -434,9 +438,9 @@ C.EVENTS = {
   wormhole: { name: 'Wormhole', kind: 'wildcard', trig: 'piece', fx: 'wormhole', art: 'wormhole', sfx: 'portal', cap: 'WORMHOLE!', antic: 0.4, dist: true, hl: '{duck} fell into a wormhole at {x}' },
   tornado: { name: 'Tornado', kind: 'wildcard', trig: 'piece', fx: 'tornado', art: 'tornado', sfx: 'wind', cap: 'TORNADO!', antic: 0.5, dist: true, hl: '{duck} got spun by a tornado at {x}' },
   pinball: { name: 'Pinball Bumpers', kind: 'wildcard', trig: 'piece', fx: 'pinball', art: 'bumpers', sfx: 'bing', cap: 'BING-BING-BING!', antic: 0.4, dist: true, hl: '{duck} pinballed through the bumpers at {x}' },
-  crate: { name: 'Mystery Crate', kind: 'wildcard', trig: 'piece', fx: 'crate', art: 'crate', sfx: 'wheel', cap: 'MYSTERY CRATE!', antic: 0.4, dist: true, hl: '{duck} opened a mystery crate at {x} and got: {prize}' },
-  cannonception: { name: 'Cannon-ception', kind: 'wildcard', trig: 'piece', fx: 'cannonception', art: 'minicannon', sfx: 'boom', cap: 'ANOTHER CANNON?!', antic: 0.5, dist: true, legend: true, hl: '{duck} got caught by ANOTHER CANNON at {x} and fired again' },
-  space: { name: 'Space', kind: 'wildcard', trig: 'apex', rate: 0.0045, fx: 'space', art: 'space', sfx: 'rocket', cap: 'TO SPACE!', antic: 0.3, dist: true, legend: true, hl: '{duck} went to SPACE and parachuted back to {x}' },
+  crate: { name: 'Mystery Crate', kind: 'wildcard', trig: 'piece', fx: 'crate', art: 'crate', sfx: 'wheel', cap: 'MYSTERY CRATE!', antic: 0.4, dist: true, hl: '{duck} opened a mystery crate at {x} and {prize}' },
+  cannonception: { name: 'Double Cannon', kind: 'wildcard', trig: 'piece', fx: 'cannonception', art: 'minicannon', sfx: 'boom', cap: 'ANOTHER CANNON?!', antic: 0.5, dist: true, legend: true, hl: '{duck} got caught by ANOTHER CANNON at {x} and fired again' },
+  space: { name: 'Space', kind: 'wildcard', trig: 'apex', rate: 0.0045, fx: 'space', art: 'space', sfx: 'rocket', cap: 'TO SPACE!', antic: 0.3, dist: true, legend: true, hl: '{duck} blasted off to SPACE at {x} and parachuted back down' },
   // gags: never change distance
   seagull: { name: 'Seagull', kind: 'gag', art: 'seagull', sfx: 'gull', cap: 'HAT THIEF!', antic: 1.0, hl: 'A seagull stole the hat right off {duck}' },
   shades: { name: 'Shades', kind: 'gag', art: 'shades', sfx: 'cool', cap: '', antic: 0, hl: '{duck} put on shades mid-flight' },
@@ -458,7 +462,7 @@ C.CRATE_PRIZES = [
 /* ---------- commentary (Bill Featherstone). Placeholders: {duck} {player} {distance} {event} {other} ---------- */
 C.LINES = {
   intro: [
-    "Up next, {player}'s duck: {duck}!", "Climbing the ladder for {player}, it's {duck}!", "{player}'s duck, {duck}, has entered the chat.",
+    "Up next, {player}'s duck: {duck}!", "Climbing the ladder for {player}, it's {duck}!", "{player}'s duck, {duck}, has waddled into the arena.",
     "Folks, give it up for {player}'s duck, {duck}!", "From the shallow end of the pond: {player}'s duck, {duck}!", "Representing {player}, the one, the only, {duck}!",
     "{player}'s duck, {duck}. Looks ready. Ish.", "Next in the barrel: {player}'s duck, {duck}!", "And now, {player}'s duck. {duck}, everybody!",
     "Strapping in for {player}: {duck}. Well. There are no straps.", "Please welcome {player}'s duck, {duck}, to Ol' Thunderbill!", "Here comes {player}'s duck, {duck}. Big day.",
@@ -470,58 +474,64 @@ C.LINES = {
   ],
   launch: [
     'And {duck} is AIRBORNE!', 'Look at {duck} go!', "That's a lot of duck in a lot of air!", '{duck} has left the cannon. Emphatically.',
-    'Thunderbill delivers!', 'Up, up and a-waddle!', 'Clean launch! Beautiful form! Mostly screaming!', 'We have liftoff!', 'Wings out, {duck}! Wings OUT!',
-    'A textbook launch. If the textbook was about ducks.',
-  ],
+    'Thunderbill delivers!', 'Up and OVER!', 'Clean launch! Beautiful form! Mostly screaming!', 'We have liftoff!', 'Wings out, {duck}! Wings OUT!',
+    'A textbook launch. If the textbook was about ducks.',, 'BOOM! {duck} is away!', 'There goes {duck}!', '{duck} has been DELIVERED!'],
   quiet: [
     'Look at that form.', 'Aerodynamically speaking, that is a duck.', "That's some serious hang time.", 'The crowd is on its feet. Webbed feet.',
-    'Still climbing!', 'Somewhere, a pond is very proud.', 'I love this sport.', 'Not a cloud in the... oh, there are clouds.',
-  ],
+    'Still climbing!', 'Somewhere, a pond is very proud.', 'I love this sport.', 'That duck has somewhere to be.',, 'Fly, little duck, fly!', 'The judges are watching closely.', 'Steady... steady...'],
   fakeout: ['Uh oh. The fuse went out.', 'Hold on, folks... the crew is checking...', 'Is it...? Is it out?'],
   fakeoutBoom: ['Oh, it was NOT out!', 'NOPE! Still lit!', "Folks, I'm going to need a minute."],
   misfire: ['Oh no. That is a misfire.', "{duck} just plopped out. That's not how cannons work.", 'Misfire! The crew is adding more powder!'],
   misfireBoom: ['Take two! Extra powder! This could be a comeback!', 'Round two, and Thunderbill means it this time!', 'The comeback is ON!'],
   backfire: ['WRONG WAY! WRONG WAY!', '{duck} has launched... backwards.', "Folks, I've never seen a duck do that.", "That's... technically a distance.", 'Thunderbill sneezed the wrong direction!'],
-  passLeader: ['{duck} just passed the leader flag!', 'Past the leader! Past the leader!', '{duck} is in uncharted pond!'],
-  newLeader: ['New leader! {duck} takes the top spot!', "We've got a new leader, folks!", '{duck} is on top of the pond!'],
+  passLeader: ['{duck} just passed the leader flag!', 'Past the leader! Past the leader!', '{duck} is in uncharted pond!', '{duck} is out past the leader!', 'Look out, leader! {duck} is coming through!', 'Past the flag and STILL GOING!'],
+  newLeader: ['New leader! {duck} takes the top spot!', "We've got a new leader, folks!", '{duck} is on top of the pond!', '{duck} grabs the lead!', 'Top of the leaderboard: {duck}!', 'Make way! {duck} is the new leader!'],
   newRecord: ['NEW POND RECORD! Somebody call the newspaper!', "That's the farthest a duck has EVER flown out of Thunderbill!", 'Record broken! Frame that flag!'],
-  landShort: ['Short flight, big heart.', 'That was about the length of a nice sandwich.', 'Incredible buildup. Modest payoff.', 'Well. That happened.', '{duck} would like a do-over. No do-overs.', 'The judges are being very kind about this one.'],
-  landMid: ['Solid flight. Respectable. Very duck.', 'Right in the thick of it!', "That'll play.", 'A perfectly fine flight for a perfectly fine duck.', 'Nothing wrong with that one, folks.', 'Steady, sensible, deeply duck.'],
-  landLong: ['WHAT A FLIGHT!', "That's a monster launch!", 'Folks, I need a minute.', 'The judges are reviewing the tape. The judges are also ducks.', 'Somebody measure that again! Actually, the computer did it. Wow!', 'That duck has places to be!'],
+  landShort: ['Short flight, big heart.', 'That was about the length of a nice sandwich.', 'Incredible buildup. Modest payoff.', 'Well. That happened.', '{duck} would like a do-over. No do-overs.', 'The judges are being very kind about this one.', 'Every flight counts, folks!'],
+  landMid: ['Solid flight. Respectable. Very duck.', 'Right in the thick of it!', "That'll play.", 'A perfectly fine flight for a perfectly fine duck.', 'Nothing wrong with that one, folks.', 'Steady, sensible, deeply duck.', 'Right in the mix!', 'Respectable! The pond nods approvingly.', 'Good flight. Good duck.'],
+  landLong: ['WHAT A FLIGHT!', "That's a monster launch!", 'Folks, I need a minute.', 'The judges are reviewing the tape. The judges are also ducks.', 'Somebody measure that again! Actually, the computer did it. Wow!', 'That duck has places to be!', 'Look at that distance!', "That one's going on the fridge!"],
+  photoWon: ['By a FEATHER! {duck} takes it by {margin}!', 'Photo says YES! {duck} by {margin}!', 'That was close! {duck} edges ahead by {margin}!'],
+  photoLost: ['Just {margin} short! So close!', 'Heartbreaker! {margin} short of the lead!', 'The photo says... {margin} short. Oof.'],
+  closeWin: ['And the Golden Loaf goes to {duck}... by just {margin}!', '{duck} wins it by {margin}! What a finish!'],
+  wrongWay: ['Well, that is one direction.', 'Bold. Backwards, but bold.', 'The scoreboard is confused. So am I.'],
+  champIntro: ['Our defending champion! {player}\'s duck, {duck}!', 'Yesterday\'s Golden Loaf winner is back: {player}\'s duck, {duck}!'],
+  streakIntro: ['{player} is going for {n} in a row! Here comes {duck}!'],
+  personalBest: ['A new personal best for {player}!', 'That is {player}\'s best flight EVER!'],
   photoFinish: ["It's close... it's CLOSE...", 'Photo finish! Get the camera!', "Too close to call! Let's go to the replay booth!"],
   lastDuck: ['{duck} is our last duck... and can still take the lead!', 'It all comes down to {duck}!', 'Last duck of the day. Anything can happen!'],
   lastDuckLong: ['{duck} is our last duck. It would take a miracle. Miracles happen.', 'Last duck! The lead is big, but this is a cannon.'],
   hatOff: ['There goes the hat!', 'Hat overboard!', 'And the hat has a mind of its own!'],
-  hatWins: ['Technically, the hat wins.', 'The hat flew farther than the duck. Let that sink in.', 'Folks, the HAT beat the duck.'],
+  hatWins: ['Technically, the hat wins.', 'The hat flew farther than the duck. Think about that one.', 'Folks, the HAT beat the duck.'],
   billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
-  billPickWon: ['Called it! Bill\'s pick took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick WON! Nobody tell my editor.'],
+  billPickWon: ['Called it! Bill\'s pick, {duck}, took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick, {duck}, WON! Nobody tell my editor.'],
   billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board."],
-  countIn: ['First launch of the day! Count it down with me, folks!', 'Everybody, count it down!', 'Here we go! Three, two, one...'],
+  countInFirst: ['First launch of the day! Count it down with me, folks!', 'First duck of the day! Everybody count it down!'],
+  countIn: ['Everybody, count it down!', 'Here we go! Three, two, one...', 'Count it with me, folks!', 'Fingers on the countdown, everyone!', 'Say it with me!'],
   teamDay: ['{team} takes Team of the Day!', 'Team of the Day goes to {team}. Synchronized flapping pays off.'],
   solo: ["Just one duck today, and it's {duck} versus the record!", "A solo flight! {duck} is up against history."],
   winner: ['And the Golden Loaf goes to {duck}!', '{duck} takes home the Golden Loaf! Unbelievable!', 'Your champion of the pond: {duck}!'],
-  feather: ['And the Participation Feather goes to {duck}. Wear it proudly.', 'Every flight counts. {duck}, this feather is for you.', '{duck} takes home the Participation Feather. A true sport.'],
+  feather: ['And the Good Sport Feather goes to {duck}. Wear it proudly.', 'Every flight counts. {duck}, this feather is for you.', '{duck} takes home the Good Sport Feather. A true sport.'],
   // per-event reactions (Bill reacts a beat after the impact)
   ev_trampoline: ['BOING! {duck} found the trampoline!', "That's not a bounce, that's a lifestyle!"],
   ev_castle: ['{duck} is having a GREAT time in the bounce castle!', 'Ricochet! Ricochet! Ricochet!'],
   ev_pepper: ['{duck} ate the spicy pepper! Rocket mode!', 'That is a flame trail, folks. That duck is SPICY.'],
   ev_drone: ['Coffee delivery! {duck} is WIRED!', 'An espresso drone, right on time!'],
   ev_bell: ['{duck} rang the bell! Listen to that ding!', 'DING! What a sound!'],
-  ev_jetstream: ['{duck} caught the jet stream!', 'Riding the wind like a little feathered surfboard!'],
+  ev_jetstream: ['{duck} caught the jet stream!', 'Riding the wind like a little feathered surfboard!', 'The wind has picked up {duck}!', 'Tailwind express! {duck} is FLYING!', 'Somebody tell the wind to slow down!'],
   ev_pelican: ['The Pelican Express has arrived! All aboard!', 'That pelican is NOT on the schedule!'],
-  ev_migration: ['{duck} has joined the migration! Heading south!', 'Look at that formation! {duck} fits right in!'],
+  ev_migration: ['{duck} has joined the migration! Heading south!', 'Look at that formation! {duck} fits right in!', 'Flock mode activated!', '{duck} is drafting behind the flock!', 'V for VICTORY, {duck}!'],
   ev_glider: ['Where did {duck} get a hang glider?!', 'A long, lazy glide. Very relaxing.'],
   ev_skip: ['{duck} is skipping like a stone!', 'Look at that form on the water!'],
-  ev_plop: ['{duck} is in the pond now. Honestly? Fair.', '{duck} has decided to go for a swim instead.'],
-  ev_banana: ['Banana peel! {duck} is sliding for days!', 'Classic. Absolutely classic.'],
-  ev_walkway: ['{duck} is on the moving walkway!', 'Please stand to the right, {duck}.'],
-  ev_geese: ['{duck} just got HONKED!', 'The geese have no respect for the sport!'],
+  ev_plop: ['{duck} is in the pond now. Honestly? Fair.', '{duck} has decided to go for a swim instead.', 'Splash! {duck} has found the pond.', 'The pond claims another one!', '{duck} is doing laps now. Lovely stroke.', 'Swim break for {duck}!'],
+  ev_banana: ['Banana peel! {duck} is sliding for days!', 'Classic. Absolutely classic.', 'Who left that banana there?!', '{duck} is ice skating on a banana!'],
+  ev_walkway: ['{duck} is on the moving walkway!', 'Please stand to the right, {duck}.', 'Moving walkway! {duck} is commuting!', 'Look at {duck} just cruising!', 'Mind the gap, {duck}!'],
+  ev_geese: ['{duck} just got HONKED!', 'The geese have no respect for the sport!', 'HONK HONK! The geese are furious!', 'A goose ambush!', 'Those geese do NOT like visitors!'],
   ev_billboard: ['Right into the billboard!', '{duck} is reading the billboard. Up close.'],
   ev_tree: ['{duck} is stuck in the tree!', 'Is that a squirrel? It IS! Thank you, squirrel!'],
   ev_clothesline: ['Tangled in the laundry! {duck} has a sock now!', "That's one way to accessorize."],
-  ev_mud: ['SPLORT! {duck} is in the mud!', 'That is a magnificent mud mustache.'],
+  ev_mud: ['SPLORT! {duck} is in the mud!', 'That is a magnificent mud mustache.', '{duck} will need a bath after this.', 'Mud spa, anyone?'],
   ev_hammock: ['{duck} found a hammock... and is taking a nap.', 'Shhh. {duck} is resting.'],
-  ev_bread: ['{duck} has chosen bread over glory.', "Is that bread? It's bread. We've lost {duck}."],
+  ev_bread: ['{duck} has chosen bread over glory.', "Is that bread? It's bread. We've lost {duck}.", 'The bread wins again. It always does.', '{duck} has stopped for a snack. Respect.'],
   ev_ooo: ['An out-of-office reply! {duck} bounced right back!', '"I am currently out of the office." Classic.'],
   ev_replyall: ['A reply-all storm! Envelopes everywhere!', 'Somebody hit reply-all, and {duck} is paying for it.'],
   ev_onhold: ['{duck} is ON HOLD.', 'Your call is important to us. Please continue to wait.'],
@@ -530,17 +540,17 @@ C.LINES = {
   ev_ufo_ahead: ['And they dropped {duck} WAY down the field!', 'Alien taxi service! Thank you!'],
   ev_ufo_behind: ['They put {duck} back... a little behind.', 'The aliens took a wrong turn.'],
   ev_ufo_antennae: ['{duck} is back, and... wearing antennae?', 'Same spot. New antennae. Okay!'],
-  ev_wormhole: ['A WORMHOLE! Where will {duck} come out?!', 'Physics has left the chat.'],
+  ev_wormhole: ['A WORMHOLE! Where will {duck} come out?!', 'Physics has left the building.'],
   ev_tornado: ['TORNADO! {duck} is spinning like a top!', 'Round and round and... there they go!'],
   ev_pinball: ['Bing! Bing! Bing! Pinball chaos!', 'Somebody stop that duck from bouncing!'],
-  ev_crate: ['Mystery crate! Spin that wheel!', 'What is in the box?! What is in the box?!'],
+  ev_crate: ['Mystery crate! Spin that wheel!', 'Crate expectations, folks!'],
   ev_crate_tinyhat: ["It's... a TINY HAT. Congratulations.", 'A tiny hat! Fashion over function!'],
   ev_crate_rocket: ['ROCKET! The crate gave {duck} a rocket!', 'Rocket from the crate! Off they go!'],
   ev_crate_balloons: ['Balloons! {duck} is floating!', 'A bunch of balloons! Up, up!'],
-  ev_crate_reverse: ['Oh no, the crate said GO BACK!', 'Reverse card from the crate!'],
+  ev_crate_reverse: ['Oh no, the crate said GO BACK!', 'Backwards! The crate sent {duck} backwards!'],
   ev_cannonception: ['ANOTHER CANNON?!', 'Thunderbill Junior is open for business!'],
-  ev_space: ['{duck} is going to SPACE!', "We've lost visual. We've lost radio. We've lost the duck.", 'Is that a satellite waving?', 'Parachute is open! {duck} is coming home!'],
-  ev_seagull: ['A seagull just stole the hat!', 'Hat theft! In broad daylight!'],
+  ev_space: ['{duck} is going to SPACE!', "We've lost visual. We've lost radio. We've lost the duck.", 'Liftoff! {duck} just left the atmosphere!'],
+  ev_seagull: ['A seagull just stole the hat!', 'Hat theft! In front of everyone!'],
   ev_selfie: ['{duck} is taking a selfie. Priorities.', 'Say "bread"!'],
   ev_plane: ['The passengers are waving!', 'Window seat! Wave back, {duck}!'],
   ev_cows: ['The cows have noticed.', 'Every cow in the field looked up at once.'],
@@ -549,15 +559,16 @@ C.LINES = {
 };
 C.DUCK_LINES = {
   generic: ['I REGRET NOTHING', 'Per my last quack...', 'Is this a team-building exercise?', 'I can see my pond from here!', 'Tell my pond I love them', 'Wheeeee—wait', "I'm a duck, not a pilot!", 'Worth it.', 'Circle back? CIRCLE BACK?!', "Mom, I'm on TV!",
-    'Is this the line for bread?', "Nobody said there'd be a cannon!", 'This was NOT in the meeting invite!', 'Can we take this offline?', 'QUAAAACK!', 'I meant to do that.', 'Do I get frequent flyer miles?', 'Weeeee!', "Who's driving this thing?!", 'Gravity, we need to talk.',
+    'Is this the line for bread?', "Nobody said there'd be a cannon!", 'This was NOT in the meeting invite!', 'Can we take this offline?', 'QUAAAACK!', 'Totally on purpose.', 'Do I get frequent flyer miles?', 'Weeeee!', "Who's driving this thing?!", 'Gravity, we need to talk.',
     'Okay, NOW I am awake.', 'I can fly! I CAN FLY! I cannot fly.', "Sorry, you're breaking up!", 'Brb, flying.', 'Watch this!', 'Calculated.', 'Did anyone get that on camera?', 'Hi everyone!', 'Wing it! WING IT!', 'Out of office! Literally!',
     'New personal best!', "I'll be in my pond.", 'Never again. Okay, maybe tomorrow.', 'Is it over? Did I win?', 'Ten out of ten. Would launch again.', "Let's touch base. On the ground. Soon."],
   launch: ['Wheeeee—wait', 'AAAAAAA', "I'm a duck, not a pilot!", 'Wing it! WING IT!', 'Weeeee!', "Who's driving this thing?!", 'I REGRET NOTHING'],
   peek: ['Is it too late to reschedule?', 'Can I get a window seat?', 'Okay. Okay. Okay.', "Let's do this. Probably.", 'Tell the pond I said hi.', 'Is this thing on?'],
-  landGood: ['Calculated.', 'Nailed it.', 'Pond, sweet pond.', 'New personal best!', 'Ten out of ten. Would launch again.', 'Did anyone get that on camera?'],
-  landBad: ['I meant to do that.', "I'm fine! I'm fine!", 'Is it over? Did I win?', 'Worth it.', "I'll be in my pond.", 'That was a warm-up.'],
+  landGood: ['Calculated.', 'Nailed it.', 'Smooth landing!', 'New personal best!', 'Ten out of ten. Would launch again.', 'Did anyone get that on camera?'],
+  wrongWay: ['Wrong way?! Says who?', 'I prefer to call it reverse.', 'Okay, which way is the pond?'],
+  landBad: ['Totally on purpose.', "I'm fine! I'm fine!", 'Is it over? Did I win?', 'Worth it.', "I'll be in my pond.", 'That was a warm-up.'],
   tree: ['Little help?', 'I live here now.'],
-  bread: ['BREAD!', 'Worth it.'],
+  bread: ['Carbs!', 'Worth it.'],
   mud: ['Mud spa. Very fancy.', 'I feel exfoliated.'],
   onhold: ['Hello? Hello?', 'Representative. REPRESENTATIVE.'],
   gatekeeper: ["It's regarding... a flight?", 'I have an appointment!'],
@@ -567,20 +578,20 @@ C.DUCK_LINES = {
   banana: ['Whoaaa!', 'Who leaves a banana here?!'],
   glider: ['This is nice.', 'Wheee, very relaxing.'],
   pelican: ['Thanks for the lift!', 'Is this the express?'],
-  drone: ['Coffee! COFFEE!', 'I can hear colors!'],
-  pepper: ['HOT HOT HOT!', 'SPICY!'],
+  drone: ['Coffee! COFFEE!', 'I can see TOMORROW!'],
+  pepper: ['HOT HOT HOT!', 'MY BEAK IS ON FIRE!'],
   geese: ['Hey, watch it!', 'Rude!'],
   bell: ['Ding ding!', 'Meeting booked!'],
   clothesline: ['Is this sock mine now?', 'Fashion!'],
   ooo: ['But I had a question!', 'Rude!'],
   replyall: ['UNSUBSCRIBE!', 'Stop replying all!'],
   wormhole: ['Where am I?!', 'Wheeeeoooo!'],
-  tornado: ['I am a top!', 'Spinnnnn!'],
+  tornado: ['Which way is the pond?!', 'Spinnnnn!'],
   skip: ['Skip! Skip! Skip!', 'Wheee!'],
   walkway: ['Is this the express lane?', 'Love this for me.'],
   billboard: ['Ow. Fine. I am fine.', 'Good sign though.'],
-  trampoline: ['BOING!', 'Again! Again!'],
-  plop: ['Pond, sweet pond.', 'Honestly? Fair.'],
+  trampoline: ['Again! Again!', 'Higher! HIGHER!'],
+  plop: ['Pond, sweet pond.', 'Bath time!'],
   selfie: ['Get my good side!', 'For the pond group chat!'],
   hatwin: ['My hat! MY HAT!', 'Show-off.'],
   dizzy: ['Quack?', 'Which way is up?'],
@@ -599,13 +610,13 @@ C.AWARDS = {
   dressed: { name: 'Best Dressed', desc: 'Judges’ choice. The judges are ducks.' },
   comeback: { name: 'Comeback Kid', desc: 'Misfired, reloaded, flew anyway.' },
   napper: { name: 'Power Napper', desc: 'Took a nap mid-race.' },
-  feather: { name: 'Participation Feather', desc: 'Every flight counts.' },
+  feather: { name: 'Good Sport Feather', desc: 'Every flight counts.' },
 };
 
 /* ---------- blocklist (rot13 so the source stays clean to read). ----------
    inside: matched anywhere, including across word gaps.  whole: matched as whole words only. */
-C.BLOCK_INSIDE_R13 = 'obbo obbol obbovr gvggl gvggvrf pbpx funt guvpp ubbgre tbbfrq tbbfvat frkl frkhny frkg cbea ahqr anxrq avccyr cravf intvan qvyqb ubeal xvaxl rebgvp srgvfu betnfz obare shpx fuvg ovgpu fyhg juber phag jnax wvmm chffl avtt sntt snttbg ergneq genaal puvax jrgonpx xvxr qlxr yrfob zvqtrg arteb crpxre ubbxre obbmr ibqxn juvfxrl pnfvab wnpxcbg ybggrel cbxre jntre grdhvyn fgbare cvzc tebcr sbaqyr ahgf onyyf jbbq'.split(' ');
-C.BLOCK_WHOLE_R13 = 'gvg gvgf nff nffrf nefr ohgg ohggf uhzc uhzcvat fperj fcnax onat obbgl phz ubr ubrf qvpx qvpxf nany nahf ubzb snt sng htyl qhzo fghcvq vqvbg zbeba penml vafnar yhangvp cflpub fcnm fcvp tbbx tlc ynzr qehax gvcfl orre jvar jrrq fgbarq org orgf orggvat tnzoyr tnzoyvat qvpr xvff xvffrf fzbbpu syveg ubggvr onor qneyvat frkvfg'.split(' ');
+C.BLOCK_INSIDE_R13 = 'obbo obbol obbovr gvggl gvggvrf pbpx funt guvpp ubbgre tbbfrq tbbfvat frkl frkhny frkg cbea ahqr anxrq avccyr cravf intvan qvyqb ubeal xvaxl rebgvp srgvfu betnfz obare shpx fuvg ovgpu fyhg juber phag jnax wvmm chffl avtt sntt snttbg ergneq genaal puvax jrgonpx xvxr qlxr yrfob zvqtrg arteb crpxre ubbxre ubaxre obbmr ibqxn juvfxrl pnfvab wnpxcbg ybggrel cbxre jntre grdhvyn fgbare cvzc tebcr sbaqyr ahgf onyyf jbbq'.split(' ');
+C.BLOCK_WHOLE_R13 = 'obggbz obggbzf gvg gvgf nff nffrf nefr ohgg ohggf uhzc uhzcvat fperj fcnax onat obbgl phz ubr ubrf qvpx qvpxf nany nahf ubzb snt sng htyl qhzo fghcvq vqvbg zbeba penml vafnar yhangvp cflpub fcnm fcvp tbbx tlc ynzr qehax gvcfl orre jvar jrrq fgbarq org orgf orggvat tnzoyr tnzoyvat qvpr xvff xvffrf fzbbpu syveg ubggvr onor qneyvat frkvfg'.split(' ');
 C.BLOCK_PHRASES_R13 = ['crney arpxynpr', 'ubbx hc', 'trg yhpxl', 'fyrrc jvgu'];
 
 
@@ -619,12 +630,20 @@ const Store = (() => {
   const KEYS = ['settings', 'roster', 'history', 'current', 'rerolls', 'recentNames'];
   const mem = Object.create(null);
   let ls = null;
+  let full = false;
+  const isQuota = e => e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014);
   try {
     const t = window.localStorage;
-    t.setItem(PREFIX + '__probe', '1');
-    t.removeItem(PREFIX + '__probe');
+    t.getItem(PREFIX + 'settings');
+    try { t.setItem(PREFIX + '__probe', '1'); t.removeItem(PREFIX + '__probe'); }
+    catch (e) { if (isQuota(e)) full = true; else throw e; } // full but readable: keep reading what's saved
     ls = t;
   } catch (e) { ls = null; }
+  let warned = false;
+  function failed() {
+    full = true;
+    if (!warned && typeof Toast !== 'undefined') { warned = true; setTimeout(() => Toast.show('Browser storage is full, so changes are not being saved. Export your data (Settings), then clear some site data.', 6000), 0); }
+  }
 
   function readRaw(key) {
     if (ls) { try { const v = ls.getItem(PREFIX + key); if (v != null) return v; } catch (e) { /* fall through */ } }
@@ -655,6 +674,7 @@ const Store = (() => {
         data.races = data.races.slice(-Math.floor(data.races.length * 0.7));
         try { ls.setItem(PREFIX + key, JSON.stringify({ schema: SCHEMA, data })); return true; } catch (e2) { /* ignore */ }
       }
+      failed();
       return false;
     }
   }
@@ -681,11 +701,21 @@ const Store = (() => {
   function importAll(obj) {
     if (!obj || typeof obj !== 'object' || obj.app !== 'duck-duck-boom' || !obj.data || typeof obj.data !== 'object') throw new Error('Not a Duck Duck BOOM! backup file.');
     if (obj.schema !== SCHEMA) throw new Error('Backup is from an unknown version (' + obj.schema + ').');
+    const D = obj.data, isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+    const valid = {
+      settings: isObj, rerolls: isObj, recentNames: isObj,
+      roster: v => isObj(v) && Array.isArray(v.people),
+      history: v => isObj(v) && Array.isArray(v.races),
+      current: v => isObj(v) && Array.isArray(v.players) && Array.isArray(v.queue) && v.players.every(p => p && p.duck && p.name) && v.queue.every(q => q && v.players[q.p]),
+    };
+    const bad = KEYS.filter(k => k in D && D[k] != null && !valid[k](D[k]));
+    if (bad.length) throw new Error('The backup looks damaged (' + bad.join(', ') + ').');
+    // a backup is a full restore: our keys that aren't in it are cleared
     let n = 0;
-    for (const k of KEYS) { if (k in obj.data) { set(k, obj.data[k]); n++; } }
+    for (const k of KEYS) { if (k in D && D[k] != null) { set(k, D[k]); n++; } else del(k); }
     return n;
   }
-  return { get, set, del, wipe, exportAll, importAll, persistent: !!ls, SCHEMA, PREFIX };
+  return { get, set, del, wipe, exportAll, importAll, persistent: !!ls, get full() { return full; }, SCHEMA, PREFIX };
 })();
 
 /* ---------- typed accessors ---------- */
@@ -697,6 +727,7 @@ function loadSettings() {
   if (!Array.isArray(s.teams) || s.teams.length !== 3) s.teams = deepClone(C.TEAM_DEFAULTS);
   s.teams = s.teams.map((t, i) => ({ name: cleanName(t && t.name) || C.TEAM_DEFAULTS[i].name, color: (t && /^#[0-9a-f]{6}$/i.test(t.color)) ? t.color : C.TEAM_DEFAULTS[i].color, shape: C.TEAM_DEFAULTS[i].shape }));
   s.volume = clamp(+s.volume || 0, 0, 1);
+  s.practice = false; // practice is a per-visit choice, never carried to another day
   return s;
 }
 function saveSettings() { Store.set('settings', S.settings); }
@@ -706,7 +737,11 @@ function loadRoster() {
   const people = (r && Array.isArray(r.people)) ? r.people : [];
   return people.filter(p => p && p.name).map(p => ({ id: p.id || ('p' + hex8(hash(p.name, p.team || 0))), name: cleanName(p.name), team: clamp(p.team | 0, 0, 2), checked: !!p.checked, ammo: clamp(p.ammo | 0, 0, 3) }));
 }
-function saveRoster() { Store.set('roster', { people: S.roster, day: localDayKey() }); }
+// ticksChanged: only deliberate tick edits move the 'ticks are from <day>' date forward
+function saveRoster(ticksChanged) {
+  const prev = rosterDay();
+  Store.set('roster', { people: S.roster, day: ticksChanged || !prev ? localDayKey() : prev });
+}
 // the local date the ticks were last changed (to nudge the host to clear yesterday's ticks)
 function rosterDay() { const r = Store.get('roster', null); return r && typeof r.day === 'string' ? r.day : null; }
 
@@ -775,8 +810,9 @@ function computeFame(races, todayKey) {
       }
     });
     if (sorted[0]) {
-      const tn = (r.teams && r.teams[sorted[0].t]) || ('Team ' + ((sorted[0].t | 0) + 1));
-      teams.set(tn, (teams.get(tn) || 0) + 1);
+      // by team slot, so renaming a team in Settings keeps its wins
+      const ti = clamp(sorted[0].t | 0, 0, 2);
+      teams.set(ti, (teams.get(ti) || 0) + 1);
     }
     (r.legend || []).forEach(L => legend.push(Object.assign({ date: r.date }, L)));
   }
@@ -793,7 +829,7 @@ function computeFame(races, todayKey) {
   return {
     races: races.length,
     players: Array.from(players.values()).sort((a, b) => b.wins - a.wins || b.podiums - a.podiums || b.best - a.best),
-    teams: Array.from(teams.entries()).map(([name, wins]) => ({ name, wins })).sort((a, b) => b.wins - a.wins),
+    teams: Array.from(teams.entries()).map(([i, wins]) => ({ i, wins })).sort((a, b) => b.wins - a.wins),
     top10: launches.slice(0, 10),
     monthly: Array.from(monthly.values()).sort((a, b) => b.pts - a.pts || b.wins - a.wins),
     monthBest,
@@ -836,8 +872,15 @@ function rollRarity(rng, forced) {
 }
 
 // ctx: { recent:Set, taken:Set, firsts:Set(lowercase roster first names) }
-function nameIsOk(name, ctx) {
+const TITLE_WORDS = new Set(C.TITLES.concat(['the', 'of', 'von', 'de', 'la']).join(' ').toLowerCase().split(' '));
+// the distinctive words of a name (so two ducks in one show don't share a 'Breadcrumbs')
+function nameWords(name) { return Blocklist.words(name).filter(w => w.length >= 5 && !TITLE_WORDS.has(w)); }
+function nameIsOk(name, ctx, strict) {
   if (!name || Blocklist.hit(name)) return false;
+  if (strict) {
+    if (name.length > 32) return false;
+    if (ctx.takenWords && nameWords(name).some(w => ctx.takenWords.has(w))) return false;
+  }
   if (ctx.recent && ctx.recent.has(name)) return false;
   if (ctx.taken && ctx.taken.has(name)) return false;
   if (ctx.firsts && ctx.firsts.size) {
@@ -864,7 +907,7 @@ function genDuckName(rng, ctx, legendary) {
       if (L.fixedName) n = i === 0 ? L.fixedName : L.fixedName + ' ' + ['II', 'III', 'IV', 'V', 'Jr.'][Math.min(4, i - 1)];
       else { const pre = rng.pick(C.LEGEND_NAME_PREFIX[legendary]); n = pre.endsWith('-') ? pre + rng.pick(C.FIRSTS) : pre + ' ' + (rng.chance(0.5) ? rng.pick(C.FIRSTS) : rng.pick(C.SURNAMES)); }
     } else n = rng.chance(0.24) ? rng.pick(C.ONE_OFFS) : templateName(rng);
-    if (nameIsOk(n, ctx)) return n;
+    if (nameIsOk(n, ctx, i < 50 && !(legendary && i === 0))) return n;
   }
   // practically unreachable: deterministic, safe fallback
   return 'Duck No. ' + rng.int(100, 999);
@@ -1192,7 +1235,8 @@ const SIM = (() => {
       if (s.mode === MODE.air) s.pose = POSE.fly;
     }
     function deadStop(pose) {
-      const d = rng.range(5, 40);
+      // a faster duck skids farther past the obstacle, so stops spread out instead of piling up at one spot
+      const d = clamp(Math.abs(s.vx) * 0.5 + rng.range(2, 48), 5, 90);
       s.vx = 0; s.vy = 0;
       startScript('wobble', rng.range(0.9, 1.4), { d, pose: pose == null ? POSE.stand : pose, x0: s.x });
     }
@@ -1212,7 +1256,7 @@ const SIM = (() => {
       bread(pc) { emit('bread', { piece: pc.id }, 2.3); startScript('dive', 2.3, { x0: s.x, y0: s.y, tx: pc.x - 8, ty: 0 }); s.pose = POSE.eat; },
       mud(pc) { emit('mud', { piece: pc.id }); s.extra.mudT = s.t; s.y = 0; deadStop(POSE.stand); },
       cannonception(pc) { emit('cannonception', { piece: pc.id }, 1.4); startScript('reload', 1.4, { x0: pc.x + pc.w * 0.6, y0: 18, vx: rng.range(150, 178), vy: rng.range(140, 165) }); s.vis = 0; },
-      banana(pc) { emit('banana', { piece: pc.id }); s.slick = true; s.vx = Math.max(s.vx, 0) + rng.range(22, 34); s.spin = 9; s.y = 0; s.mode = MODE.ground; s.pose = POSE.slide; },
+      banana(pc) { emit('banana', { piece: pc.id }); s.slick = true; s.slickT = s.t; s.vx = Math.max(s.vx, 0) + rng.range(22, 34); s.spin = 9; s.y = 0; s.mode = MODE.ground; s.pose = POSE.slide; },
       walkway(pc) { emit('walkway', { piece: pc.id, end: pc.x + pc.w }, Math.max(0.5, (pc.x + pc.w - s.x) / 38)); s.y = groundY(s.x); startScript('walkway', 30, { end: pc.x + pc.w, speed: 38 }); s.pose = POSE.stand; },
       pond(pc, rolled) {
         const forcePlop = opts.force === 'plop';
@@ -1306,17 +1350,18 @@ const SIM = (() => {
           return;
         }
         case 'stuck': {
-          s.x = sc.x0; s.y = sc.y0; s.rot = Math.sin(s.t * 10) * 0.08; s.pose = POSE.stuck;
+          s.x = approach(s.x, sc.x0, 14, dt); s.y = approach(s.y, sc.y0, 14, dt); s.rot = Math.sin(s.t * 10) * 0.08; s.pose = POSE.stuck;
           if (u >= 1) { s.vx = sc.rel; s.vy = 4; endScript(); s.pose = POSE.dizzy; }
           return;
         }
         case 'slidedown': {
-          s.x = sc.x0; s.vy = -14; s.y += s.vy * dt; s.rot = 0.4; s.pose = POSE.dizzy;
+          s.x = approach(s.x, sc.x0, 14, dt); s.vy = -14; s.y += s.vy * dt; s.rot = 0.4; s.pose = POSE.dizzy;
           if (s.y <= groundY(s.x)) { s.y = groundY(s.x); deadStop(POSE.dizzy); }
           return;
         }
         case 'hold': {
-          s.x = sc.x0; s.y = sc.y0; s.rot = 0; s.pose = POSE.stand;
+          // glide into the booth instead of popping there
+          s.x = approach(s.x, sc.x0, 10, dt); s.y = approach(s.y, u > 0.85 ? groundY(s.x) : sc.y0, 10, dt); s.rot = 0; s.pose = POSE.stand;
           if (u >= 1) { s.vx = 0; s.vy = 0; s.y = groundY(s.x); deadStop(POSE.stand); }
           return;
         }
@@ -1328,6 +1373,7 @@ const SIM = (() => {
         case 'nap': {
           const k = easeOut(Math.min(1, u * 4));
           s.x = lerp(sc.x0, sc.tx, k); s.y = lerp(sc.y0, sc.ty, k); s.rot = lerp(0, -0.25, k); s.pose = POSE.sleep;
+          if (u > 0.82) s.y = lerp(sc.ty, groundY(s.x), easeInOut((u - 0.82) / 0.18));   // climb down before waking
           if (u >= 1) { s.y = groundY(s.x); deadStop(POSE.sleep); }
           return;
         }
@@ -1356,7 +1402,8 @@ const SIM = (() => {
         }
         case 'tornado': {
           const ang = (s.t - sc.t0) * 14;
-          s.x = sc.cx + Math.sin(ang) * 18 * (1 - u * 0.3); s.y = sc.y0 + u * 70; s.rot += dt * 20; s.pose = POSE.spin;
+          const tx = sc.cx + Math.sin(ang) * 18 * (1 - u * 0.3), blend = Math.min(1, (s.t - sc.t0) / 0.25);
+          s.x = lerp(sc.x0, tx, easeOut(blend)); s.y = sc.y0 + u * 70; s.rot += dt * 20; s.pose = POSE.spin;
           if (u >= 1) { s.vx = sc.vx; s.vy = sc.vy; endScript(); s.pose = POSE.dizzy; }
           return;
         }
@@ -1486,7 +1533,11 @@ const SIM = (() => {
           }
         }
       } else if (s.mode === MODE.ground) {
-        const decel = P.mu * P.g * (s.slick ? 0.14 : 1);
+        // banana: a few seconds of slippery, with a floor so it can't slide forever on Ice Rink days
+        if (s.slick && s.t - (s.slickT || 0) > 2.2) s.slick = false;
+        let decel = s.slick ? Math.max(4, P.mu * P.g * 0.3) : P.mu * P.g;
+        if (s.t > 52) decel *= 1 + (s.t - 52) * 0.6;   // nothing slides into the time cap
+        decel = Math.max(decel, 1.2) + 0.0005 * s.vx * s.vx;   // air drag on a sliding duck: no runaway slides
         const sg = Math.sign(s.vx);
         s.vx -= sg * decel * dt;
         if (Math.sign(s.vx) !== sg || Math.abs(s.vx) < 1.2) { s.vx = 0; s.rot = 0; deadStopNatural(); }
@@ -1512,6 +1563,16 @@ const SIM = (() => {
       s.t += dt;
       step++;
     }
+    // the time cap: a duck still up in the air drifts down so it never ends frozen in the sky
+    if (s.mode !== MODE.done && s.y > groundY(s.x) + 0.5) {
+      s.sc = null; s.vis = 1; s.mode = MODE.air; s.forces = [];
+      for (let k = 0; k < HZ * 20 && s.y > groundY(s.x); k++) {
+        if (record && step % REC === 0) { rec.x.push(s.x); rec.y.push(s.y); rec.rot.push(s.rot); rec.mode.push(s.mode); rec.pose.push(POSE.chute); rec.vis.push(1); }
+        s.vy = Math.max(-45, Math.min(s.vy, 0) - P.g * DT); s.vx *= 0.995;
+        s.x += s.vx * DT; s.y += s.vy * DT; s.t += DT; step++;
+      }
+      s.y = groundY(s.x);
+    }
     if (s.mode !== MODE.done) finish();
     if (record) { rec.x.push(s.x); rec.y.push(s.y); rec.rot.push(0); rec.mode.push(MODE.done); rec.pose.push(s.pose); rec.vis.push(1); }
 
@@ -1528,8 +1589,10 @@ const SIM = (() => {
       if (pc.type === 'pond') {
         if (only && only !== 'skip' && only !== 'plop') return false;
         // the pond is water: you either skip or you plop (no free pass)
-        if (s.mode === MODE.ground && Math.abs(s.vx) < 6) return false;
         if (s.used.has('plop')) return false;
+        // Ice Rink: the pond is frozen half the time and fast sliders skate right across
+        if (cond.mod === 'ice' && s.mode === MODE.ground && Math.abs(s.vx) > 30 && !only && (hash(seed, 'skate', pc.id) & 1)) return false;
+        if (s.mode === MODE.ground && Math.abs(s.vx) < 6) return FX.pond(pc, false);   // slow sliders still get wet
         return FX.pond(pc, pieceRoll[i] && (s.skipEv != null || canFire()));
       }
       if (!pieceRoll[i] || s.used.has(pc.ev) || !canFire()) return false;
@@ -1777,6 +1840,15 @@ function runSelfTest() {
   check('same player + day gives the same duck', JSON.stringify(d1) === JSON.stringify(d2));
   const d3 = generateDuck(duckSeed(day, 'Jamie', 1), {});
   check('a reroll changes the duck', JSON.stringify(d1) !== JSON.stringify(d3));
+  // every flight ends on the ground, at rest, inside the time cap (Ice Rink day: the slipperiest)
+  const ice = dailyConditions(day, { mod: 'ice' }), iceCourse = generateCourse(day, ice);
+  let capped = 0, aloft = 0;
+  for (let i = 0; i < 400; i++) { const tl = SIM.simulate(hash('selftest', i), ice, iceCourse, null, {}); if (tl.endT >= 69.9) capped++; const k = tl.n - 1; if (tl.y[k] > SIM.groundY(tl.x[k]) + 1) aloft++; }
+  check('no flight runs into the time cap or ends in mid-air', capped === 0 && aloft === 0, capped + ' capped, ' + aloft + ' aloft of 400 Ice Rink flights');
+  // content lint: nothing Bill or a duck says trips the blocklist
+  const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES);
+  const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
+  check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
   return out;
 }
 
@@ -2893,7 +2965,7 @@ function drawBigButton(ctx, x, y, st, t) {
 // Melodies are original. Audio starts on the first click (browser autoplay rules).
 
 const SFX = (() => {
-  let ac = null, master = null, comp = null, noiseBuf = null, vol = 0.6, muted = false;
+  let ac = null, master = null, comp = null, bus = null, fbus = null, D = null, noiseBuf = null, vol = 0.6, muted = false, drum = null;
   const nr = new Rng(424242);
   const N = {
     C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0, B4: 493.88,
@@ -2909,14 +2981,56 @@ const SFX = (() => {
     } catch (e) { ac = null; return false; }
     comp = ac.createDynamicsCompressor();
     comp.threshold.value = -18; comp.knee.value = 12; comp.ratio.value = 8; comp.attack.value = 0.003; comp.release.value = 0.25;
+    // sources -> bus -> compressor -> limiter -> master volume -> speakers
+    // (volume after the compressor scales the whole mix evenly; the limiter stops clipping)
+    bus = ac.createGain(); bus.gain.value = 0.85;
+    const lim = ac.createDynamicsCompressor();
+    lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.1;
     master = ac.createGain(); master.gain.value = muted ? 0 : vol;
-    master.connect(comp); comp.connect(ac.destination);
+    bus.connect(comp); comp.connect(lim); lim.connect(master); master.connect(ac.destination);
+    newFlightBus();
     noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = nr.next() * 2 - 1;
     return true;
   }
-  function resume() { try { if (!ac) init(); if (ac && ac.state === 'suspended') ac.resume(); } catch (e) { /* ignore */ } }
+  // long sounds (fuse, drumroll, hold music...) go through a bus that can be faded out on skip / screen change
+  function newFlightBus() { fbus = ac.createGain(); fbus.gain.value = 1; fbus.connect(bus); }
+  function stopLong(fade) {
+    if (!ac) return;
+    stopDrum(fade);
+    const old = fbus, t = ac.currentTime;
+    try { old.gain.cancelScheduledValues(t); old.gain.setValueAtTime(old.gain.value, t); old.gain.linearRampToValueAtTime(0, t + (fade || 0.06)); } catch (e) { /* ignore */ }
+    setTimeout(() => { try { old.disconnect(); } catch (e) { /* ignore */ } }, ((fade || 0.06) + 0.1) * 1000);
+    newFlightBus();
+  }
+  // the final-duck drumroll: one looping noise source, pulsed by an LFO, swelling until stopDrum()
+  function startDrum(swell) {
+    if (!ac || muted || vol <= 0) return;
+    stopDrum(0.02);
+    try {
+      const t = ac.currentTime + 0.01;
+      const src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+      const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.7;
+      const pulse = ac.createGain(); pulse.gain.value = 0.5;
+      const lfo = ac.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 24;
+      const lg = ac.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(pulse.gain);
+      const env = ac.createGain(); env.gain.setValueAtTime(0.0001, t); env.gain.exponentialRampToValueAtTime(0.05, t + 0.15); env.gain.linearRampToValueAtTime(0.16, t + Math.max(0.5, swell || 3));
+      src.connect(f); f.connect(pulse); pulse.connect(env); env.connect(fbus);
+      src.start(t); lfo.start(t);
+      drum = { src, lfo, env };
+    } catch (e) { drum = null; }
+  }
+  function stopDrum(fade) {
+    if (!drum || !ac) return;
+    const d = drum, t = ac.currentTime, f = fade == null ? 0.05 : fade;
+    drum = null;
+    try { d.env.gain.cancelScheduledValues(t); d.env.gain.setValueAtTime(Math.max(0.0001, d.env.gain.value), t); d.env.gain.exponentialRampToValueAtTime(0.0001, t + f + 0.01); d.src.stop(t + f + 0.05); d.lfo.stop(t + f + 0.05); } catch (e) { /* ignore */ }
+  }
+  // pause freezes every scheduled sound in step with the game
+  let held = false;
+  function pause(on) { held = !!on; try { if (!ac) return; if (on && ac.state === 'running') ac.suspend(); else if (!on && ac.state === 'suspended') ac.resume(); } catch (e) { /* ignore */ } }
+  function resume() { try { if (!ac) init(); if (ac && ac.state === 'suspended' && !held) ac.resume(); } catch (e) { /* ignore */ } }
   function setVolume(v) { vol = clamp(v, 0, 1); if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.05); }
   function setMuted(m) { muted = !!m; if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.03); }
   const now = () => ac.currentTime + 0.01;
@@ -2937,7 +3051,7 @@ const SFX = (() => {
     let node = osc;
     if (o.filter) { const f = ac.createBiquadFilter(); f.type = o.filter; f.frequency.value = o.ff || 1000; f.Q.value = o.q || 1; node.connect(f); node = f; }
     if (o.vib) { const l = ac.createOscillator(), lg = ac.createGain(); l.frequency.value = o.vib[0]; lg.gain.value = o.vib[1]; l.connect(lg); lg.connect(osc.frequency); l.start(t0); l.stop(t0 + dur + 0.05); }
-    node.connect(g); g.connect(o.dest || master);
+    node.connect(g); g.connect(o.dest || D || bus);
     osc.start(t0); osc.stop(t0 + dur + 0.05);
     return osc;
   }
@@ -2948,7 +3062,7 @@ const SFX = (() => {
     f.frequency.setValueAtTime(f0, t0);
     if (f1 && f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
     const g = gainEnv(t0, peak, o.a || 0.004, Math.max(0.02, dur - (o.a || 0.004) - (o.hold || 0)), o.hold);
-    src.connect(f); f.connect(g); g.connect(o.dest || master);
+    src.connect(f); f.connect(g); g.connect(o.dest || D || bus);
     src.start(t0, nr.next() * 1.5); src.stop(t0 + dur + 0.05);
   }
   function notes(seq, t0, voice) { let t = t0; for (const [n, d] of seq) { if (n) voice(N[n] || n, t, d); t += d; } return t; }
@@ -3070,9 +3184,12 @@ const SFX = (() => {
     shimmer() { const t = now(); for (let i = 0; i < 8; i++) tone('sine', 1500 + i * 220, 1500 + i * 220, t + i * 0.05, 0.3, 0.07); },
     squirrel() { const t = now(); for (let i = 0; i < 5; i++) tone('square', 2200 + nr.next() * 600, 1800, t + i * 0.07, 0.04, 0.09, { filter: 'bandpass', ff: 2500 }); },
   };
+  const LONG = new Set(['fuse', 'drumroll', 'hold', 'plane', 'scream', 'rocket', 'wind', 'zap', 'ring']);
   function play(name, ...args) {
     if (!ac || muted || vol <= 0) return;
+    D = LONG.has(name) ? fbus : bus;
     try { if (S[name]) S[name](...args); } catch (e) { /* never let audio break the show */ }
+    D = null;
   }
   // sound check for the debug panel
   function soundCheck() {
@@ -3080,8 +3197,8 @@ const SFX = (() => {
     list.forEach((n, i) => setTimeout(() => { Toast.show('♪ ' + n); play(n, n === 'quack' ? 1 : undefined); }, i * 900));
   }
   // QA hook: an analyser on the master output so tests can measure levels
-  function tap() { if (!ac) return null; const an = ac.createAnalyser(); an.fftSize = 2048; comp.connect(an); return an; }
-  return { init, resume, play, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
+  function tap() { if (!ac) return null; const an = ac.createAnalyser(); an.fftSize = 2048; master.connect(an); return an; }
+  return { init, resume, play, stopLong, startDrum, stopDrum, pause, get drumOn() { return !!drum; }, get state() { return ac ? ac.state : 'none'; }, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
 })();
 
 /* ---------- announcer voice (Web Speech, off by default) ---------- */
@@ -3097,6 +3214,8 @@ const Voice = {
       ss.speak(u);
     } catch (e) { /* not available here */ }
   },
+  stop() { try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) { /* ignore */ } },
+  pause(on) { try { const ss = window.speechSynthesis; if (ss) { if (on) ss.pause(); else ss.resume(); } } catch (e) { /* ignore */ } },
 };
 
 
@@ -3281,14 +3400,19 @@ function drawWorld(ctx, W) {
   // sky
   ctx.drawImage(Scenery.sky, 0, 0);
   if (cond.friday) {
-    // disco sky: slow color drift, no flashing
+    // disco sky: slow color drift, no flashing. Painted at 1/10 size and scaled up (smooth gradients
+    // upscale invisibly), so Fridays cost no more than any other day on a weak laptop.
+    if (!drawWorld.disco) { drawWorld.disco = document.createElement('canvas'); drawWorld.disco.width = 192; drawWorld.disco.height = 108; }
+    const dc = drawWorld.disco, dx = dc.getContext('2d');
+    dx.clearRect(0, 0, 192, 108);
     for (let i = 0; i < 4; i++) {
-      const x = 960 + Math.cos(t * 0.13 + i * 1.6) * 760, y = 260 + Math.sin(t * 0.17 + i * 2.1) * 180;
-      const gg = ctx.createRadialGradient(x, y, 0, x, y, 520);
+      const x = 96 + Math.cos(t * 0.13 + i * 1.6) * 76, y = 26 + Math.sin(t * 0.17 + i * 2.1) * 18;
+      const gg = dx.createRadialGradient(x, y, 0, x, y, 52);
       gg.addColorStop(0, hsl(t * 12 + i * 90, 85, 70).replace('hsl', 'hsla').replace('%)', '%,0.30)'));
       gg.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = gg; ctx.fillRect(0, 0, 1920, 1080);
+      dx.fillStyle = gg; dx.fillRect(0, 0, 192, 108);
     }
+    ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(dc, 0, 0, 1920, 1080); ctx.restore();
   }
   const lift = clamp(V.gy - GROUND_Y, 0, 4000);
   // sun / moon
@@ -3459,8 +3583,8 @@ function button(ctx, id, x, y, w, h, label, o) {
 function hitButton(x, y) { for (let i = S.buttons.length - 1; i >= 0; i--) { const b = S.buttons[i]; if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b; } return null; }
 
 /* ---------- the big red button (primary action on every screen) ---------- */
-const Big = { open: 0, target: 0, label: '', enabled: false, press: 0, x: 960, y: 992 };
-function setBig(label, enabled) { Big.label = label; Big.enabled = !!enabled; Big.target = enabled ? 1 : 0; }
+const Big = { open: 0, target: 0, label: '', enabled: false, press: 0, x: 960, y: 992, changedAt: -9, lastPress: -9 };
+function setBig(label, enabled) { if (label !== Big.label || !!enabled !== Big.enabled) Big.changedAt = S.rt; Big.label = label; Big.enabled = !!enabled; Big.target = enabled ? 1 : 0; }
 function drawBig(ctx, dt) {
   Big.open = approach(Big.open, Big.target, 9, dt);
   Big.press = Math.max(0, Big.press - dt);
@@ -3470,20 +3594,20 @@ function drawBig(ctx, dt) {
     const lx = Big.x + 125, ly = Big.y + 4;
     ctx.font = font(34);
     const w = ctx.measureText(Big.label).width + 40;
-    ctx.globalAlpha = Big.enabled ? 1 : 0.55;
+    ctx.globalAlpha = Big.enabled ? 1 : 0.85;
     rr(ctx, lx, ly - 30, w, 60, 18); fillStroke(ctx, Big.enabled ? '#fff8e6' : '#d8d2c4', 5);
     txt(ctx, Big.label, lx + w / 2, ly + 1, { px: 34, color: Big.enabled ? '#c22f1f' : '#6b6577', sw: 0 });
     ctx.globalAlpha = 1;
     // keyboard hint
     txt(ctx, 'or press SPACE', lx + w / 2, ly + 52, { px: 20, color: '#fff', sw: 4 });
   }
-  S.buttons.push({ id: 'big', x: Big.x - 95, y: Big.y - 50, w: 190, h: 100, fn: () => primary() });
+  S.buttons.push({ id: 'big', x: Big.x - 95, y: Big.y - 50, w: 190, h: 100, fn: () => primary(true) });
 }
 
 /* ---------- captions: Bill's lower third + big impact text + duck speech bubbles ---------- */
 const Caps = {
   queue: [], cur: null, curStart: 0, bigs: [], bubble: null,
-  reset() { this.queue = []; this.cur = null; this.bigs = []; this.bubble = null; },
+  reset() { this.queue = []; this.cur = null; this.bigs = []; this.bubble = null; this.side = null; },
   say(text, o) {
     if (!text) return;
     o = o || {};
@@ -3491,7 +3615,8 @@ const Caps = {
     // Bill never falls behind the action: a newer line replaces anything still waiting at the same or lower priority
     // (lines scheduled for later at the same priority are a planned sequence and stay)
     const now = S.rt;
-    this.queue = this.queue.filter(q => q.prio > item.prio || (q.prio === item.prio && q.at > now + 0.05));
+    // a line scheduled for later is a follow-up, so it doesn't knock out what's waiting now
+    if (!((o.delay || 0) > 0.5)) this.queue = this.queue.filter(q => q.prio > item.prio || (q.prio === item.prio && q.at > now + 0.05));
     this.queue.push(item);
     // over capacity: drop the least important line that's waiting (oldest first), never the newest
     while (this.queue.length > 5) { let wi = 0; for (let i = 1; i < this.queue.length - 1; i++) if (this.queue[i].prio < this.queue[wi].prio) wi = i; this.queue.splice(wi, 1); }
@@ -3502,6 +3627,7 @@ const Caps = {
     const now = S.rt;
     for (const b of this.bigs) if (b.t0 <= now && (o.delay || 0) <= 0.05) b.dur = Math.min(b.dur, now - b.t0 + 0.22);
     this.bigs.push({ text, t0: S.rt + (o.delay || 0), dur: Math.max(2, o.dur || 2), color: o.color || '#ffd23f', px: o.px || 96, y: o.y || 300, fixedY: !!o.y }); if (this.bigs.length > 2) this.bigs.shift(); },
+  shift(d) { if (!(d > 0)) return; this.queue.forEach(q => { q.at += d; }); this.curStart += d; this.bigs.forEach(b => { b.t0 += d; }); if (this.bubble) this.bubble.t0 += d; },
   bubbleSay(text, o) { if (!text) return; this.bubble = { text, t0: S.rt + ((o && o.delay) || 0), dur: Math.max(2, (o && o.dur) || 2.4) }; },
   update() {
     const now = S.rt;
@@ -3532,13 +3658,24 @@ const Caps = {
     lines.forEach((ln, i) => txt(ctx, ln, x + 150 + (1 - k) * 30, y + h / 2 + (i - (lines.length - 1) / 2) * 38 + 6, { px: 34, weight: 800, color: OUT, sw: 0, align: 'left' }));
     ctx.restore();
   },
+  side: null,
   drawBigs(ctx, avoidY) {
-    let slot = 0;
+    // keep impact captions on the far side of the duck (with hysteresis so they don't flip-flop)
+    if (avoidY != null) {
+      if (this.side == null) this.side = avoidY < 520 ? 'low' : 'high';
+      else if (this.side === 'low' && avoidY > 610) this.side = 'high';
+      else if (this.side === 'high' && avoidY < 430) this.side = 'low';
+    }
+    let off = 0;
     for (const b of this.bigs) {
       const t = S.rt - b.t0;
       if (t < 0) continue;
-      if (avoidY != null && !b.fixedY) b.y = approach(b.y || 300, avoidY < 470 ? 590 + slot * 125 : 260 + slot * 125, 12, 1 / 60);
-      slot++;
+      const hh = String(b.text).split('\n').length * b.px * 1.05;
+      if (avoidY != null && !b.fixedY) {
+        const ty = this.side === 'low' ? 790 - hh / 2 - off : 150 + hh / 2 + off;
+        b.y = b.yset ? approach(b.y, ty, 12, 1 / 60) : ty; b.yset = true;
+      }
+      off += hh + 16;
       const k = easeBack(t / 0.3), out = t > b.dur - 0.3 ? (b.dur - t) / 0.3 : 1;
       ctx.save(); ctx.globalAlpha = clamp(out, 0, 1);
       ctx.translate(960, b.y); ctx.scale(k, k); ctx.rotate(-0.04);
@@ -3547,7 +3684,7 @@ const Caps = {
       ctx.restore();
     }
   },
-  drawBubble(ctx, x, y) {
+  drawBubble(ctx, x, y, left) {
     const b = this.bubble;
     if (!b || S.rt < b.t0) return;
     const t = S.rt - b.t0;
@@ -3556,7 +3693,8 @@ const Caps = {
     ctx.font = font(32, 900);
     const lines = wrapText(ctx, b.text, 440, 3);
     const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 44, h = lines.length * 38 + 30;
-    let bx = clamp(x + 50, 20, 1490 - w), by = clamp(y - h - 70, 130, 780 - h);
+    // left: after landing, the duck's own flag label is to the right, so the bubble goes left
+    let bx = clamp(left ? x - 60 - w : x + 50, 20, 1490 - w), by = clamp(y - h - (left ? 150 : 70), 130, 780 - h);
     ctx.translate(bx + w / 2, by + h / 2); ctx.scale(k, k); ctx.translate(-(bx + w / 2), -(by + h / 2));
     const tx = clamp(x + 20, bx + 30, bx + w - 30), ty = by + h;
     ctx.beginPath(); ctx.moveTo(tx - 16, ty - 6); ctx.lineTo(clamp(x + 10, bx - 40, bx + w + 40), clamp(y - 40, ty + 10, ty + 60)); ctx.lineTo(tx + 12, ty - 6); ctx.closePath(); fillStroke(ctx, '#ffffff', 5);
@@ -3569,27 +3707,33 @@ const Caps = {
 
 /* ---------- commentary picker: shuffled bags so nothing repeats within a show ---------- */
 const Lines = {
-  bags: {}, rng: new Rng(1), used: new Set(),
-  reset(seed) { this.bags = {}; this.rng = new Rng(hash('lines', seed >>> 0)); this.used = new Set(); },
+  bags: {}, rng: new Rng(1), used: new Set(), last: {},
+  reset(seed) { this.bags = {}; this.rng = new Rng(hash('lines', seed >>> 0)); this.used = new Set(); this.last = {}; },
   fill(text, vars) { return String(text).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : m)); },
   next(pool, vars, isDuck) {
     const src = isDuck ? C.DUCK_LINES[pool] : C.LINES[pool];
     if (!src || !src.length) return null;
-    let bag = this.bags[(isDuck ? 'd:' : 'b:') + pool];
+    const bk = (isDuck ? 'd:' : 'b:') + pool;
+    let bag = this.bags[bk];
     for (let tries = 0; tries < src.length * 2 + 2; tries++) {
-      if (!bag || !bag.length) { bag = this.bags[(isDuck ? 'd:' : 'b:') + pool] = this.rng.shuffle(src); }
+      if (!bag || !bag.length) {
+        // a fresh pass through this pool: its lines are fair game again, but never the one just said
+        src.forEach(l => this.used.delete(l));
+        bag = this.bags[bk] = this.rng.shuffle(src);
+        if (bag.length > 1 && bag[0] === this.last[bk]) bag.push(bag.shift());
+      }
       const line = bag.shift();
       const safeCheck = this.fill(line, Object.assign({}, vars, { player: 'Player' }));
       if (Blocklist.hit(safeCheck)) continue;
       if (this.used.has(line) && tries < src.length) continue;
-      this.used.add(line);
+      this.used.add(line); this.last[bk] = line;
       return this.fill(line, vars);
     }
     return this.fill(src[0], vars);
   },
 };
 function say(pool, vars, o) { const l = Lines.next(pool, vars); if (l) Caps.say(l, o); return l; }
-function quip(pool, o) { const l = Lines.next(pool, {}, true) || Lines.next('generic', {}, true); if (l) Caps.bubbleSay(l, o); return l; }
+function quip(pool, o) { if (typeof L !== 'undefined' && L.quietUntil > S.rt) return null; const l = Lines.next(pool, {}, true) || Lines.next('generic', {}, true); if (l) Caps.bubbleSay(l, o); return l; }
 
 /* ---------- screen shake (gentle, can be turned off) ---------- */
 const Shake = { amp: 0, t: 0, add(a) { if (S.settings.shake) this.amp = Math.min(14, Math.max(this.amp, a)); }, update(dt) { this.amp = approach(this.amp, 0, 6, dt); this.t += dt; }, offset() { return this.amp < 0.3 ? [0, 0] : [Math.sin(this.t * 37) * this.amp, Math.cos(this.t * 29) * this.amp * 0.7]; } };
@@ -3606,11 +3750,27 @@ const Iris = { t: -1, dur: 0.7, mid: null, fired: false, cx: 960, cy: 540,
   },
 };
 
+/* ---------- pause: the show, captions, wipes, sound and voice all hold still ---------- */
+function setPaused(on) {
+  on = !!on;
+  if (on === S.paused) return;
+  if (on) { S.pauseAt = S.rt; if (S.screen === 'launch') { SFX.pause(true); Voice.pause(true); } }
+  else { Caps.shift(S.rt - (S.pauseAt || S.rt)); Big.changedAt = S.rt; SFX.pause(false); Voice.pause(false); }
+  S.paused = on;
+}
+
 /* ---------- DOM modal helpers (host-only screens) ---------- */
 const Modal = {
   el: null,
   open(html, onBind) { this.el = document.getElementById('modal'); this.el.innerHTML = '<div class="panel">' + html + '</div>'; this.el.classList.remove('hidden'); if (onBind) onBind(this.el); },
-  close() { if (!this.el) return; this.el.classList.add('hidden'); this.el.innerHTML = ''; if (S.paused) { S.paused = false; } },
+  close() {
+    if (!this.el) return;
+    const wasOpen = this.isOpen;
+    this.el.classList.add('hidden'); this.el.innerHTML = '';
+    if (S.paused) setPaused(false);
+    // settings changed from the roster (team names, Bonus Ammo, toggles) show up right away
+    if (wasOpen && S.screen === 'roster' && Roster.el) Roster.render();
+  },
   get isOpen() { return this.el && !this.el.classList.contains('hidden'); },
 };
 // In-page yes/no box: some hosted frames refuse window.confirm
@@ -3654,10 +3814,8 @@ function importDataFromText(text) {
     const n = Store.importAll(obj);
     S.settings = loadSettings(); S.roster = loadRoster(); S.history = loadHistory();
     SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted);
-    const cur = Store.get('current', null);
     S.race = null;
-    Toast.show('Imported ' + n + ' sections. ' + S.history.length + ' races in history.');
-    if (cur && cur.stage !== 'done') Toast.show('Imported. A saved show can be resumed from the title screen.', 2600);
+    Toast.show('Imported ' + n + ' sections. ' + S.history.length + ' races in history.' + (savedShow() ? ' The saved show can be resumed from the title screen.' : ''), 3200);
     Modal.close(); go('title');
     return true;
   } catch (e) { Toast.show('Import failed: ' + e.message, 3000); return false; }
@@ -3665,7 +3823,7 @@ function importDataFromText(text) {
 
 /* ---------- settings / pause modal ---------- */
 function openSettings(fromPause) {
-  S.paused = true;
+  setPaused(true);
   const st = S.settings;
   const teamRows = st.teams.map((t, i) => '<div class="field"><span style="width:30px">' + (i + 1) + '</span><input type="text" maxlength="24" data-team="' + i + '" value="' + esc(t.name) + '" style="width:260px"><div class="swatches">' + C.TEAM_SWATCHES.map(c => '<div class="sw' + (c.toLowerCase() === t.color.toLowerCase() ? ' on' : '') + '" data-ti="' + i + '" data-c="' + c + '" style="background:' + c + '"></div>').join('') + '</div></div>').join('');
   const canLate = S.race && (S.race.stage === 'launch' || S.race.stage === 'reveal' || S.race.stage === 'forecast');
@@ -3684,18 +3842,19 @@ function openSettings(fromPause) {
     (S.race && S.race.stage === 'launch' && S.race.players.some((p, i) => canRemoveNow(i)) ? '<h3>Remove someone who hasn\'t launched yet</h3><div class="row">' + S.race.players.map((p, i) => canRemoveNow(i) ? '<button class="btn small ghost" data-rm="' + i + '">✕ ' + esc(p.name) + '</button>' : '').join('') + '</div>' : '') +
     (canLate ? '<h3>Add a late player (launches last)</h3><div class="row"><input type="text" id="latename" maxlength="40" placeholder="Name" style="width:340px"><select id="lateteam">' + st.teams.map((t, i) => '<option value="' + i + '">' + esc(t.name) + '</option>').join('') + '</select><button class="btn small green" id="lateadd">Add to this show</button></div>' : '') +
     '<h3>Data</h3><div class="row"><button class="btn small blue" id="dexport">Export everything (JSON)</button><button class="btn small blue" id="dimport">Import…</button><input type="file" id="dfile" accept=".json,application/json" class="hidden"><button class="btn small ghost" id="dpaste">Paste import text…</button>' +
-    (S.race ? '<button class="btn small danger" id="dabandon">Abandon current show</button>' : '') + '<button class="btn small danger" id="dwipe">Reset all data…</button></div>' +
-    '<div class="note">Saved in this browser only (' + (Store.persistent ? 'localStorage, keys start with ddb.v1.' : 'storage is blocked here, so nothing persists after you close the tab: use Export') + '). ' + S.history.length + ' races in the Waddle of Fame.</div>' +
+    (S.race ? '<button class="btn small danger" id="dabandon">' + (S.race.saved ? 'Close these results' : 'Abandon current show') + '</button>' : '') + '<button class="btn small danger" id="dwipe">Reset all data…</button></div>' +
+    '<div class="note">Saved in this browser only (' + (Store.full ? '<b>browser storage is full, so new changes are not being saved: Export now, then clear some site data</b>' : Store.persistent ? 'localStorage, keys start with ddb.v1.' : 'storage is blocked here, so nothing persists after you close the tab: use Export') + '). ' + S.history.length + ' races in the Waddle of Fame.</div>' +
     '<div class="note">Keys: Space = big red button · R replay · T turbo · S skip · M mute · F fullscreen · P pause</div>' +
     '<div class="row" style="justify-content:flex-end"><button class="btn" id="sclose">' + (fromPause ? 'Resume show' : 'Done') + '</button></div>',
     el => {
       el.querySelectorAll('input[data-team]').forEach(inp => inp.oninput = () => { st.teams[+inp.dataset.team].name = cleanName(inp.value).slice(0, 24) || ('Team ' + (+inp.dataset.team + 1)); saveSettings(); });
-      el.querySelectorAll('.sw').forEach(sw => sw.onclick = () => { st.teams[+sw.dataset.ti].color = sw.dataset.c; saveSettings(); openSettings(fromPause); });
+      // picking a colour another team already has swaps the two, so teams never share a colour
+      el.querySelectorAll('.sw').forEach(sw => sw.onclick = () => { const ti = +sw.dataset.ti, c = sw.dataset.c, other = st.teams.findIndex((t, j) => j !== ti && t.color.toLowerCase() === c.toLowerCase()); if (other >= 0) st.teams[other].color = st.teams[ti].color; st.teams[ti].color = c; saveSettings(); openSettings(fromPause); });
       el.querySelector('#svol').oninput = e => { st.volume = e.target.value / 100; el.querySelector('#svolv').textContent = e.target.value + '%'; SFX.setVolume(st.volume); saveSettings(); };
       el.querySelector('#svol').onchange = () => SFX.play('quack', 1.2);
-      el.querySelector('#smute').onchange = e => { st.muted = e.target.checked; SFX.setMuted(st.muted); saveSettings(); };
+      el.querySelector('#smute').onchange = e => { st.muted = e.target.checked; SFX.setMuted(st.muted); if (st.muted) Voice.stop(); saveSettings(); };
       el.querySelector('#sshake').onchange = e => { st.shake = e.target.checked; saveSettings(); };
-      el.querySelector('#svoice').onchange = e => { st.voice = e.target.checked; saveSettings(); if (st.voice) Voice.speak('Bill Featherstone here. Testing, testing.'); };
+      el.querySelector('#svoice').onchange = e => { st.voice = e.target.checked; saveSettings(); if (st.voice) { Voice.pause(false); Voice.speak('Bill Featherstone here. Testing, testing.'); } else Voice.stop(); };
       el.querySelector('#sturbo').onchange = e => { st.turboDefault = e.target.checked; saveSettings(); };
       el.querySelector('#sauto').onchange = e => { st.autoAdvance = e.target.checked; saveSettings(); };
       el.querySelector('#sbonus').onchange = e => { st.bonusAmmo = e.target.checked; saveSettings(); };
@@ -3704,10 +3863,10 @@ function openSettings(fromPause) {
       el.querySelector('#dimport').onclick = () => file.click();
       file.onchange = () => { const f = file.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { if (importDataFromText(String(rd.result))) Modal.close(); }; rd.readAsText(f); };
       el.querySelector('#dpaste').onclick = () => Modal.open('<h2>Import from text</h2><div class="note">Paste the contents of a Duck Duck BOOM! backup file:</div><textarea class="out" id="ptext"></textarea><div class="row"><button class="btn green" id="pgo">Import</button><button class="btn ghost" id="pcancel">Cancel</button></div>', e2 => { e2.querySelector('#pgo').onclick = () => { if (importDataFromText(e2.querySelector('#ptext').value)) Modal.close(); }; e2.querySelector('#pcancel').onclick = () => Modal.close(); });
-      el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); S.roster = []; S.history = []; S.race = null; S.paused = false; go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
+      el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); S.roster = []; S.history = []; S.race = null; setPaused(false); go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
       const ab = el.querySelector('#dabandon');
-      if (ab) ab.onclick = () => confirmBox('Abandon the current show? Nothing from it will be saved.', 'Abandon show', () => { Store.del('current'); S.race = null; S.paused = false; go('title'); }, () => openSettings(fromPause));
-      el.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => { const pi = +bt.dataset.rm; const nm = S.race.players[pi].name; confirmBox('Take ' + nm + "'s duck out of today's show?", 'Remove', () => { removePlayer(pi); S.paused = false; }, () => openSettings(fromPause)); });
+      if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? 'Close these results and go back to the title? They are already saved in the Waddle of Fame.' : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
+      el.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => { const pi = +bt.dataset.rm; const nm = S.race.players[pi].name; confirmBox('Take ' + nm + "'s duck out of today's show?", 'Remove', () => { removePlayer(pi); setPaused(false); }, () => openSettings(fromPause)); });
       const la = el.querySelector('#lateadd');
       if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; addLatePlayer(nm, +el.querySelector('#lateteam').value); el.querySelector('#latename').value = ''; };
       el.querySelector('#sclose').onclick = () => Modal.close();
@@ -3726,7 +3885,7 @@ const Roster = {
   uniqueName(name, exceptId) {
     let base = cleanName(name), n = base, i = 2;
     const taken = new Set(S.roster.filter(p => p.id !== exceptId).map(p => personKey(p.name)));
-    while (taken.has(personKey(n))) n = base + ' (' + (i++) + ')';
+    while (taken.has(personKey(n))) { const suf = ' (' + (i++) + ')'; n = Array.from(base).slice(0, NAME_MAX - suf.length).join('').trim() + suf; }
     return n;
   },
   add(name, team, checked) {
@@ -3760,43 +3919,62 @@ const Roster = {
     const addTeam = +this.el.querySelector('#addteam').value;
     const keep = new Set();
     let added = 0, ticked = 0;
-    for (const ln of lines) {
+    for (let ln of lines) {
+      // Outlook / Teams attendee lists: "Jamie Rivera <jamie@x.com>" or a bare address
+      ln = ln.replace(/<[^>]*@[^>]*>/g, ' ').replace(/\(([^)]*@[^)]*)\)/g, ' ');
+      if (/^\s*[^\s@,]+@[^\s@,]+\s*$/.test(ln)) ln = ln.trim().split('@')[0].replace(/[._]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       if (!ln.trim()) continue;
-      const parts = ln.split(',');
-      const nm = cleanName(parts[0].replace(/^[\s\-*•\d.)]+/, ''));
+      // spreadsheet columns arrive tab-separated; "Name, Team 2" uses a comma
+      const parts = ln.split(/\t|,/).map(x => x.trim()).filter(Boolean);
+      if (!parts.length) continue;
+      let first = parts[0].replace(/^[\s\-*•]+|^\d+[.)]\s*/g, '');
+      let tm = null;
+      for (const c of parts.slice(1)) { const t = this.teamFromText(c); if (t != null) { tm = t; break; } }
+      // "Smith, John" (no team after the comma, one word each side) -> John Smith
+      if (tm == null && parts.length === 2 && !/\t/.test(ln) && !/\s/.test(first) && /^[^\s\d]+$/.test(parts[1])) first = parts[1] + ' ' + first;
+      const nm = cleanName(first);
       if (!nm) continue;
-      const tm = this.teamFromText(parts.slice(1).join(','));
       let p = S.roster.find(x => personKey(x.name) === personKey(nm));
       if (p) { if (tm != null) p.team = tm; p.checked = true; ticked++; }
       else { p = this.add(nm, tm == null ? addTeam : tm); if (p) added++; }
       if (p) keep.add(p.id);
     }
     if (only) S.roster.forEach(p => { if (!keep.has(p.id)) p.checked = false; });
-    saveRoster();
+    saveRoster(only);
     return { added, ticked, total: keep.size };
   },
   render() {
+    // keep anything half-typed in the side boxes across re-renders
+    const keepIds = ['paste', 'addname', 'addteam', 'rfind'];
+    const kept = {};
+    let focusId = null, selS = 0, selE = 0;
+    if (this.el) {
+      for (const id of keepIds) { const e = this.el.querySelector('#' + id); if (e) kept[id] = e.value; }
+      const a = document.activeElement;
+      if (a && this.el.contains(a) && keepIds.includes(a.id)) { focusId = a.id; try { selS = a.selectionStart; selE = a.selectionEnd; } catch (e) { /* select */ } }
+    }
     const T = S.settings.teams;
     const checked = S.roster.filter(p => p.checked).length;
     const f = personKey(this.filter);
     const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     const col = i => {
       const people = S.roster.filter(p => p.team === i).sort(byName);
-      const shown = f ? people.filter(p => personKey(p.name).includes(f)) : people;
+      const shown = people;
       return '<div class="team"><div class="team-head" style="background:' + T[i].color + '"><span class="tname">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
         '<button class="btn small ghost" data-all="' + i + '">All</button><button class="btn small ghost" data-none="' + i + '">None</button></div><div class="list">' +
-        (shown.length ? shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '"><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
+        (shown.length ? shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '" data-key="' + esc(personKey(p.name)) + '"' + (f && !personKey(p.name).includes(f) ? ' style="display:none"' : '') + '><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
           (S.settings.bonusAmmo ? '<select class="ammo" data-ammo="' + p.id + '" title="Bonus Ammo: extra shots, best counts">' + [0, 1, 2, 3].map(n => '<option value="' + n + '"' + (p.ammo === n ? ' selected' : '') + '>' + (n ? '+' + n + ' shot' + (n > 1 ? 's' : '') : 'no bonus') + '</option>').join('') + '</select>' : '') +
-          '<select data-move="' + p.id + '" title="Team">' + T.map((t, j) => '<option value="' + j + '"' + (j === i ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') + '</select><button class="x" data-del="' + p.id + '" title="Remove from the roster">×</button></div>').join('')
+          '<button class="tm" data-move="' + p.id + '" style="background:' + T[(i + 1) % 3].color + '" title="Move to ' + esc(T[(i + 1) % 3].name) + '">➜</button><button class="x" data-del="' + p.id + '" title="Remove from the roster">×</button></div>').join('')
           : '<div class="row" style="opacity:.6">' + (people.length ? 'No match' : 'Nobody yet') + '</div>') +
         '</div></div>';
     };
     const lastDay = rosterDay();
     const today = S.dbg.day || S.day;
     const stale = checked > 0 && lastDay && lastDay < localDayKey();
+    const over = checked > 40 ? S.roster.filter(p => p.checked).sort((a, b) => a.team - b.team || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(40).map(p => p.name) : [];
     this.el.innerHTML =
       '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick everyone who booked a meeting · click a name to fix it · up to 40 ducks</div></div>' +
-      '<div style="text-align:right"><div class="bar" style="justify-content:flex-end;margin-bottom:6px"><button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (checked > 40 ? 'Only the first 40 ticked people will fly.' : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
+      '<div style="text-align:right"><div class="bar" style="justify-content:flex-end;margin-bottom:6px"><button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (over.length ? 'Only 40 fit. Sitting out: ' + esc(over.join(', ')) : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
       (stale ? '<div class="stale">These ticks are from ' + esc(prettyDate(lastDay)) + '. New day? <button class="btn small" id="rfresh">Untick everyone</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
@@ -3804,41 +3982,45 @@ const Roster = {
       '<div class="bar"><button class="btn small green" id="onlybtn" title="Tick exactly these people and untick everyone else">Tick only these</button><button class="btn small ghost" id="pastebtn" title="Tick these people and keep everyone already ticked">Add to ticked</button></div></div>' +
       '<div class="box"><h3>Add one person</h3><div class="bar"><input type="text" id="addname" maxlength="40" placeholder="Name" style="flex:1;min-width:0"><select id="addteam">' + T.map((t, j) => '<option value="' + j + '">' + esc(t.name) + '</option>').join('') + '</select><button class="btn small green" id="addbtn">Add</button></div>' +
       '<div class="bar"><input type="text" id="rfind" placeholder="Find a name…" value="' + esc(this.filter) + '" style="flex:1;min-width:0"></div></div>' +
-      '<div class="box toggles"><label><input type="checkbox" id="tpractice"' + (S.settings.practice ? ' checked' : '') + '> Practice race (not saved)</label><label><input type="checkbox" id="tauto"' + (S.settings.autoAdvance ? ' checked' : '') + '> Auto-advance</label><label><input type="checkbox" id="tturbo"' + (S.settings.turboDefault ? ' checked' : '') + '> Turbo (2x)</label>' +
+      '<div class="box toggles"><label><input type="checkbox" id="tpractice"' + (S.settings.practice ? ' checked' : '') + '> Practice race (not saved, this visit only)</label><label><input type="checkbox" id="tauto"' + (S.settings.autoAdvance ? ' checked' : '') + '> Auto-advance</label><label><input type="checkbox" id="tturbo"' + (S.settings.turboDefault ? ' checked' : '') + '> Turbo (2x)</label>' +
       '<div class="bar"><button class="btn small ghost" id="rall">Tick all</button><button class="btn small ghost" id="rnone">Untick all</button></div></div>' +
       '</div></div>';
     const $ = s => this.el.querySelector(s);
-    const save = () => { saveRoster(); this.render(); };
-    this.el.querySelectorAll('[data-chk]').forEach(cb => cb.onchange = () => { const p = S.roster.find(x => x.id === cb.dataset.chk); if (p) p.checked = cb.checked; save(); });
+    for (const id in kept) { const e = $('#' + id); if (e) e.value = kept[id]; }
+    if (focusId) { const e = $('#' + focusId); if (e) { e.focus(); try { e.setSelectionRange(selS, selE); } catch (er) { /* select */ } } }
+    const save = ticks => { saveRoster(!!ticks); this.render(); };
+    this.el.querySelectorAll('[data-chk]').forEach(cb => cb.onchange = () => { const p = S.roster.find(x => x.id === cb.dataset.chk); if (p) p.checked = cb.checked; save(true); });
     this.el.querySelectorAll('[data-name]').forEach(inp => {
       inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { const p = S.roster.find(x => x.id === inp.dataset.name); inp.value = p ? p.name : inp.value; inp.blur(); } };
       inp.onblur = () => { const p = S.roster.find(x => x.id === inp.dataset.name); if (!p) return; const before = p.name; this.rename(p.id, inp.value); if (p.name !== before) Toast.show('Renamed to ' + p.name); inp.value = p.name; };
     });
-    this.el.querySelectorAll('[data-move]').forEach(sel => sel.onchange = () => { const p = S.roster.find(x => x.id === sel.dataset.move); if (p) p.team = +sel.value; save(); });
+    this.el.querySelectorAll('[data-move]').forEach(b => b.onclick = () => { const p = S.roster.find(x => x.id === b.dataset.move); if (p) { p.team = (p.team + 1) % 3; Toast.show(p.name + ' → ' + T[p.team].name); } save(); });
     this.el.querySelectorAll('[data-ammo]').forEach(sel => sel.onchange = () => { const p = S.roster.find(x => x.id === sel.dataset.ammo); if (p) p.ammo = +sel.value; saveRoster(); });
     this.el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const p = S.roster.find(x => x.id === b.dataset.del); S.roster = S.roster.filter(x => x.id !== b.dataset.del); save(); if (p) Toast.show('Removed ' + p.name); });
-    this.el.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.all) p.checked = true; }); save(); });
-    this.el.querySelectorAll('[data-none]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.none) p.checked = false; }); save(); });
-    const addOne = () => { const nm = $('#addname').value; const p = this.add(nm, +$('#addteam').value); if (p) { save(); Toast.show('Added ' + p.name); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
+    this.el.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.all) p.checked = true; }); save(true); });
+    this.el.querySelectorAll('[data-none]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.none) p.checked = false; }); save(true); });
+    const addOne = () => { const nm = $('#addname').value; const p = this.add(nm, +$('#addteam').value); if (p) { $('#addname').value = ''; save(); Toast.show('Added ' + p.name); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
     $('#addbtn').onclick = addOne;
     $('#addname').onkeydown = e => { if (e.key === 'Enter') addOne(); };
     const useList = only => {
       const r = this.applyList($('#paste').value, only);
       if (!r.total) { Toast.show('Type or paste some names first'); return; }
       Toast.show((only ? 'Ticked only these ' : 'Ticked ') + r.total + (r.added ? ' (' + r.added + ' new)' : ''), 2200);
+      $('#paste').value = '';
       this.render();
     };
     $('#onlybtn').onclick = () => useList(true);
     $('#pastebtn').onclick = () => useList(false);
-    $('#rfind').oninput = e => { this.filter = e.target.value; const pos = e.target.selectionStart; this.render(); const fi = this.el.querySelector('#rfind'); fi.focus(); fi.setSelectionRange(pos, pos); };
-    const fr = $('#rfresh'); if (fr) fr.onclick = () => { S.roster.forEach(p => p.checked = false); save(); };
+    // find: just hide rows, no re-render
+    $('#rfind').oninput = e => { this.filter = e.target.value; const q = personKey(this.filter); this.el.querySelectorAll('.list .row[data-key]').forEach(r => { r.style.display = !q || r.dataset.key.includes(q) ? '' : 'none'; }); };
+    const fr = $('#rfresh'); if (fr) fr.onclick = () => { S.roster.forEach(p => p.checked = false); save(true); };
     $('#tpractice').onchange = e => { S.settings.practice = e.target.checked; saveSettings(); };
     $('#tauto').onchange = e => { S.settings.autoAdvance = e.target.checked; saveSettings(); };
     $('#tturbo').onchange = e => { S.settings.turboDefault = e.target.checked; saveSettings(); };
     $('#rback').onclick = () => go('title');
     $('#rset').onclick = () => openSettings(false);
-    $('#rall').onclick = () => { S.roster.forEach(p => p.checked = true); save(); };
-    $('#rnone').onclick = () => { S.roster.forEach(p => p.checked = false); save(); };
+    $('#rall').onclick = () => { S.roster.forEach(p => p.checked = true); save(true); };
+    $('#rnone').onclick = () => { S.roster.forEach(p => p.checked = false); save(true); };
     setBig('REVEAL DUCKS', checked > 0);
   },
 };
@@ -3848,9 +4030,11 @@ const Roster = {
 function saveRace() { if (S.race) Store.set('current', S.race); }
 function nameCtx(exceptKey) {
   const day = S.race ? S.race.day : S.day;
-  const taken = new Set(S.race ? S.race.players.filter(p => p.key !== exceptKey).map(p => p.duck.name) : []);
+  const others = S.race ? S.race.players.filter(p => p.key !== exceptKey) : [];
+  const taken = new Set(others.map(p => p.duck.name));
+  const takenWords = new Set([].concat(...others.map(p => nameWords(p.duck.name))));
   const firsts = new Set(S.roster.map(p => firstWord(p.name)).concat(S.race ? S.race.players.map(p => firstWord(p.name)) : []).filter(w => w.length >= 2));
-  return { recent: recentNameSet(day), taken, firsts };
+  return { recent: recentNameSet(day), taken, takenWords, firsts };
 }
 function makePlayer(name, team, rerolls, ctx, day) {
   const key = personKey(name);
@@ -3860,8 +4044,11 @@ function makePlayer(name, team, rerolls, ctx, day) {
 function createRace() {
   const people = [];
   const seenKeys = new Set();
-  for (const p of S.roster.filter(p => p.checked)) {
-    if (people.length >= 40) break;
+  // same order as the roster columns (team, then name), so who's left out past 40 is predictable
+  const ticked = S.roster.filter(p => p.checked).slice().sort((a, b) => (a.team | 0) - (b.team | 0) || String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }));
+  const left = [];
+  for (const p of ticked) {
+    if (people.length >= 40) { left.push(cleanName(p.name)); continue; }
     let nm = cleanName(p.name) || 'Mystery Player', i = 2;
     const base = nm;
     while (seenKeys.has(personKey(nm))) nm = base + ' (' + (i++) + ')';
@@ -3869,15 +4056,17 @@ function createRace() {
     people.push({ name: nm, team: clamp(p.team | 0, 0, 2), ammo: p.ammo | 0 });
   }
   if (!people.length) { Toast.show('Tick at least one person first.'); return false; }
+  if (left.length) Toast.show('Only 40 ducks fit in Thunderbill. Sitting out: ' + left.join(', '), 6500);
   const day = S.dbg.day || localDayKey();
   S.day = day;
   const seed = S.dbg.seed != null ? S.dbg.seed >>> 0 : freshSeed();
   const rer = loadRerolls(day);
-  const ctx = { recent: recentNameSet(day), taken: new Set(), firsts: new Set(S.roster.map(p => firstWord(p.name)).filter(w => w.length >= 2)) };
+  const ctx = { recent: recentNameSet(day), taken: new Set(), takenWords: new Set(), firsts: new Set(S.roster.map(p => firstWord(p.name)).filter(w => w.length >= 2)) };
   const players = people.map(p => {
     const pl = makePlayer(p.name, p.team, rer[personKey(p.name)] || 0, ctx, day);
     pl.ammo = S.settings.bonusAmmo ? (p.ammo | 0) : 0;
     ctx.taken.add(pl.duck.name);
+    for (const w of nameWords(pl.duck.name)) ctx.takenWords.add(w);
     return pl;
   });
   const order = new Rng(hash(seed, 'order')).shuffle(players.map((_, i) => i));
@@ -3897,6 +4086,11 @@ function createRace() {
   // bonus round shots go at the very end
   if (S.settings.bonusAmmo) players.forEach((pl, pi) => { for (let k = 1; k <= (pl.ammo | 0); k++) S.race.queue.push({ p: pi, s: k, bonus: true }); });
   S.turbo = !!S.settings.turboDefault || players.length > 15;
+  // personal bests and the current streak, for Bill's callbacks
+  const F = computeFame(races, day);
+  S.race.pbs = {};
+  F.players.forEach(p => { const k = personKey(p.name); if (players.some(x => x.key === k)) S.race.pbs[k] = Math.round(p.best); });
+  S.race.streak = F.streak && F.streak.n >= 2 && players.some(x => x.key === F.streak.key) ? { key: F.streak.key, n: F.streak.n } : null;
   rememberNames(day, players.map(p => p.duck.name));
   refreshWorld();
   Lines.reset(seed);
@@ -3922,7 +4116,7 @@ function addLatePlayer(name, team) {
   const insertAt = () => { const fb = R.queue.findIndex((q, i) => q.bonus && i >= R.idx); return fb >= 0 ? Math.max(fb, R.idx + (loadedNow ? 1 : 0)) : R.queue.length; };
   // putting back someone who was removed by mistake: same person, same duck
   const back = R.players.findIndex(p => p.key === key && p.out && !R.results[p.key]);
-  if (back >= 0) { R.players[back].out = false; R.queue.splice(insertAt(), 0, { p: back, s: 0 }); saveRace(); Toast.show(R.players[back].name + "'s duck is back in and will launch last!", 2600); return; }
+  if (back >= 0) { R.players[back].out = false; R.queue.splice(insertAt(), 0, { p: back, s: 0 }); saveRace(); refreshIdleBig(); Toast.show(R.players[back].name + "'s duck is back in and will launch last!", 2600); return; }
   let nm = name, i = 2;
   while (R.players.some(p => p.key === personKey(nm))) nm = name + ' (' + (i++) + ')';
   if (activePlayers().length >= 40) { Toast.show('The cannon tops out at 40 ducks.'); return; }
@@ -3936,6 +4130,7 @@ function addLatePlayer(name, team) {
   rememberNames(R.day, [pl.duck.name]);
   if (S.screen === 'reveal') { RV.flipped.push(true); RV.flipAt.push(0); }
   saveRace();
+  refreshIdleBig();
   Toast.show(nm + "'s duck " + pl.duck.name + ' will launch last!', 2600);
 }
 // Take someone out of a show in progress (ticked by mistake). Only ducks that haven't launched yet.
@@ -3957,11 +4152,32 @@ function removePlayer(pi) {
   Toast.show(pl.name + "'s duck is out of today's show");
   if (wasLoaded && S.screen === 'launch') {
     if (R.idx < R.queue.length) loadDuck(false);
-    else if (standings().length) { L.phase = 'idle'; setBig('SEE RESULTS', true); }
+    else if (standings().length) {
+      // nobody is on deck any more: clear the removed duck off the screen
+      L.q = null; L.pl = null; L.pi = -1; L.tl = null; L.pb = null; L.result = null; L.drum = false;
+      Caps.reset(); stopShowAudio();
+      L.phase = 'idle'; L.pt = 0; setBig('SEE RESULTS', true);
+    }
     else { Store.del('current'); S.race = null; go('title'); }
-  }
+  } else refreshIdleBig();
   return true;
 }
+// the queue changed while waiting between ducks: keep the big button's label honest
+function refreshIdleBig() {
+  const R = S.race;
+  if (!R || S.screen !== 'launch' || L.phase !== 'idle') return;
+  const last = R.idx >= R.queue.length;
+  setBig(last ? 'SEE RESULTS' : (R.queue[R.idx].bonus ? 'BONUS SHOT' : 'NEXT DUCK'), true);
+}
+// standings distance: a tenth of a foot is shown only when two neighbours would otherwise look tied
+function fmtDist(st, i) {
+  const d = st[i].dist, r = Math.round(d);
+  const tie = (st[i - 1] && Math.round(st[i - 1].dist) === r) || (st[i + 1] && Math.round(st[i + 1].dist) === r);
+  if (!tie) return fmtFt(d);
+  const a = Math.abs(d);
+  return (d < 0 ? '-' : '') + fmtInt(Math.floor(a)) + '.' + Math.floor((a % 1) * 10) + ' ft';
+}
+function marginText(m) { return m < 1 ? m.toFixed(1) + ' ft' : fmtFt(m); }
 function activePlayers() { return S.race ? S.race.players.filter(p => !p.out) : []; }
 function standings() {
   const R = S.race;
@@ -3990,7 +4206,7 @@ function recordFlight(q, tl) {
   const L = [];
   if (tl.special === 'backfire') L.push('Backfire! Flew the wrong way');
   if (tl.events.some(e => e.id === 'space')) L.push('Went to space');
-  if (tl.events.some(e => e.id === 'cannonception')) L.push('Cannon-ception');
+  if (tl.events.some(e => e.id === 'cannonception')) L.push('Double Cannon! Fired twice');
   if (tl.hat && tl.hat.wins) L.push('The hat beat the duck');
   if (pl.duck.rarity === 'legendary') L.push('Flew a Legendary ' + C.LEGENDARIES.find(l => l.id === pl.duck.legendary).name);
   L.forEach(what => R.legend.push({ p: pl.name, d: pl.duck.name, what, dist: Math.round(tl.final) }));
@@ -4023,7 +4239,10 @@ function computeAwards(R) {
   // keep 3-5, unique by award id
   const seen = new Set(), awards = [];
   for (const a of out) { if (seen.has(a.id)) continue; seen.add(a.id); awards.push(a); if (awards.length >= 5) break; }
-  const feather = st.length > 1 ? st[st.length - 1] : null;
+  // the Good Sport Feather goes to a (seeded) random duck off the podium that has no other award
+  const awarded = new Set(awards.map(a => a.e.pl.key));
+  const pool = st.slice(3).filter(e => !awarded.has(e.pl.key));
+  const feather = pool.length ? pool[hash(R.seed, 'feather') % pool.length] : null;
   return { awards, feather };
 }
 // Team of the Day: the team whose ducks flew farthest on average (needs at least two teams in the show)
@@ -4055,7 +4274,8 @@ function computeHighlights(R) {
     for (const [id, x, extra] of e.r.ev) {
       const def = C.EVENTS[id];
       if (!def || !def.hl) continue;
-      let t = Lines.fill(def.hl, { duck, x: fmtFt(Math.max(0, x)), n: extra, prize: (C.CRATE_PRIZES.find(p => p.id === extra) || {}).label || 'a surprise' }) + '.';
+      const PRIZE = { tinyhat: 'won a tiny hat', rocket: 'got a rocket', balloons: 'floated off on balloons', reverse: 'got sent backward' };
+      let t = Lines.fill(def.hl, { duck, x: fmtFt(Math.max(0, x)), n: extra, times: extra === 1 ? 'once' : extra + ' times', prize: PRIZE[extra] || 'got a surprise' }) + '.';
       if (id === 'ufo') t = duck + ' was abducted by a UFO at ' + fmtFt(Math.max(0, x)) + (extra === 'ahead' ? ' and dropped way down the field.' : extra === 'behind' ? ' and returned a little behind.' : ' and came back wearing antennae.');
       cands.push({ s: (score[id] || 20) + (e.pi % 7) * 0.1, t, who: duck });
     }
@@ -4073,9 +4293,8 @@ function resultsText(R) {
   const cond = S.cond;
   const head = 'Duck Duck BOOM! · ' + shortDate(R.day) + ' · ' + st.length + ' duck' + (st.length === 1 ? '' : 's') + ' · ' + modName(cond) + ' · Race ID ' + R.id + (R.practice ? ' · Practice' : '');
   const lines = [head];
-  st.slice(0, 3).forEach((e, i) => lines.push((i + 1) + '. ' + e.pl.name + ' · ' + e.pl.duck.name + ' · ' + fmtFt(e.dist)));
+  st.slice(0, 3).forEach((e, i) => lines.push((i + 1) + '. ' + e.pl.name + ' · ' + e.pl.duck.name + ' · ' + fmtDist(st, i)));
   const aw = awards.slice(0, 3).map(a => C.AWARDS[a.id].name + ' (' + a.e.pl.name + ')');
-  if (feather) aw.push('Participation Feather (' + feather.pl.name + ')');
   if (aw.length) lines.push('Awards: ' + aw.join(' · '));
   const tod = teamOfDay(R);
   if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
@@ -4139,8 +4358,9 @@ function loadDuck(first) {
     L.cam = { cx: 30, gy: GROUND_Y, z: 5.2 }; setPhase('intro');
   };
   L.phase = 'loading'; L.pt = 0;
-  if (first) go2(); else Iris.start(go2, 960, 540);
+  SFX.stopLong(0.1);
   setBig(q.bonus ? 'BONUS SHOT' : 'NEXT DUCK', false);
+  if (first) go2(); else Iris.start(go2, 960, 540);
 }
 function setPhase(p) {
   L.phase = p; L.pt = 0;
@@ -4149,7 +4369,10 @@ function setPhase(p) {
   if (p === 'intro') {
     setBig('LOADING…', false);
     const vars = { duck: d.name, player: pl.name };
+    const firstShot = !R.results[pl.key];
     if (L.q.bonus) Caps.say('Bonus shot for ' + pl.name + "'s duck, " + d.name + '! Best shot counts.', { prio: 1 });
+    else if (firstShot && R.streak && R.streak.key === pl.key) say('streakIntro', Object.assign({ n: R.streak.n + 1 }, vars), { prio: 1 });
+    else if (firstShot && R.champ === pl.key && R.players.length > 1) say('champIntro', vars, { prio: 1 });
     else say('intro', vars, { prio: 1 });
     SFX.play('quack', d.pitch, 2);
     if (d.rarity === 'legendary' || d.rarity === 'epic') SFX.play('sting', d.rarity);
@@ -4166,7 +4389,7 @@ function setPhase(p) {
     SFX.play('click');
     quip('peek', { delay: 0.2 });
     // get the call involved: the first launch of the day (and now and then after) invites a count-along
-    if (!L.q.bonus && (S.race.idx === 0 || hash(S.race.seed, 'countin', S.race.idx) % 5 === 0)) Caps.say(S.race.idx === 0 ? C.LINES.countIn[0] : Lines.next('countIn', {}) || C.LINES.countIn[1], { prio: 1 });
+    if (!L.q.bonus && (S.race.idx === 0 || hash(S.race.seed, 'countin', S.race.idx) % 5 === 0)) say(S.race.idx === 0 ? 'countInFirst' : 'countIn', {}, { prio: 1 });
   }
   if (p === 'countdown') {
     setBig('LIGHT THE FUSE', false);
@@ -4175,7 +4398,8 @@ function setPhase(p) {
     const seed = flightSeed(R.seed, pl.key, L.q.s);
     const extra = S.dbg.force && pieceTypeForEvent(S.dbg.force) && C.EVENTS[S.dbg.force] && C.EVENTS[S.dbg.force].kind !== 'gag' ? SIM.forcedPieces(seed, S.cond, S.course, d, S.dbg.force) : (S.dbg.force === 'cows' ? SIM.forcedPieces(seed, S.cond, S.course, d, 'cows') : null);
     const opts = { force: S.dbg.force || null, special: S.dbg.special || null, extraPieces: extra && extra.length ? extra : null };
-    if (opts.extraPieces) S.course = { dayKey: S.course.dayKey, pieces: S.course.pieces.filter(pc => !pc.forced).concat(opts.extraPieces) };
+    // a debug-forced piece only exists for its own flight
+    S.course = { dayKey: S.course.dayKey, pieces: S.course.pieces.filter(pc => !pc.forced).concat(opts.extraPieces || []) };
     L.tl = SIM.simulate(seed, S.cond, S.course, Object.assign({}, d, { hat: d.hat || (S.cond.friday ? 'party' : null) }), opts);
     S.dbg.force = ''; S.dbg.special = '';
     if (typeof DebugPanel !== 'undefined') DebugPanel.sync();
@@ -4239,17 +4463,28 @@ function buildPlayback(tl, photo) {
   // hard cap: a flight never plays longer than 14 s
   let total = holds;
   for (const sg of segs) total += (Math.min(sg.b, tl.endT) - sg.a) / sg.r;
-  if (total > 14) { const k = (total - holds) / Math.max(1, 14 - holds); segs.forEach(sg => { sg.r *= k; }); }
   if (photo) {
+    // the photo-finish slow-mo counts toward the cap too: the rest speeds up to make room
     const ps = Math.max(tl.launchT + 0.5, tl.endT - 1.6);
     const out = [];
     for (const sg of segs) { if (sg.b <= ps) out.push(sg); else if (sg.a < ps) { out.push({ a: sg.a, b: ps, r: sg.r }); } }
+    const slow = (tl.endT - ps) / 0.36;
+    let pre = 0; for (const sg of out) pre += (Math.min(sg.b, ps) - sg.a) / sg.r;
+    const budget = Math.max(2, 14 - holds - slow);
+    if (pre > budget) { const k = pre / budget; out.forEach(sg => { sg.r *= k; }); }
     out.push({ a: ps, b: tl.endT + 1, r: 0.36 });
     return { segs: out, photoAt: ps };
   }
+  if (total > 14) { const k = (total - holds) / Math.max(1, 14 - holds); segs.forEach(sg => { sg.r *= k; }); }
   return { segs, photoAt: -1 };
 }
 function rateAt(pb, t) { for (const s of pb.segs) if (t < s.b) return s.r; return 1; }
+// how long the playback will take in real seconds (for the final-duck drumroll swell)
+function pbDuration(tl, pb) {
+  let d = pb.hold + tl.events.filter(e => C.EVENTS[e.id] && C.EVENTS[e.id].dist).length * 0.3 + (tl.special === 'misfire' ? 0.3 : 0);
+  for (const sg of pb.segs) d += Math.max(0, Math.min(sg.b, tl.endT) - sg.a) / sg.r;
+  return d;
+}
 
 function startFlight(replay) {
   const tl = L.tl;
@@ -4270,15 +4505,15 @@ function startFlight(replay) {
   L.phase = 'flight'; L.pt = 0;
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   boomFX(tl.special === 'misfire');
-  if (L.drum) SFX.play('drumroll', Math.min(10, tl.endT));
+  if (L.drum && !replay) SFX.startDrum(pbDuration(tl, L.pb));
 }
 function boomFX(misfire) {
   const m = cannonMuzzle(L.barrel);
   if (misfire) {
     SFX.play('puff');
     Particles.add({ type: 'smoke', ws: true, x: m.x, y: m.y, vx: 4, vy: 3, life: 1.4, r: 30, a: 0.7 });
-    Caps.big('FIRE IN THE DUCK!', { px: 100 });
-    Caps.big('...?', { px: 120, delay: 1.0, color: '#ffffff', y: 440 });
+    Caps.big('FIRE IN THE DUCK!', { px: 100, y: 200 });
+    Caps.big('...?', { px: 120, delay: 1.0, color: '#ffffff', y: 330 });
     say('misfire', { duck: L.pl.duck.name }, { delay: 0.8, prio: 1 });
     return;
   }
@@ -4289,8 +4524,9 @@ function boomFX(misfire) {
   Particles.add({ type: 'ring', ws: true, x: m.x + Math.cos(a) * 6, y: m.y + Math.sin(a) * 6, vx: Math.cos(a) * 30, vy: Math.sin(a) * 30, life: 1.3, r: 40, rot: -a + Math.PI / 2 });
   for (let i = 0; i < 9; i++) Particles.add({ type: 'smoke', ws: true, x: m.x + fx.range(-4, 4), y: m.y + fx.range(-4, 4), vx: Math.cos(a) * fx.range(10, 50) + fx.range(-10, 10), vy: Math.sin(a) * fx.range(10, 50) + fx.range(-5, 10), drag: 1.5, life: fx.range(1.2, 2.2), r: fx.range(24, 40), a: 0.8 });
   burst('feather', 12, { x: m.x, y: m.y, a0: -a, spread: 1.2, sp0: 20, sp1: 70, l0: 1.2, l1: 2.2, r0: 8, r1: 14, colors: [C.COLORS[L.pl.duck.color].c, '#ffffff'], extra: { ws: true, g: -12, drag: 1.2 } });
-  Caps.big('FIRE IN THE DUCK!', { px: 104, dur: 2 });
-  if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 450 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }
+  // up top, so Ol' Thunderbill's big moment stays in view
+  Caps.big('FIRE IN THE DUCK!', { px: 104, dur: 2, y: 200 });
+  if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 330 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }
   else if (L.fuseOut) { /* the fake-out has its own punchline */ }
   else { say('launch', { duck: L.pl.duck.name }, { delay: 0.5 }); if (!L.tl.gags.some(g => g.id === 'scream')) quip('launch', { delay: 1.2 }); }
   L.boomed = true;
@@ -4326,8 +4562,14 @@ function updateFlight(dt) {
     if (e.id === 'walkway' && !pb.fired.has('w' + i) && t >= e.tEnd - 0.2 && e.tEnd > e.t + 0.5) { pb.fired.add('w' + i); SFX.play('walkway'); Caps.big('The moving walkway\nis ending.', { px: 64, color: '#ffffff', y: 420 }); }
     if (e.id === 'skip' && e.data.n > 1) { const k = Math.floor(clamp((t - e.t) / Math.max(0.01, e.tEnd - e.t), 0, 1) * (e.data.n - 1)); if (!pb.fired.has('sk' + i + ':' + k) && k > 0) { pb.fired.add('sk' + i + ':' + k); SFX.play('skip', k); Caps.big('SKIP ×' + (k + 1), { px: 76, color: '#ffffff', y: 430, dur: 2 }); } }
     if (e.id === 'tree' && !pb.fired.has('sq' + i) && t >= e.tEnd - 1.0) { pb.fired.add('sq' + i); SFX.play('squirrel'); }
+    // sounds tied to the timeline (not the wall clock), so they stay in sync with pause, turbo and the impact hold
+    if (e.id === 'onhold' && !pb.fired.has('oh' + i) && t >= e.t + 0.5) { pb.fired.add('oh' + i); SFX.play('hold'); }
+    if (e.id === 'cannonception' && !pb.fired.has('cc' + i) && t >= e.t + 1.4) { pb.fired.add('cc' + i); SFX.play('boom'); Shake.add(5); }
   });
-  tl.gags.forEach((g, i) => { if (!pb.fired.has('g' + i) && t >= g.t - (C.EVENTS[g.id].antic || 0)) { pb.fired.add('g' + i); onGag(g); } });
+  tl.gags.forEach((g, i) => {
+    if (!pb.fired.has('g' + i) && t >= g.t - (C.EVENTS[g.id].antic || 0)) { pb.fired.add('g' + i); onGag(g); }
+    if (g.id === 'shades' && !pb.fired.has('gc' + i) && t >= g.t + 0.6) { pb.fired.add('gc' + i); SFX.play('cool'); }
+  });
   if (tl.hat && !pb.fired.has('hat') && t >= tl.hat.t0) { pb.fired.add('hat'); say('hatOff', {}, {}); SFX.play('whoosh', 0.4); }
   // landing impacts (bounces): squash + dust + thud
   const s = sampleTL(tl, t);
@@ -4378,9 +4620,7 @@ function onImpact(e) {
   if (def.sfx && !['honk', 'zap', 'buzz', 'pelican'].includes(def.sfx)) SFX.play(def.sfx, e.id === 'skip' ? 0 : e.id === 'onhold' ? undefined : (def.sfx === 'rocket' ? 1.5 : undefined));
   if (e.id === 'geese') { SFX.play('bonk'); SFX.play('slide', 1.0); }
   if (e.id === 'ufo') SFX.play('ooh');
-  if (e.id === 'onhold') setTimeout(() => SFX.play('hold'), 500);
   if (e.id === 'space') { SFX.play('ooh'); SFX.play('whoosh', 1.5); }
-  if (e.id === 'cannonception') setTimeout(() => SFX.play('boom'), 1300);
   if (e.id === 'tree' || e.id === 'billboard' || e.id === 'gatekeeper' || e.id === 'mud') SFX.play('quack', d.pitch * 1.1, 1);
   let cap = def.cap;
   if (e.id === 'skip') cap = 'SKIP!';
@@ -4408,10 +4648,10 @@ function onGag(g) {
   if (def.sfx && g.id !== 'scream' && g.id !== 'wave') SFX.play(def.sfx);
   if (g.id === 'scream') SFX.play('scream', g.tEnd - g.t);
   if (g.id === 'wave') SFX.play('quack', d.pitch, 1);
-  if (def.cap) Caps.big(def.cap, { px: 64, color: '#ffffff', y: 220, dur: 2 });
+  if (g.id === 'plane') { Caps.bubble = null; L.quietUntil = S.rt + 3; }   // the banner is the joke: keep it clear
+  if (def.cap) Caps.big(def.cap, { px: 64, color: '#ffffff', dur: 2 });
   if (C.LINES['ev_' + g.id] && fx.chance(0.75)) say('ev_' + g.id, { duck: d.name }, { delay: 0.5 });
   if (g.id === 'selfie') quip('selfie', { delay: 0.3 });
-  if (g.id === 'shades') setTimeout(() => SFX.play('cool'), 600);
 }
 function endFlight() {
   if (L.replay) { L.replay = false; L.phase = 'idle'; L.pt = 0; const last = S.race.idx >= S.race.queue.length; setBig(last ? 'SEE RESULTS' : 'NEXT DUCK', true); return; }
@@ -4422,6 +4662,7 @@ function onResult() {
   Caps.bigs = Caps.bigs.filter(b => S.rt - b.t0 < 0.4);   // nothing left over from the flight sits on the result panel
   const before = leaderEntry();
   const prevLeaderKey = before ? before.pl.key : null;
+  const prevLeadDist = before ? before.dist : null;
   const prevBest = R.results[pl.key] ? R.results[pl.key].dist : null;
   recordFlight(L.q, tl);
   R.idx++;
@@ -4443,18 +4684,30 @@ function onResult() {
     const v = Math.abs(D) / c.ft;
     cmp = "That's " + (v >= 10 ? Math.round(v) : v.toFixed(1)) + ' ' + (Math.abs(v - 1) < 0.05 ? c.one : c.many) + (D < 0 ? ' the wrong way.' : '.');
   }
-  L.result = { dist: D, cmp, rank, of: st.length, newLeader, newRecord, photo: L.photo, counted, bonus: !!L.q.bonus };
+  // the margin: how far ahead of (or short of) the lead this flight finished
+  let margin = null;
+  if (st.length > 1 && counted) margin = lead.pl.key === pl.key ? D - (st[1] ? st[1].dist : D) : D - lead.dist;
+  const pbBefore = R.pbs && R.pbs[pl.key];
+  const personalBest = !R.practice && pbBefore != null && D > pbBefore && D > 0 && !L.q.bonus;
+  if (personalBest) R.pbs[pl.key] = Math.round(D);
+  L.result = { dist: D, cmp, rank, of: st.length, newLeader, newRecord, photo: L.photo, counted, bonus: !!L.q.bonus, margin, personalBest };
   // flag + celebration
   SFX.play('quack', d.pitch, 1);
-  if (L.drum) SFX.play('cymbal');
+  if (L.drum) { SFX.stopDrum(0.04); SFX.play('cymbal'); L.drum = false; }
   if (tl.special === 'backfire') { SFX.play('sad'); }
   else if (newRecord) { setTimeout(() => SFX.play('record'), 200); SFX.play('fireworks'); SFX.play('cheer', 2); Caps.big('NEW POND RECORD!', { px: 100, color: '#ffd23f', dur: 3, y: 535 }); say('newRecord', { duck: d.name }, { prio: 2, delay: 0.3 }); fireworks(); }
   else if (newLeader) { SFX.play('leader'); SFX.play('cheer', 1.2); Caps.big('NEW LEADER!', { px: 110, color: '#ffd23f', dur: 2.4, y: 535 }); say('newLeader', { duck: d.name }, { prio: 2, delay: 0.3 }); }
   else if (D > 2000) { SFX.play('cheer', 1.4); }
   else if (D < 300) { SFX.play('aww'); }
-  if (!newRecord && !newLeader) say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', { duck: d.name, distance: fmtFt(D) }, { delay: 0.2 });
+  const wrongWay = tl.special === 'backfire' || D < 0;
+  const mtxt = margin != null ? marginText(Math.abs(margin)) : '';
+  if (L.photo && margin != null && Math.abs(margin) < 25) say(margin > 0 ? 'photoWon' : 'photoLost', { duck: d.name, margin: mtxt }, { prio: 2, delay: 0.25 });
+  else if (wrongWay) say('wrongWay', { duck: d.name }, { delay: 0.3 });
+  else if (!newRecord && !newLeader) say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', { duck: d.name, distance: fmtFt(D) }, { delay: 0.2 });
+  if (personalBest && !newRecord) say('personalBest', { player: pl.name, duck: d.name }, { delay: 2.2 });
   if (tl.hat && tl.hat.wins) { say('hatWins', {}, { prio: 2, delay: 1.2 }); quip('hatwin', { delay: 1.4 }); }
-  else quip(rank <= 3 || D > 1500 ? 'landGood' : 'landBad', { delay: 0.6 });
+  else if (wrongWay) quip('wrongWay', { delay: 0.6 });
+  else quip(D > 1500 || (rank <= 3 && st.length >= 5) ? 'landGood' : 'landBad', { delay: 0.6 });
   if (D > 1500 || newLeader) burst('confetti', 40, { x: 960, y: 260, sp0: 200, sp1: 520, l0: 1.4, l1: 2.2, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
 }
 function fireworks() {
@@ -4465,7 +4718,7 @@ function skipFlight() {
   if (L.phase === 'countdown') { L.barrel = L.tl.angle; L.gauge.locked = true; L.gauge.a = L.tl.angle; L.gauge.p = Math.round(L.tl.power * 100); startFlight(false); }
   if (L.phase === 'flight' && L.pb) {
     L.pb.simT = L.tl.endT; L.pb.hold = 0; L.pb.done = true;
-    Caps.reset(); L.drum = false;
+    Caps.reset(); L.drum = false; SFX.stopLong(0.06); Voice.stop();
     const s = sampleTL(L.tl, L.tl.endT);
     L.cam.cx = s.x + 120; L.cam.z = 3.2; L.cam.gy = GROUND_Y;
     endFlight();
@@ -4476,7 +4729,7 @@ function replayFlight() {
   // a duck that's still in the air hasn't been scored yet: replay only once it has landed
   if (L.phase === 'flight' && !L.replay) { Toast.show('Replay is ready once this duck lands'); return; }
   if (L.phase === 'result') { setPhase('idle'); }
-  Caps.reset(); Particles.clear();
+  Caps.reset(); Particles.clear(); SFX.stopLong(0.06);
   L.cam = { cx: 30, gy: GROUND_Y, z: 5.2 };
   L.barrel = L.tl.angle;
   startFlight(true);
@@ -4486,6 +4739,7 @@ function toResults() {
   if (!S.race || L.phase === 'toresults') return;
   L.phase = 'toresults';
   S.race.stage = 'results';
+  SFX.stopLong(0.2);
   finalizeRace();
   saveRace();
   Iris.start(() => { go('results'); }, 960, 540);
@@ -4818,7 +5072,7 @@ function drawEventActors(ctx, V, t, s, px, behind) {
     const ds = px / 120;
     const sx = V.sx(s.x), sy = V.sy(s.y);
     switch (g.id) {
-      case 'plane': if (behind) { const k = (rt + def.antic) / (g.tEnd - g.t + def.antic); const x = lerp(-500, 2400, k), y = sy - 220; ART.actor.plane(ctx, x, clamp(y, 170, 600), 150, 0, S.time, g.data.banner ? L.pl.duck.name.toUpperCase() : null); } break;
+      case 'plane': if (behind) { const k = (rt + def.antic) / (g.tEnd - g.t + def.antic); const x = lerp(-500, 2400, k), y = sy - 220; ART.actor.plane(ctx, x, clamp(y, 240, 600), 150, 0, S.time, g.data.banner ? L.pl.duck.name.toUpperCase() : null); } break;
       case 'balloon': if (behind) { const k = (rt + def.antic) / (g.tEnd - g.t + def.antic); ART.actor.balloon(ctx, lerp(1800, 500, k), sy - 120 - k * 60, 90, 0, S.time); } break;
       case 'seagull': if (!behind) { const k = rt; let x, y; if (k < 1.0) { x = sx + 400 * (1 - k); y = sy - 140 * (1 - k) - px * 0.5; } else { x = sx + (k - 1) * 500; y = sy - px * 0.6 - (k - 1) * 260; } ART.actor.seagull(ctx, x, y, 100 * ds, 0, S.time); if (k >= 1.0) { const hatId = S.cond.friday ? 'party' : L.pl.duck.hat; if (hatId) drawHat(ctx, hatId, x, y + 26, px / 95 * 1.1, 5, S.time); } } break;
       case 'selfie': if (!behind) { ART.actor.phone(ctx, sx + px * 0.55, sy - px * 0.75, 70 * ds, 0, S.time); if (rt > 0.8 && rt < 1.1) { starPath(ctx, sx + px * 0.6, sy - px * 0.95, 22, 0); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill(); } } break;
@@ -4890,7 +5144,8 @@ function drawLaunchHUD(ctx, V, t) {
   if ((ph === 'flight' || ph === 'result' || ph === 'idle') && L.tl && L.pb) {
     const s = L.tl ? sampleTL(L.tl, ph === 'flight' ? t : L.tl.endT) : { x: 0, y: 0 };
     drawOdometer(ctx, ph === 'flight' && !L.pb.done ? (s.x < 0 && s.x > -40 && L.tl.special !== 'backfire' ? 0 : s.x) : Math.round(L.tl.final));
-    if (ph === 'flight' && gaugeVis < 1) { ctx.save(); ctx.globalAlpha = 1 - gaugeVis; drawAltimeter(ctx, Math.max(0, s.y - SIM.groundY(s.x))); ctx.restore(); }
+    // the altimeter slides in once the angle/power panel has gone, so the two never overlap
+    if (ph === 'flight' && gaugeVis <= 0) { const ak = clamp((t - L.tl.launchT - 2.0) / 0.3, 0, 1); ctx.save(); ctx.globalAlpha = ak; ctx.translate((1 - ak) * -60, 0); drawAltimeter(ctx, Math.max(0, s.y - SIM.groundY(s.x))); ctx.restore(); }
   }
   // intro card
   if (ph === 'intro' || (ph === 'ladder' && L.dock < 1)) {
@@ -4924,7 +5179,7 @@ function drawLaunchHUD(ctx, V, t) {
   // a quiet reminder of the host keys
   if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
   Caps.drawBigs(ctx, L.duckScreen && (ph === 'flight' || ph === 'result') ? L.duckScreen.y : null);
-  if (L.duckScreen && (ph === 'flight' || ph === 'result' || ph === 'idle')) Caps.drawBubble(ctx, L.duckScreen.x, L.duckScreen.y);
+  if (L.duckScreen && (ph === 'flight' || ph === 'result' || ph === 'idle')) Caps.drawBubble(ctx, L.duckScreen.x, L.duckScreen.y, ph !== 'flight' && L.duckScreen.x > 640);
   else if (ph === 'armed' || ph === 'countdown' || ph === 'ladder') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
 }
 function rarityColor(r) { return C.RARITIES[RARITY_INDEX[r] || 0].color; }
@@ -4990,7 +5245,7 @@ function drawGauges(ctx) {
   const k = clamp((L.gauge.p - 60) / 45, 0, 1);
   ctx.save(); rr(ctx, bx + 4, by + 4, (bw - 8) * k, bh - 8, 10); const g = ctx.createLinearGradient(bx, 0, bx + bw, 0); g.addColorStop(0, '#5cbf4a'); g.addColorStop(0.6, '#ffd23f'); g.addColorStop(1, '#e8412c'); ctx.fillStyle = g; ctx.fill(); ctx.restore();
   txt(ctx, 'POWER ' + Math.round(L.gauge.p) + '%', bx + bw / 2, y + 125, { px: 28, color: OUT, sw: 0 });
-  if (locked) { rr(ctx, bx + 30, y + 140, bw - 60, 26, 9); ctx.fillStyle = '#2b9b5c'; ctx.fill(); txt(ctx, 'LOCKED', bx + bw / 2, y + 154, { px: 20, color: '#fff', sw: 0 }); }
+  if (locked) { rr(ctx, bx + 30, y + 140, bw - 60, 26, 9); ctx.fillStyle = '#2b9b5c'; ctx.fill(); txt(ctx, 'LOCKED', bx + bw / 2, y + 154, { px: 22, color: '#fff', sw: 0 }); }
 }
 function drawOdometer(ctx, v) {
   const neg = v < 0, val = Math.abs(v);
@@ -5027,7 +5282,7 @@ function drawAltimeter(ctx, alt) {
   ctx.lineWidth = 8; ctx.strokeStyle = '#4ad7ff'; ctx.beginPath(); ctx.moveTo(x + w / 2, bot); ctx.lineTo(x + w / 2, py); ctx.stroke();
   circ(ctx, x + w / 2, py, 16); fillStroke(ctx, '#ffd23f', 4);
   txt(ctx, fmtInt(alt), x + w / 2, y + h - 44, { px: 28, color: OUT, sw: 0 });
-  txt(ctx, 'ft up', x + w / 2, y + h - 16, { px: 20, color: '#6b6577', sw: 0 });
+  txt(ctx, 'ft up', x + w / 2, y + h - 16, { px: 24, color: '#6b6577', sw: 0 });
 }
 function drawResultPanel(ctx, r) {
   const k = L.phase === 'result' ? easeBack(clamp(L.pt / 0.35, 0, 1)) : 1;
@@ -5036,10 +5291,14 @@ function drawResultPanel(ctx, r) {
   rr(ctx, x, y, w, h, 30); fillStroke(ctx, '#fff8e6', 6);
   txt(ctx, fmtFt(r.dist), 960, y + 92, { px: 120, color: r.dist < 0 ? '#e8412c' : OUT, sw: 0 });
   txt(ctx, r.cmp, 960, y + 172, { px: 34, color: '#6b6577', sw: 0, maxW: w - 40, weight: 800 });
-  let rank = r.bonus && !r.counted ? 'Bonus shot did not beat the first one' : r.rank === 1 ? (r.of > 1 ? 'In the lead!' : 'First on the board!') : ordinal(r.rank) + ' of ' + r.of + ' so far';
+  const m = r.margin;
+  let rank = r.bonus && !r.counted ? 'Bonus shot did not beat the first one'
+    : r.rank === 1 ? (r.of > 1 ? (m != null && m < 100 ? 'Leads by ' + marginText(m) + '!' : 'In the lead!') : 'First on the board!')
+    : ordinal(r.rank) + ' of ' + r.of + (m != null && m > -100 ? ' · ' + marginText(-m) + ' short of the lead' : ' so far');
   if (L.tl && L.tl.hat && L.tl.hat.wins) rank = 'Technically, the hat wins';
-  rr(ctx, 960 - 280, y + 204, 560, 54, 18); fillStroke(ctx, r.rank === 1 ? '#ffd23f' : '#e9eef5', 4);
-  txt(ctx, rank, 960, y + 232, { px: 32, color: OUT, sw: 0, maxW: 530 });
+  rr(ctx, 960 - 330, y + 204, 660, 54, 18); fillStroke(ctx, r.rank === 1 ? '#ffd23f' : '#e9eef5', 4);
+  txt(ctx, rank, 960, y + 232, { px: 32, minPx: 24, color: OUT, sw: 0, maxW: 630 });
+  if (r.personalBest) { ctx.save(); ctx.translate(x + w - 30, y + 10); ctx.rotate(0.1); rr(ctx, -150, -24, 210, 48, 14); fillStroke(ctx, '#e8412c', 5); txt(ctx, 'PERSONAL BEST!', -45, 1, { px: 26, color: '#fff', sw: 0 }); ctx.restore(); }
   ctx.restore();
 }
 const SB = { seen: {} };
@@ -5051,11 +5310,14 @@ function drawSidebar(ctx) {
   const rows = st.slice(0, 8);
   const curKey = L.pl ? L.pl.key : null;
   const curIn = rows.some(e => e.pl.key === curKey);
-  const showCur = L.pl && !curIn && L.phase !== 'idle';
+  // the duck on screen is always on the board: pinned below the top 8 with its real rank once it lands
+  const curRank = curKey ? st.findIndex(e => e.pl.key === curKey) : -1;
+  const curLanded = curRank >= 0 && (L.phase === 'result' || L.phase === 'idle');
+  const showCur = L.pl && !curIn && (L.phase !== 'idle' || curLanded) && !(L.phase === 'idle' && !curLanded);
   const more = Math.max(0, st.length - rows.length);
   const left = remainingCount() - (L.phase === 'idle' || L.phase === 'result' ? 0 : 1);
   const rh = 76;
-  const h = 70 + rows.length * rh + (showCur ? rh + 10 : 0) + 56;
+  const h = 70 + rows.length * rh + (showCur ? rh + 34 : 0) + 56;
   rr(ctx, x, y, w, h, 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
   txt(ctx, st.length + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
@@ -5077,35 +5339,53 @@ function drawSidebar(ctx) {
     teamShape(ctx, teamOf(pl).shape, x + 120, yy + 22, 8); ctx.fillStyle = teamOf(pl).color; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke();
     txt(ctx, pl.duck.name, x + 136, yy + 22, { px: 28, color: OUT, sw: 0, align: 'left', maxW: w - 150 });
     txt(ctx, pl.name, x + 112, yy + 54, { px: 26, color: '#6b6577', sw: 0, align: 'left', maxW: w - 250, weight: 800 });
-    txt(ctx, e.r ? fmtFt(e.dist) : '…', x + w - 18, yy + 54, { px: 28, color: OUT, sw: 0, align: 'right' });
+    txt(ctx, e.r ? (e.lab || fmtFt(e.dist)) : '…', x + w - 18, yy + 54, { px: 28, color: OUT, sw: 0, align: 'right' });
     yy = saveY + rh;
   };
-  rows.forEach((e, i) => row(e, String(i + 1), e.pl.key === curKey && (L.phase === 'result' || L.phase === 'idle')));
-  if (showCur) { yy += 6; txt(ctx, 'NOW', x + 30, yy + 8, { px: 20, color: '#e8412c', sw: 0 }); row({ pl: L.pl, r: null }, '▶', true); }
+  rows.forEach((e, i) => row(Object.assign({ lab: fmtDist(st, i) }, e), String(i + 1), e.pl.key === curKey && (L.phase === 'result' || L.phase === 'idle')));
+  if (showCur) { yy += 6; txt(ctx, curLanded ? 'JUST LANDED' : 'NOW', x + 22, yy + 10, { px: 24, color: '#e8412c', sw: 0, align: 'left' }); yy += 24; if (curLanded) row(Object.assign({ lab: fmtDist(st, curRank) }, st[curRank]), String(curRank + 1), true); else row({ pl: L.pl, r: null }, '▶', true); }
   const tail = (more ? '+' + more + ' more' : '') + (more && left > 0 ? ' · ' : '') + (left > 0 ? left + ' to go' : '');
   if (tail) txt(ctx, tail, x + w / 2, yy + 26, { px: 28, color: '#6b6577', sw: 0 });
 }
 
 
 /* ---------- screen switching + the one primary action ---------- */
+// the tab may have stayed open overnight: today's date, forecast and title duck follow the clock
+function checkDayRollover() {
+  if (S.dbg.day) return;
+  const k = localDayKey();
+  if (k !== S.day) { S.day = k; titleDuck = null; DEMO.cyc = -1; if (!S.race) refreshWorld(); }
+}
+function todayKey() { return S.dbg.day || localDayKey(); }
 function go(screen) {
   S.screen = screen;
+  Big.changedAt = S.rt;
   if (screen !== 'roster') Roster.hide();
-  if (screen === 'title') { RS.back = false; S.race = null; refreshWorld(); setBig(savedShow() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); }
-  if (screen === 'roster') { refreshWorld(); Roster.show(); }
+  if (screen === 'title') { RS.back = false; S.race = null; checkDayRollover(); refreshWorld(); const c = savedShow(); setBig(c && c.day === todayKey() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); stopShowAudio(); }
+  if (screen === 'roster') { checkDayRollover(); refreshWorld(); Roster.show(); }
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
   if (screen === 'results') { if (RS.back) { RS.back = false; setBig('DONE', true); } else startResults(); }
   if (screen === 'fame') { Particles.clear(); FM.page = 0; FM.t = 0; setBig('NEXT PAGE', true); }
   if (screen === 'gallery') { GL.seed = freshSeed(); setBig('NEW BATCH', true); }
 }
-function savedShow() { const c = Store.get('current', null); return c && c.stage && c.stage !== 'done' && Array.isArray(c.players) && c.players.length ? c : null; }
-function primary() {
+function storedShow() { const c = Store.get('current', null); return c && c.stage && c.stage !== 'done' && Array.isArray(c.players) && c.players.length && Array.isArray(c.queue) ? c : null; }
+// a show that's still going (one already on the podium is finished: it's in the Waddle of Fame)
+function savedShow() { const c = storedShow(); return c && !(c.stage === 'results' && c.saved) ? c : null; }
+function finishedShow() { const c = storedShow(); return c && c.stage === 'results' && c.saved ? c : null; }
+function showLabel(c) { return (c.day === todayKey() ? "Today's show" : 'Unfinished show from ' + shortDate(c.day)) + ' · ' + c.players.length + ' duck' + (c.players.length === 1 ? '' : 's') + ' · ' + (c.stage === 'launch' ? Math.min(c.idx, c.queue.length) + ' of ' + c.queue.length + ' launched' : c.stage === 'results' ? 'results' : 'reveal'); }
+function viewLastResults(c) { S.race = c; refreshWorld(); RS.back = true; RS.page = 2; RS.t = 0; go('results'); }
+function stopShowAudio() { SFX.stopLong(0.08); Voice.stop(); }
+function primary(fromPointer) {
   if (Modal.isOpen) return;
   if (Iris.t >= 0) return;
+  // a double-click (or Space mashed) shouldn't skip a whole screen: a second press right after one that counted is ignored
+  if (S.rt - Big.lastPress < 0.35) return;
+  if (fromPointer && !Big.enabled) return;
+  Big.lastPress = S.rt;
   Big.press = 0.15;
   switch (S.screen) {
-    case 'title': { const c = savedShow(); if (c) resumeRace(c); else { SFX.play('click'); go('roster'); } break; }
+    case 'title': { const c = savedShow(); if (c && c.day === todayKey()) resumeRace(c); else { SFX.play('click'); go('roster'); } break; }
     case 'roster': if (createRace()) { SFX.play('click'); go('reveal'); } break;
     case 'reveal': revealPrimary(); break;
     case 'launch': if (L.phase === 'armed') lightFuse(); else if (L.phase === 'idle') nextDuck(); else if (L.phase === 'intro' || L.phase === 'ladder') { /* still loading */ } break;
@@ -5118,7 +5398,7 @@ function resumeRace(c) {
   S.race = c;
   refreshWorld();
   Lines.reset(c.seed);
-  S.turbo = !!S.settings.turboDefault || c.players.length > 15;
+  S.turbo = c.turbo != null ? !!c.turbo : (!!S.settings.turboDefault || c.players.length > 15);
   Toast.show('Resuming race ' + c.id, 2000);
   if (c.stage === 'reveal' || c.stage === 'forecast') go('reveal');
   else if (c.stage === 'launch') { Particles.clear(); Caps.reset(); go('launch'); loadDuck(true); }
@@ -5159,12 +5439,17 @@ function drawTitle(ctx, dt) {
     const dx = mz.x + 150 * u, dy = mz.y + 105 * u - 18 * u * u;
     drawDuck(ctx, DEMO.duck, V.sx(dx), V.sy(dy), 84, { pose: 'scared', rot: u * 5, flap: t * 4, t, mouth: 0.8 });
   }
-  if (c) txt(ctx, 'A show is in progress (' + c.players.length + ' ducks, race ' + c.id + ')', px, py + 186, { px: 28, color: '#fff', sw: 6 });
+  const fin = c ? null : finishedShow();
+  if (c) txt(ctx, showLabel(c), px, py + 186, { px: 28, color: '#fff', sw: 6, maxW: 900 });
+  if (Store.full) txt(ctx, 'Browser storage is full: changes aren\'t being saved. Export from Settings.', px, py + 226, { px: 24, color: '#ffd23f', sw: 5, maxW: 900 });
   if (S.screen !== 'title') return;
   button(ctx, 'fame', 40, 948, 330, 76, 'Waddle of Fame', { fn: () => { FM.back = 'title'; go('fame'); } });
   button(ctx, 'settings', 390, 948, 210, 76, 'Settings', { fn: () => openSettings(false) });
-  if (c) button(ctx, 'newshow', 1460, 948, 420, 76, 'Start a new show instead', { px: 26, bg: '#fff8e6', fn: () => confirmBox('Start over? The show in progress will be discarded.', 'Start a new show', () => { Store.del('current'); S.paused = false; setBig('START', true); go('roster'); }) });
-  if (!SFX.ready) txt(ctx, 'Click anywhere to turn on sound', px, py + 186 + (c ? 40 : 0), { px: 26, color: '#fff', sw: 6 });
+  const today = c && c.day === todayKey();
+  if (c && today) button(ctx, 'newshow', 1460, 948, 420, 76, 'Start a new show instead', { px: 26, bg: '#fff8e6', fn: () => confirmBox('Start over? The show in progress will be discarded.', 'Start a new show', () => { Store.del('current'); setPaused(false); setBig('START', true); go('roster'); }) });
+  if (c && !today) button(ctx, 'oldshow', 1460, 948, 420, 76, 'Resume ' + shortDate(c.day) + ' show', { px: 26, bg: '#fff8e6', fn: () => resumeRace(c) });
+  if (fin) button(ctx, 'lastres', 1460, 948, 420, 76, 'Last results (' + shortDate(fin.day) + ')', { px: 26, bg: '#fff8e6', fn: () => viewLastResults(fin) });
+  if (!SFX.ready) txt(ctx, 'Click anywhere to turn on sound', px, py + 186 + (c ? 40 : 0) + (Store.full ? 40 : 0), { px: 26, color: '#fff', sw: 6 });
 }
 
 /* ---------- reveal: cards flip in a cascade, then the launch order shuffles, then the Pond Forecast ---------- */
@@ -5195,8 +5480,11 @@ function updateReveal(dt) {
         RV.flipped[i] = true;
         SFX.play('flip');
         if (pl.duck.rarity !== 'common') SFX.play('sting', pl.duck.rarity);
-        if (pl.duck.rarity === 'legendary') { Caps.big('LEGENDARY!', { px: 110, color: '#ffd23f', y: 540 }); SFX.play('shimmer'); }
-        else if (pl.duck.rarity === 'epic') Caps.big('EPIC!', { px: 100, color: '#d9a8ff', y: 540 });
+        // the stinger goes above or below the card, never over it
+        const g = cardGrid(R.players.length)[i], above = g.y + g.h / 2 > 470;
+        const sy = above ? Math.max(70, g.y - 56) : Math.min(860, g.y + g.h + 56);
+        if (pl.duck.rarity === 'legendary') { Caps.big('LEGENDARY!', { px: 96, color: '#ffd23f', y: sy }); SFX.play('shimmer'); }
+        else if (pl.duck.rarity === 'epic') Caps.big('EPIC!', { px: 88, color: '#d9a8ff', y: sy });
       }
     });
     if (RV.flipped.every(Boolean)) { RV.done = true; R.revealDone = true; saveRace(); setBig('LOCK IN & SHUFFLE', true); Caps.say('Click any duck to reroll it. Then lock them in!', {}); }
@@ -5208,13 +5496,13 @@ function updateReveal(dt) {
       Caps.say('Pond Forecast: ' + conditionsSummary(S.cond) + '. Same for every duck today!', { prio: 1 });
       const pk = billPickKey(R), pp = pk && R.players.find(p => p.key === pk);
       R.pick = pk || null; saveRace();
-      if (pp) say('billPick', { player: pp.name, duck: pp.duck.name }, { prio: 1, delay: 2.4 });
+      if (pp) say('billPick', { player: pp.name, duck: pp.duck.name }, { prio: 1, delay: 2.2 });
     }
   }
-  if (RV.fc >= 0 && RV.fc < 50) { RV.fc += dt; if (RV.fc > 0.6) setBig("LET'S LAUNCH!", true); }
+  if (RV.fc >= 0 && RV.fc < 50) { RV.fc += dt; if (RV.fc > 0.6 && !Big.enabled) setBig("LET'S LAUNCH!", true); }
 }
 function cardGrid(n) {
-  const cols = n <= 4 ? n : n <= 8 ? 4 : n <= 15 ? 5 : n <= 24 ? 6 : 8;
+  const cols = n <= 4 ? n : n <= 8 ? 4 : n <= 10 ? 5 : n <= 12 ? 6 : n <= 21 ? 7 : n <= 24 ? 8 : 10;
   const rows = Math.ceil(n / cols);
   const gap = 16, ax = 40, ay = 112, aw = 1840, ah = 680;
   const w = Math.min(330, (aw - (cols - 1) * gap) / cols), h = Math.min(400, (ah - (rows - 1) * gap) / rows);
@@ -5226,7 +5514,8 @@ function cardGrid(n) {
 function drawReveal(ctx, dt) {
   const R = S.race, t = S.time;
   const V = makeView(1400, GROUND_Y + 40, 2.2);
-  drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0 });
+  // no set pieces behind the cards: today's hazards stay a surprise
+  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0 });
   ctx.fillStyle = 'rgba(31,26,46,0.35)'; ctx.fillRect(0, 0, 1920, 1080);
   txt(ctx, RV.shuf >= 0 ? 'LAUNCH ORDER' : "TODAY'S DUCKS", 960, 62, { px: 60, color: '#ffd23f', sw: 10 });
   const n = R.players.length;
@@ -5242,14 +5531,14 @@ function drawReveal(ctx, dt) {
     const ft = fl ? clamp((RV.t - RV.flipAt[i]) / 0.3, 0, 1) : 0;
     const rr0 = RV.rerollAt[i] != null ? clamp((S.rt - RV.rerollAt[i]) / 0.4, 0, 1) : 1;
     const flipK = Math.min(RV.done && RV.t < RV.flipAt[i] ? 1 : ft, rr0);
-    drawCard(ctx, rc, pl, flipK, RV.shuf >= 0 ? (pos[i] + 1) : null);
+    drawCard(ctx, rc, pl, flipK, RV.shuf >= 0 ? (pos[i] + 1) : null, RV.fc >= 0 && R.pick === pl.key);
     if (RV.done && RV.shuf < 0) S.buttons.push({ id: 'card' + i, x: rc.x, y: rc.y, w: rc.w, h: rc.h, fn: () => { rerollDuck(i); RV.rerollAt[i] = S.rt; SFX.play('flip'); SFX.play('sting', R.players[i].duck.rarity); Toast.show('Rerolled ' + pl.name + "'s duck"); } });
   });
   if (RV.fc >= 0) drawForecast(ctx, RV.fc > 50 ? 1 : easeBack(clamp(RV.fc / 0.5, 0, 1)));
   // a name is wrong or someone is missing: go back to the roster (the race hasn't started yet)
   if (RV.shuf < 0) button(ctx, 'editnames', 40, 948, 330, 76, '◀ Edit names', { bg: '#fff8e6', fn: () => { Store.del('current'); S.race = null; Caps.reset(); go('roster'); Toast.show('Fix the names, then press REVEAL DUCKS again'); } });
 }
-function drawCard(ctx, rc, pl, flipK, num) {
+function drawCard(ctx, rc, pl, flipK, num, pick) {
   const { x, y, w, h } = rc;
   const d = pl.duck;
   const sx = Math.abs(Math.cos(flipK * Math.PI));
@@ -5259,19 +5548,31 @@ function drawCard(ctx, rc, pl, flipK, num) {
   const small = h < 260;
   if (face) {
     if (d.rarity !== 'common') { ctx.save(); ctx.shadowColor = R0.glow; ctx.shadowBlur = 30 + 10 * Math.sin(S.rt * 2.2); rr(ctx, x, y, w, h, 22); ctx.fillStyle = R0.color; ctx.fill(); ctx.restore(); }
-    rr(ctx, x, y, w, h, 22); fillStroke(ctx, '#fff8e6', 5);
-    rr(ctx, x + 8, y + 8, w - 16, h * 0.56, 16); fillStroke(ctx, mix(R0.color, '#ffffff', 0.55), 4);
+    rr(ctx, x, y, w, h, 22); fillStroke(ctx, d.rarity === 'common' ? '#fff8e6' : mix(R0.color, '#fff8e6', 0.82), 5);
+    // laid out bottom-up so the text never overlaps: rarity pill, player name, then the duck name in what's left
+    const pillH = h >= 230 ? 28 : h >= 180 ? 24 : 0;
+    const ppx = clamp(Math.round(h * 0.12), 20, 28);
+    let yb = y + h - 8;
+    if (pillH) {
+      const pw = Math.min(w - 24, 150);
+      rr(ctx, x + w / 2 - pw / 2, yb - pillH, pw, pillH, 9); ctx.fillStyle = R0.color; ctx.fill();
+      txt(ctx, R0.name.toUpperCase(), x + w / 2, yb - pillH / 2 + 1, { px: pillH - 6, color: '#fff', sw: 3, maxW: pw - 10 });
+      yb -= pillH + 4;
+    }
+    txt(ctx, pl.name, x + w / 2, yb - ppx * 0.55, { px: ppx, minPx: 18, color: shade(teamOf(pl).color, -0.3), sw: 0, maxW: w - 16, weight: 800 });
+    yb -= ppx * 1.15 + 2;
+    const artH = Math.max(h * 0.36, Math.min(h * 0.56, h - (y + h - yb) - (small ? 34 : 70) - 16));
+    rr(ctx, x + 8, y + 8, w - 16, artH, 16); fillStroke(ctx, mix(R0.color, '#ffffff', 0.55), 4);
     const ex = (S.race && S.race.champ === pl.key ? 'crown' : '') + (S.cond.friday ? 'party' : '');
-    const ps = Math.min(h * 0.4, w * 0.62);
-    drawDuck(ctx, d, x + w / 2, y + 8 + h * 0.31, ps, { pose: 'stand', t: S.time, aura: true, crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
-    const npx = small ? 24 : 30;
+    const ps = Math.min(artH * 0.72, w * 0.62);
+    drawDuck(ctx, d, x + w / 2, y + 8 + artH * 0.56, ps, { pose: 'stand', t: S.time, aura: true, crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
+    const top = y + 8 + artH + 4, room = yb - top;
+    const npx = clamp(Math.round(Math.min(h * 0.13, w * 0.11)), 19, 30);
     ctx.font = font(npx);
-    const lines = wrapText(ctx, d.name, w - 20, 2);
-    const ny = y + h * 0.56 + 14 + npx * 0.6;
-    lines.forEach((ln, i) => txt(ctx, ln, x + w / 2, ny + i * npx * 1.05, { px: npx, color: OUT, sw: 0, maxW: w - 16 }));
-    txt(ctx, pl.name, x + w / 2, y + h - (small ? 34 : 46), { px: small ? 22 : 26, color: shade(teamOf(pl).color, -0.25), sw: 0, maxW: w - 20, weight: 800 });
-    rr(ctx, x + w / 2 - 70, y + h - (small ? 22 : 28), 140, small ? 20 : 26, 9); ctx.fillStyle = R0.color; ctx.fill();
-    txt(ctx, R0.name.toUpperCase(), x + w / 2, y + h - (small ? 12 : 15), { px: small ? 15 : 18, color: '#fff', sw: 3 });
+    const lines = room >= npx * 2.2 ? wrapText(ctx, d.name, w - 20, 2) : [d.name];
+    const mid = top + room / 2;
+    lines.forEach((ln, i) => txt(ctx, ln, x + w / 2, mid + (i - (lines.length - 1) / 2) * npx * 1.05, { px: npx, minPx: 16, color: OUT, sw: 0, maxW: w - 16 }));
+    if (pick) { ctx.save(); ctx.translate(x + w - 10, y + 22); ctx.rotate(0.12); const tw = Math.min(150, w * 0.7); rr(ctx, -tw, -16, tw + 6, 32, 10); fillStroke(ctx, '#e8412c', 4); txt(ctx, "BILL'S PICK", -tw / 2 + 3, 1, { px: 20, color: '#fff', sw: 0, maxW: tw - 8 }); ctx.restore(); }
   } else {
     rr(ctx, x, y, w, h, 22); fillStroke(ctx, '#e8412c', 5);
     rr(ctx, x + 10, y + 10, w - 20, h - 20, 16); ctx.lineWidth = 4; ctx.strokeStyle = '#ffd23f'; ctx.stroke();
@@ -5307,7 +5608,9 @@ function drawForecast(ctx, k) {
   line('MODIFIER OF THE DAY', M.name, M.blurb, cond.mod === 'standard' ? OUT : '#c22f1f');
   const SE = C.SEASONS[cond.season];
   line('SEASON', SE.name + (cond.friday ? ' + ' + C.FRIYAY.name : ''), cond.friday ? C.FRIYAY.blurb : SE.blurb);
-  txt(ctx, 'Same conditions for every duck today.', 960, y + h - 34, { px: 28, color: '#6b6577', sw: 0 });
+  const pk = S.race && S.race.pick && S.race.players.find(p => p.key === S.race.pick);
+  if (pk) txt(ctx, "Bill's pick: " + pk.duck.name + ' (' + pk.name + ')', 960, y + h - 34, { px: 30, color: '#c22f1f', sw: 0, maxW: w - 60 });
+  else txt(ctx, 'Same conditions for every duck today.', 960, y + h - 34, { px: 28, color: '#6b6577', sw: 0 });
   ctx.restore();
 }
 
@@ -5323,7 +5626,10 @@ function startResults() {
   const st = standings();
   if (st.length) {
     SFX.play('fanfare'); setTimeout(() => SFX.play('cheer', 2), 300);
-    say('winner', { duck: st[0].pl.duck.name }, { prio: 2, delay: 0.6 });
+    const margin = st.length > 1 ? st[0].dist - st[1].dist : null;
+    RS.margin = margin != null && margin < 25 ? margin : null;
+    if (RS.margin != null) say('closeWin', { duck: st[0].pl.duck.name, margin: marginText(RS.margin) }, { prio: 2, delay: 0.6 });
+    else say('winner', { duck: st[0].pl.duck.name }, { prio: 2, delay: 0.6 });
     if (RS.feather) say('feather', { duck: RS.feather.pl.duck.name }, { delay: 3.2 });
     const tod = teamOfDay(R);
     if (tod) say('teamDay', { team: tod.name }, { delay: 5.6 });
@@ -5336,12 +5642,12 @@ function startResults() {
 function resultsPrimary() {
   if (RS.page === 0) { RS.page = 1; RS.t = 0; Caps.reset(); setBig('PANORAMA', true); SFX.play('whoosh', 0.6); }
   else if (RS.page === 1) { RS.page = 2; RS.t = 0; Caps.reset(); setBig('DONE', true); SFX.play('whoosh', 0.6); }
-  else { const R = S.race; if (R) { R.stage = 'done'; Store.del('current'); } S.race = null; go('title'); }
+  else { const R = S.race; if (R) { R.stage = 'done'; const c = Store.get('current', null); if (!c || c.id === R.id) Store.del('current'); } S.race = null; go('title'); }
 }
 function updateResults(dt) {
   RS.t += dt;
   const party = S.cond.friday ? 2 : 1;
-  if (RS.page === 0 && RS.t < 6 && (RS.conf += dt * 22 * party) > 1) {
+  if (RS.page === 0 && RS.t < 6 && (RS.conf += dt * 22 * party * Math.min(1, Particles.max / 260)) > 1) {
     const n = Math.floor(RS.conf); RS.conf -= n;
     for (let i = 0; i < n; i++) Particles.add({ type: 'confetti', layer: 'screen', x: fx.range(0, 1920), y: -20, vx: fx.range(-60, 60), vy: fx.range(80, 220), g: 60, life: fx.range(3, 5), r: fx.range(7, 11), rot: fx.range(0, TAU), spin: fx.range(-5, 5), color: fx.pick(['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a', '#b28cff']) });
   }
@@ -5379,7 +5685,7 @@ function drawPodium(ctx, st) {
     if (!win) {
       const ty = top - sz - 80;
       txt(ctx, e.pl.duck.name, sp.x, ty, { px: 32, color: '#fff', sw: 6, maxW: 330 });
-      txt(ctx, e.pl.name + ' · ' + fmtFt(e.dist), sp.x, ty + 38, { px: 28, color: '#ffd23f', sw: 5, maxW: 330 });
+      txt(ctx, e.pl.name + ' · ' + fmtDist(st, sp.i), sp.x, ty + 38, { px: 28, color: '#ffd23f', sw: 5, maxW: 330 });
     }
   }
   const w = st[0];
@@ -5389,7 +5695,7 @@ function drawPodium(ctx, st) {
     drawGoldenLoaf(ctx, 960, lerp(-120, 335, lk) + Math.sin(t * 2) * 6, 140, t);
     txt(ctx, 'GOLDEN LOAF', 960, 132, { px: 30, color: '#fff', sw: 5 });
     txt(ctx, w.pl.duck.name, 960, 186, { px: 56, color: '#ffd23f', sw: 9, maxW: 1100 });
-    txt(ctx, w.pl.name + ' · ' + fmtFt(w.dist) + (st.length === 1 && S.race.recordStart != null ? (w.dist > S.race.recordStart ? ' · NEW RECORD!' : ' · record is ' + fmtFt(S.race.recordStart)) : ''), 960, 240, { px: 34, color: '#fff', sw: 6, maxW: 1200 });
+    txt(ctx, w.pl.name + ' · ' + fmtDist(st, 0) + (RS.margin != null ? ' · won by ' + marginText(RS.margin) : '') + (st.length === 1 && !S.race.practice && S.race.recordStart != null ? (w.dist > S.race.recordStart ? ' · NEW RECORD!' : ' · record is ' + fmtFt(S.race.recordStart)) : ''), 960, 240, { px: 34, color: '#fff', sw: 6, maxW: 1200 });
   }
   if (RS.tod) {
     const tk = easeBack(clamp((k - 3.2) / 0.5, 0, 1));
@@ -5403,24 +5709,30 @@ function drawPodium(ctx, st) {
   const f = RS.feather;
   if (f && st.length > 3 || (f && st.length > 1 && !spots.some(sp => st[sp.i] && st[sp.i].pl.key === f.pl.key))) {
     const fk = easeBack(clamp((k - 2.6) / 0.5, 0, 1));
-    ctx.save(); ctx.translate(250, 600); ctx.scale(fk, fk);
-    rr(ctx, -210, -220, 420, 420, 30); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
-    txt(ctx, 'PARTICIPATION', 0, -186, { px: 30, color: '#3f8fd9', sw: 0 });
+    ctx.save(); ctx.translate(232, 600); ctx.scale(fk, fk);
+    rr(ctx, -192, -220, 384, 420, 30); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
+    txt(ctx, 'GOOD SPORT', 0, -186, { px: 30, color: '#3f8fd9', sw: 0 });
     txt(ctx, 'FEATHER', 0, -150, { px: 30, color: '#3f8fd9', sw: 0 });
     drawDuck(ctx, f.pl.duck, -40, 40, 130, duckDrawOpts(f.pl, { pose: 'happy' }));
     drawFeather(ctx, 110, 0, 120, t);
-    txt(ctx, f.pl.duck.name, 0, 140, { px: 28, color: OUT, sw: 0, maxW: 390 });
-    txt(ctx, f.pl.name + ' · ' + fmtFt(f.dist), 0, 176, { px: 26, color: '#6b6577', sw: 0, maxW: 390 });
+    txt(ctx, f.pl.duck.name, 0, 140, { px: 28, minPx: 22, color: OUT, sw: 0, maxW: 360 });
+    txt(ctx, f.pl.name, 0, 176, { px: 26, color: '#6b6577', sw: 0, maxW: 360 });
     ctx.restore();
   }
   // everyone else (compact)
-  const rest = st.slice(3, 11);
-  if (rest.length) {
+  // everyone past 3rd gets seen: long lists page through 9 at a time
+  const all = st.slice(3), PER = 9;
+  if (all.length) {
+    const pages = Math.ceil(all.length / PER), pg = pages > 1 ? Math.floor(Math.max(0, k - 1.5) / 4) % pages : 0;
+    const rest = all.slice(pg * PER, pg * PER + PER), rows = Math.min(PER, all.length);
     const x = 1500, y = 330;
-    rr(ctx, x, y, 400, 60 + rest.length * 44 + (st.length > 11 ? 40 : 0), 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
+    rr(ctx, x, y, 400, 60 + rows * 44 + (pages > 1 ? 36 : 0), 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
     txt(ctx, 'ALSO FLEW', x + 200, y + 32, { px: 26, color: '#6b6577', sw: 0 });
-    rest.forEach((e, i) => { txt(ctx, (i + 4) + '. ' + e.pl.name, x + 20, y + 76 + i * 44, { px: 28, color: OUT, sw: 0, align: 'left', maxW: 240 }); txt(ctx, fmtFt(e.dist), x + 380, y + 76 + i * 44, { px: 28, color: OUT, sw: 0, align: 'right' }); });
-    if (st.length > 11) txt(ctx, '+' + (st.length - 11) + ' more', x + 200, y + 76 + rest.length * 44, { px: 24, color: '#6b6577', sw: 0 });
+    const fade = pages > 1 ? clamp(Math.min(((k - 1.5) % 4 + 4) % 4, 4 - ((k - 1.5) % 4 + 4) % 4) / 0.3, 0, 1) : 1;
+    ctx.globalAlpha = k < 1.5 ? 1 : fade;
+    rest.forEach((e, i) => { const r = pg * PER + i + 4; txt(ctx, r + '. ' + e.pl.name, x + 20, y + 76 + i * 44, { px: 28, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: 250 }); txt(ctx, fmtDist(st, r - 1), x + 380, y + 76 + i * 44, { px: 28, color: OUT, sw: 0, align: 'right' }); });
+    ctx.globalAlpha = 1;
+    if (pages > 1) txt(ctx, 'page ' + (pg + 1) + ' of ' + pages, x + 200, y + 76 + rows * 44 - 6, { px: 22, color: '#6b6577', sw: 0 });
   }
 }
 function awardIcon(ctx, id, x, y, s) {
@@ -5518,19 +5830,19 @@ function drawFame(ctx, dt) {
     panel(40, 120, 900, 760, 'MOST WINS');
     F.players.slice(0, 12).forEach((p, i) => { const y = 200 + i * 54; txt(ctx, (i + 1) + '. ' + p.name, 80, y, { px: 30, minPx: 26, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, p.wins + ' win' + (p.wins === 1 ? '' : 's') + ' · best ' + fmtFt(p.best), 900, y, { px: 28, color: '#4a4458', sw: 0, align: 'right', weight: 800 }); });
     panel(980, 120, 900, 250, 'TEAM WINS');
-    teams().forEach((tm, i) => { const row = F.teams.find(x => x.name === tm.name); const y = 200 + i * 56; teamShape(ctx, tm.shape, 1030, y, 14); ctx.fillStyle = tm.color; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = OUT; ctx.stroke(); txt(ctx, tm.name, 1060, y, { px: 30, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, String(row ? row.wins : 0), 1840, y, { px: 32, color: OUT, sw: 0, align: 'right' }); });
+    teams().forEach((tm, i) => { const row = F.teams.find(x => x.i === i); const y = 200 + i * 56; teamShape(ctx, tm.shape, 1030, y, 14); ctx.fillStyle = tm.color; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = OUT; ctx.stroke(); txt(ctx, tm.name, 1060, y, { px: 30, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, String(row ? row.wins : 0), 1840, y, { px: 32, color: OUT, sw: 0, align: 'right' }); });
     panel(980, 390, 900, 130, 'CURRENT WIN STREAK');
     txt(ctx, F.streak ? F.streak.name + ' · ' + F.streak.n + ' in a row' : '—', 1430, 470, { px: 34, color: OUT, sw: 0, maxW: 840 });
     panel(980, 540, 900, 340, 'DUCK OF THE MONTH · ' + MONTHS[parseDayKey(S.day).getMonth()].toUpperCase());
     if (F.monthBest) { txt(ctx, F.monthBest.d, 1430, 624, { px: 34, color: OUT, sw: 0, maxW: 840 }); txt(ctx, F.monthBest.p + ' · ' + fmtFt(F.monthBest.dist) + ' · longest launch this month', 1430, 664, { px: 26, color: '#6b6577', sw: 0, maxW: 840, weight: 800 }); }
     F.monthly.slice(0, 4).forEach((m, i) => { const y = 724 + i * 40; txt(ctx, (i + 1) + '. ' + m.name, 1020, y, { px: 28, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, m.pts + ' pts · ' + m.wins + ' W', 1840, y, { px: 28, color: '#4a4458', sw: 0, align: 'right' }); });
-    txt(ctx, F.races + ' race' + (F.races === 1 ? '' : 's') + ' on record · podium points 3/2/1', 960, 110, { px: 24, color: '#fff', sw: 5 });
+    txt(ctx, F.races + ' race' + (F.races === 1 ? '' : 's') + ' on record · podium points 3/2/1', 960, 908, { px: 26, color: '#fff', sw: 5 });
   } else {
     panel(40, 120, 1060, 760, 'TOP 10 LONGEST LAUNCHES');
-    F.top10.forEach((l, i) => { const y = 200 + i * 66; txt(ctx, (i + 1) + '. ' + l.d, 80, y, { px: 30, color: OUT, sw: 0, align: 'left', maxW: 620 }); txt(ctx, l.p + ' · ' + shortDate(l.date), 80, y + 30, { px: 24, color: '#6b6577', sw: 0, align: 'left', maxW: 620, weight: 800 }); txt(ctx, fmtFt(l.dist), 1060, y + 10, { px: 34, color: OUT, sw: 0, align: 'right' }); });
+    F.top10.forEach((l, i) => { const y = 196 + i * 68; txt(ctx, (i + 1) + '. ' + l.d, 80, y, { px: 30, minPx: 24, color: OUT, sw: 0, align: 'left', maxW: 700 }); txt(ctx, l.p + ' · ' + shortDate(l.date), 80, y + 32, { px: 26, color: '#6b6577', sw: 0, align: 'left', maxW: 700, weight: 800 }); txt(ctx, fmtFt(l.dist), 1060, y + 14, { px: 34, color: OUT, sw: 0, align: 'right' }); });
     panel(1130, 120, 750, 760, 'LEGENDARY MOMENTS');
-    if (!F.legend.length) txt(ctx, 'None yet. Space trips, backfires and cannon-ceptions land here.', 1505, 220, { px: 24, color: '#6b6577', sw: 0, maxW: 700 });
-    F.legend.slice(0, 11).forEach((l, i) => { const y = 200 + i * 60; txt(ctx, l.what, 1160, y, { px: 28, color: '#c22f1f', sw: 0, align: 'left', maxW: 690 }); txt(ctx, l.d + ' (' + l.p + ') · ' + shortDate(l.date), 1160, y + 28, { px: 22, color: '#4a4458', sw: 0, align: 'left', maxW: 690, weight: 800 }); });
+    if (!F.legend.length) txt(ctx, 'None yet. Space trips and double cannons land here.', 1505, 220, { px: 26, color: '#6b6577', sw: 0, maxW: 700 });
+    F.legend.slice(0, 9).forEach((l, i) => { const y = 196 + i * 74; txt(ctx, l.what, 1160, y, { px: 30, minPx: 24, color: '#c22f1f', sw: 0, align: 'left', maxW: 690 }); txt(ctx, l.p + ' · ' + shortDate(l.date) + ' · ' + l.d, 1160, y + 32, { px: 26, color: '#4a4458', sw: 0, align: 'left', maxW: 690, weight: 800 }); });
   }
   button(ctx, 'fameback', 40, 948, 240, 76, '◀ Back', { fn: () => go(FM.back || 'title') });
 }
@@ -5616,7 +5928,10 @@ const STAGE = document.getElementById('stage');
 let VIEW = { scale: 1, ox: 0, oy: 0, k: 1 };
 // Adaptive quality: if frames run slow (weak laptop, busy screen share), render at a lower internal
 // resolution and use fewer particles; step back up after a long smooth stretch.
-const QUAL = { k: 1, slow: 0, fast: 0 };
+// A probe guards against frame-rate caps (laptop battery saver runs at 30 fps however light the
+// drawing is): if a step down doesn't actually speed frames up, it's undone and adaptation stops.
+const QUAL = { k: 1, slow: 0, fast: 0, iv: [], probe: null, locked: false };
+function medianIv() { const a = QUAL.iv.slice().sort((x, y) => x - y); return a.length ? a[a.length >> 1] : 1 / 60; }
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   const scale = Math.min(w / 1920, h / 1080);
@@ -5658,11 +5973,13 @@ window.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
   if (Modal.isOpen) { if (k === 'p' || k === 'escape') { e.preventDefault(); Modal.close(); } return; }
+  // a checkbox / button reached with the keyboard keeps Space for itself (after a mouse click, Space is the big button)
+  if ((k === ' ' || e.code === 'Space') && e.target && e.target.closest && e.target.closest('#roster, #modal') && /^(input|button|select)$/i.test(e.target.tagName) && e.target.matches(':focus-visible')) return;
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); primeAudio(); if (!e.repeat) primary(); return; }
   if (k === 'f') { toggleFullscreen(); return; }
-  if (k === 'm') { primeAudio(); S.settings.muted = !S.settings.muted; SFX.setMuted(S.settings.muted); saveSettings(); Toast.show(S.settings.muted ? 'Muted' : 'Sound on'); return; }
-  if (k === 'p') { openSettings(true); return; }
-  if (k === 't') { S.turbo = !S.turbo; Toast.show(S.turbo ? 'Turbo ON (2x)' : 'Turbo off'); if (S.screen === 'launch' && L.phase === 'flight' && L.tl && L.pb) { const keep = L.pb; const nb = buildPlayback(L.tl, L.photo); keep.segs = nb.segs; } return; }
+  if (k === 'm') { primeAudio(); S.settings.muted = !S.settings.muted; SFX.setMuted(S.settings.muted); if (S.settings.muted) Voice.stop(); saveSettings(); Toast.show(S.settings.muted ? 'Muted' : 'Sound on'); return; }
+  if (k === 'p') { openSettings(S.screen === 'launch' && !!S.race); return; }
+  if (k === 't') { S.turbo = !S.turbo; if (S.race) { S.race.turbo = S.turbo; saveRace(); } Toast.show(S.turbo ? 'Turbo ON (2x)' : 'Turbo off'); if (S.screen === 'launch' && L.phase === 'flight' && L.tl && L.pb) { const keep = L.pb; const nb = buildPlayback(L.tl, L.photo); keep.segs = nb.segs; } return; }
   if (S.screen === 'launch') {
     if (k === 'r') { replayFlight(); return; }
     if (k === 's') { skipFlight(); return; }
@@ -5693,9 +6010,10 @@ function draw(dt) {
   }
   if (S.screen !== 'launch' && S.screen !== 'gallery') { const V = makeView(0, GROUND_Y, 1); Particles.draw(ctx, V, 'screen'); }
   else if (S.screen === 'launch') { const V = makeView(0, GROUND_Y, 1); Particles.draw(ctx, V, 'screen'); }
-  if (S.screen === 'launch' || S.screen === 'reveal' || S.screen === 'results') Caps.drawBar(ctx);
   if (S.screen === 'reveal' || S.screen === 'results') Caps.drawBigs(ctx);
-  if (S.screen !== 'fame' || true) drawBig(ctx, dt);
+  drawBig(ctx, dt);
+  // Bill's lower third sits above the big button so the opened SAFETY lid never covers his words
+  if (S.screen === 'launch' || S.screen === 'reveal' || S.screen === 'results') Caps.drawBar(ctx);
   Iris.draw(ctx);
   if (S.paused) { ctx.fillStyle = 'rgba(31,26,46,0.3)'; ctx.fillRect(0, 0, 1920, 1080); }
 }
@@ -5707,14 +6025,21 @@ function frame(now) {
   const dt = Math.min(0.05, Math.max(0, raw));
   if (raw > 0) S.fps = lerp(S.fps, 1 / Math.max(raw, 0.001), 0.05);
   if (raw > 0 && raw < 0.4 && !document.hidden) {
+    QUAL.iv.push(raw); if (QUAL.iv.length > 90) QUAL.iv.shift();
+    const setK = k => { QUAL.k = k; QUAL.slow = 0; QUAL.fast = 0; Particles.max = QUAL.k < 0.8 ? 150 : 260; resize(); };
+    if (QUAL.probe && S.rt - QUAL.probe.at > 3) {
+      // did the lower resolution help? if not, the frame rate is capped, not overloaded: put it back
+      if (medianIv() > QUAL.probe.m * 0.9) { QUAL.locked = true; setK(QUAL.probe.k); }
+      QUAL.probe = null;
+    }
     if (raw > 1 / 40) QUAL.slow += raw; else QUAL.slow = Math.max(0, QUAL.slow - raw * 0.5);
     QUAL.fast = raw < 1 / 54 ? QUAL.fast + raw : 0;
-    if (QUAL.slow > 1.5 && QUAL.k > 0.55) { QUAL.k = Math.max(0.55, QUAL.k - 0.15); QUAL.slow = 0; QUAL.fast = 0; Particles.max = QUAL.k < 0.8 ? 150 : 260; resize(); }
-    else if (QUAL.fast > 25 && QUAL.k < 1) { QUAL.k = Math.min(1, QUAL.k + 0.15); QUAL.fast = 0; Particles.max = QUAL.k < 0.8 ? 150 : 260; resize(); }
+    if (!QUAL.probe && !QUAL.locked && QUAL.slow > 1.5 && QUAL.k > 0.7) { QUAL.probe = { k: QUAL.k, m: medianIv(), at: S.rt }; QUAL.iv = []; setK(Math.max(0.7, QUAL.k - 0.15)); }
+    else if (QUAL.fast > 25 && QUAL.k < 1) setK(Math.min(1, QUAL.k + 0.15));
   }
   S.rt += dt;
-  if (!S.paused) { S.time += dt; try { update(dt); } catch (err) { console.error(err); } Particles.update(dt); Shake.update(dt); }
-  Caps.update(); Iris.update(dt);
+  // pause freezes everything the audience sees: the show, captions and screen wipes
+  if (!S.paused) { S.time += dt; try { update(dt); } catch (err) { console.error(err); } Particles.update(dt); Shake.update(dt); Caps.update(); Iris.update(dt); }
   try { draw(dt); } catch (err) { console.error(err); }
   if (S.debugOn && (Math.floor(S.rt * 4) !== Math.floor((S.rt - dt) * 4))) DebugPanel.tick();
 }
@@ -5735,7 +6060,8 @@ function boot() {
   const c = savedShow();
   if (S.galleryOn) go('gallery');
   else go('title');
-  if (c && !S.galleryOn) Toast.show('A show is in progress: press the big red button to resume.', 3000);
+  if (c && !S.galleryOn) Toast.show(c.day === todayKey() ? "Today's show is still going: press the big red button to resume." : 'There is an unfinished show from ' + shortDate(c.day) + '. Press START for a new one, or resume it from the button on the right.', 3600);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && (S.screen === 'title' || S.screen === 'roster') && !S.race) { const before = S.day; checkDayRollover(); if (S.day !== before && S.screen === 'title') go('title'); } });
   requestAnimationFrame(frame);
 }
 boot();
