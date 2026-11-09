@@ -493,6 +493,11 @@ C.LINES = {
   lastDuckLong: ['{duck} is our last duck. It would take a miracle. Miracles happen.', 'Last duck! The lead is big, but this is a cannon.'],
   hatOff: ['There goes the hat!', 'Hat overboard!', 'And the hat has a mind of its own!'],
   hatWins: ['Technically, the hat wins.', 'The hat flew farther than the duck. Let that sink in.', 'Folks, the HAT beat the duck.'],
+  billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
+  billPickWon: ['Called it! Bill\'s pick took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick WON! Nobody tell my editor.'],
+  billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board."],
+  countIn: ['First launch of the day! Count it down with me, folks!', 'Everybody, count it down!', 'Here we go! Three, two, one...'],
+  teamDay: ['{team} takes Team of the Day!', 'Team of the Day goes to {team}. Synchronized flapping pays off.'],
   solo: ["Just one duck today, and it's {duck} versus the record!", "A solo flight! {duck} is up against history."],
   winner: ['And the Golden Loaf goes to {duck}!', '{duck} takes home the Golden Loaf! Unbelievable!', 'Your champion of the pond: {duck}!'],
   feather: ['And the Participation Feather goes to {duck}. Wear it proudly.', 'Every flight counts. {duck}, this feather is for you.', '{duck} takes home the Participation Feather. A true sport.'],
@@ -2981,7 +2986,7 @@ const SFX = (() => {
       tone('sawtooth', 320, 120, t, 0.18, 0.12, { filter: 'lowpass', ff: 1800 });
     },
     puff() { const t = now(); noise(t, 0.35, 'lowpass', 900, 300, 0.7, 0.3); tone('sine', 180, 90, t, 0.25, 0.15); },
-    whoosh(dur) { const t = now(); dur = dur || 0.6; noise(t, dur, 'bandpass', 500, 1800, 1.4, 0.22, { a: dur * 0.4 }); },
+    whoosh(dur) { const t = now(); dur = dur || 0.6; noise(t, dur, 'bandpass', 500, 1800, 1.4, 0.4, { a: dur * 0.4 }); },
     slide(dur) { const t = now(); dur = dur || 1; tone('sine', 1600, 380, t, dur, 0.14, { vib: [7, 25], glide: dur }); },
     slideUp(dur) { const t = now(); dur = dur || 0.5; tone('sine', 420, 1500, t, dur, 0.13, { vib: [7, 20] }); },
     boing() { const t = now(); tone('sine', 140, 380, t, 0.55, 0.32, { vib: [13, 60], glide: 0.12 }); tone('triangle', 280, 520, t, 0.35, 0.08, { vib: [13, 50] }); },
@@ -3043,7 +3048,7 @@ const SFX = (() => {
     record() { const t = now(); notes([['G5', 0.1], ['C6', 0.1], ['E6', 0.1], ['C6', 0.1], ['E6', 0.45]], t, (f, tt, d) => kazoo(f, tt, d, 0.15)); },
     rocket(dur) { const t = now(); dur = dur || 1.5; noise(t, dur, 'lowpass', 900, 500, 0.8, 0.35, { a: 0.05, hold: dur * 0.6 }); for (let i = 0; i < 18; i++) noise(t + nr.next() * dur, 0.02, 'highpass', 2500, 2500, 1, 0.1); },
     buzz(dur) { const t = now(); dur = dur || 1.4; tone('sawtooth', 150, 165, t, dur, 0.06, { filter: 'lowpass', ff: 1400, a: 0.2, vib: [32, 18] }); },
-    envelopes() { const t = now(); for (let i = 0; i < 10; i++) noise(t + i * 0.06 + nr.next() * 0.04, 0.05, 'bandpass', 2500, 1800, 1.5, 0.12); },
+    envelopes() { const t = now(); for (let i = 0; i < 10; i++) noise(t + i * 0.06 + nr.next() * 0.04, 0.05, 'bandpass', 2500, 1800, 1.5, 0.24); },
     bounceback() { S.bonk(); const t = now(); tone('sine', 250, 600, t + 0.08, 0.3, 0.15, { vib: [12, 40] }); },
     munch() { const t = now(); for (let i = 0; i < 4; i++) noise(t + i * 0.16, 0.07, 'bandpass', 1400, 900, 1.2, 0.25); },
     snore() { const t = now(); tone('sawtooth', 85, 95, t, 1.1, 0.08, { filter: 'lowpass', ff: 420, a: 0.5 }); tone('sine', 900, 1400, t + 1.2, 0.5, 0.05, { a: 0.1 }); },
@@ -3051,19 +3056,19 @@ const SFX = (() => {
     twang() { const t = now(); tone('triangle', 196, 160, t, 0.6, 0.25, { vib: [9, 8] }); tone('sine', 392, 330, t, 0.4, 0.08); },
     slip() { S.slideUp(0.35); const t = now(); tone('sine', 2400, 1800, t + 0.3, 0.12, 0.08); },
     walkway() { const t = now(); tone('sine', 880, 880, t, 0.5, 0.12); tone('sine', 698, 698, t + 0.3, 0.7, 0.12); },
-    pelican() { const t = now(); for (let i = 0; i < 4; i++) noise(t + i * 0.18, 0.12, 'bandpass', 600, 400, 1, 0.18); tone('sawtooth', 200, 160, t + 0.1, 0.25, 0.06, { filter: 'lowpass', ff: 600 }); },
-    gull() { const t = now(); for (let i = 0; i < 2; i++) tone('sawtooth', 1500, 950, t + i * 0.28, 0.24, 0.08, { filter: 'bandpass', ff: 1600, q: 2 }); },
-    cool() { const t = now(); for (let i = 0; i < 5; i++) tone('sine', 1800 + i * 300, 1800 + i * 300, t + i * 0.04, 0.2, 0.05); },
+    pelican() { const t = now(); for (let i = 0; i < 4; i++) noise(t + i * 0.18, 0.12, 'bandpass', 600, 400, 1, 0.34); tone('sawtooth', 200, 160, t + 0.1, 0.25, 0.12, { filter: 'lowpass', ff: 600 }); },
+    gull() { const t = now(); for (let i = 0; i < 2; i++) tone('sawtooth', 1500, 950, t + i * 0.28, 0.24, 0.16, { filter: 'bandpass', ff: 1600, q: 2 }); },
+    cool() { const t = now(); for (let i = 0; i < 5; i++) tone('sine', 1800 + i * 300, 1800 + i * 300, t + i * 0.04, 0.2, 0.09); },
     sneeze() { const t = now(); noise(t, 0.25, 'bandpass', 900, 1100, 2, 0.1, { a: 0.2 }); noise(t + 0.45, 0.18, 'bandpass', 2400, 1200, 1.5, 0.3); },
     plane() { const t = now(); noise(t, 2.6, 'lowpass', 500, 300, 1, 0.16, { a: 1.0, hold: 0.4 }); tone('sawtooth', 95, 80, t, 2.6, 0.04, { filter: 'lowpass', ff: 500, a: 1.0 }); },
     moo() { const t = now(); for (let i = 0; i < 3; i++) tone('sawtooth', 120 + i * 18, 100 + i * 15, t + i * 0.05, 1.1, 0.07, { filter: 'lowpass', ff: 520, a: 0.15 }); },
-    scream(dur) { const t = now(); dur = Math.min(2.2, dur || 1.5); tone('sawtooth', 520, 880, t, dur, 0.07, { filter: 'bandpass', ff: 1300, q: 1.4, vib: [8, 25], a: 0.08 }); },
+    scream(dur) { const t = now(); dur = Math.min(2.2, dur || 1.5); tone('sawtooth', 520, 880, t, dur, 0.13, { filter: 'bandpass', ff: 1300, q: 1.4, vib: [8, 25], a: 0.08 }); },
     thud() { const t = now(); tone('sine', 120, 55, t, 0.18, 0.4); noise(t, 0.1, 'lowpass', 500, 200, 1, 0.3); },
     parachute() { const t = now(); noise(t, 0.35, 'lowpass', 700, 200, 1, 0.35, { a: 0.03 }); },
     beep() { const t = now(); tone('sine', 1320, 1320, t, 0.08, 0.08); tone('sine', 1760, 1760, t + 0.12, 0.08, 0.08); },
     fireworks() { for (let i = 0; i < 4; i++) setTimeout(() => S.pop(), i * 380); },
-    shimmer() { const t = now(); for (let i = 0; i < 8; i++) tone('sine', 1500 + i * 220, 1500 + i * 220, t + i * 0.05, 0.3, 0.04); },
-    squirrel() { const t = now(); for (let i = 0; i < 5; i++) tone('square', 2200 + nr.next() * 600, 1800, t + i * 0.07, 0.04, 0.04, { filter: 'bandpass', ff: 2500 }); },
+    shimmer() { const t = now(); for (let i = 0; i < 8; i++) tone('sine', 1500 + i * 220, 1500 + i * 220, t + i * 0.05, 0.3, 0.07); },
+    squirrel() { const t = now(); for (let i = 0; i < 5; i++) tone('square', 2200 + nr.next() * 600, 1800, t + i * 0.07, 0.04, 0.09, { filter: 'bandpass', ff: 2500 }); },
   };
   function play(name, ...args) {
     if (!ac || muted || vol <= 0) return;
@@ -3074,7 +3079,9 @@ const SFX = (() => {
     const list = ['jingle', 'crank', 'fuse', 'count', 'boom', 'whoosh', 'slide', 'boing', 'splat', 'splash', 'honk', 'bonk', 'ding', 'quack', 'ooh', 'cheer', 'sad', 'fanfare', 'drumroll', 'shutter', 'hold', 'zap', 'portal', 'bing', 'wheel', 'leader', 'record'];
     list.forEach((n, i) => setTimeout(() => { Toast.show('♪ ' + n); play(n, n === 'quack' ? 1 : undefined); }, i * 900));
   }
-  return { init, resume, play, setVolume, setMuted, soundCheck, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
+  // QA hook: an analyser on the master output so tests can measure levels
+  function tap() { if (!ac) return null; const an = ac.createAnalyser(); an.fftSize = 2048; comp.connect(an); return an; }
+  return { init, resume, play, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
 })();
 
 /* ---------- announcer voice (Web Speech, off by default) ---------- */
@@ -3486,7 +3493,8 @@ const Caps = {
     const now = S.rt;
     this.queue = this.queue.filter(q => q.prio > item.prio || (q.prio === item.prio && q.at > now + 0.05));
     this.queue.push(item);
-    if (this.queue.length > 3) this.queue.shift();
+    // over capacity: drop the least important line that's waiting (oldest first), never the newest
+    while (this.queue.length > 5) { let wi = 0; for (let i = 1; i < this.queue.length - 1; i++) if (this.queue[i].prio < this.queue[wi].prio) wi = i; this.queue.splice(wi, 1); }
   },
   big(text, o) {
     o = o || {};
@@ -4014,6 +4022,21 @@ function computeAwards(R) {
   const feather = st.length > 1 ? st[st.length - 1] : null;
   return { awards, feather };
 }
+// Team of the Day: the team whose ducks flew farthest on average (needs at least two teams in the show)
+function teamOfDay(R) {
+  const st = standings();
+  const by = new Map();
+  for (const e of st) { const t = e.pl.team; if (!by.has(t)) by.set(t, []); by.get(t).push(e.dist); }
+  if (by.size < 2) return null;
+  let best = null;
+  for (const [t, ds] of by) { const avg = ds.reduce((a, c) => a + c, 0) / ds.length; if (!best || avg > best.avg) best = { team: t, avg, n: ds.length }; }
+  return Object.assign(best, { name: teams()[best.team].name, color: teams()[best.team].color, shape: teams()[best.team].shape });
+}
+function billPickKey(R) {
+  const act = R.players.filter(p => !p.out);
+  if (act.length < 3) return null;
+  return act[hash(R.seed, 'billpick') % act.length].key;
+}
 function awardDesc(a) { return Lines.fill(C.AWARDS[a.id].desc, { v: a.v, other: a.other || '' }); }
 function computeHighlights(R) {
   const st = standings();
@@ -4049,6 +4072,8 @@ function resultsText(R) {
   const aw = awards.slice(0, 3).map(a => C.AWARDS[a.id].name + ' (' + a.e.pl.name + ')');
   if (feather) aw.push('Participation Feather (' + feather.pl.name + ')');
   if (aw.length) lines.push('Awards: ' + aw.join(' · '));
+  const tod = teamOfDay(R);
+  if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
   if (hl.length) lines.push('Highlight: ' + hl[0]);
   return lines.join('\n');
 }
@@ -4132,6 +4157,8 @@ function setPhase(p) {
     setBig('LIGHT THE FUSE', true);
     SFX.play('click');
     quip('peek', { delay: 0.2 });
+    // get the call involved: the first launch of the day (and now and then after) invites a count-along
+    if (!L.q.bonus && (S.race.idx === 0 || hash(S.race.seed, 'countin', S.race.idx) % 5 === 0)) Caps.say(S.race.idx === 0 ? C.LINES.countIn[0] : Lines.next('countIn', {}) || C.LINES.countIn[1], { prio: 1 });
   }
   if (p === 'countdown') {
     setBig('LIGHT THE FUSE', false);
@@ -4255,6 +4282,7 @@ function boomFX(misfire) {
   burst('feather', 12, { x: m.x, y: m.y, a0: -a, spread: 1.2, sp0: 20, sp1: 70, l0: 1.2, l1: 2.2, r0: 8, r1: 14, colors: [C.COLORS[L.pl.duck.color].c, '#ffffff'], extra: { ws: true, g: -12, drag: 1.2 } });
   Caps.big('FIRE IN THE DUCK!', { px: 104, dur: 2 });
   if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 450 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }
+  else if (L.fuseOut) { /* the fake-out has its own punchline */ }
   else { say('launch', { duck: L.pl.duck.name }, { delay: 0.5 }); if (!L.tl.gags.some(g => g.id === 'scream')) quip('launch', { delay: 1.2 }); }
   L.boomed = true;
 }
@@ -4382,6 +4410,7 @@ function endFlight() {
 }
 function onResult() {
   const R = S.race, tl = L.tl, pl = L.pl, d = pl.duck;
+  Caps.bigs = Caps.bigs.filter(b => S.rt - b.t0 < 0.4);   // nothing left over from the flight sits on the result panel
   const before = leaderEntry();
   const prevLeaderKey = before ? before.pl.key : null;
   const prevBest = R.results[pl.key] ? R.results[pl.key].dist : null;
@@ -4482,7 +4511,7 @@ function updateLaunch(dt) {
       if (L.gauge.locked) L.barrel = lerp(L.barrelFrom, L.tl.angle, easeInOut((L.pt - L.lockT) / 0.3));
       if (L.fuseOut) {
         if (L.pt >= T * 2 / 3 && !L.fizzled) { L.fizzled = true; SFX.play('fizzle'); say('fakeout', {}, { prio: 2, delay: 0.5 }); }
-        if (L.pt >= T + 2.6) { L.fizzled = false; say('fakeoutBoom', {}, { prio: 2, delay: 0.6 }); startFlight(false); }
+        if (L.pt >= T + 2.6) { L.fizzled = false; say('fakeoutBoom', {}, { prio: 2, delay: 0.2 }); startFlight(false); }
       } else if (L.pt >= T) startFlight(false);
       break;
     }
@@ -4645,12 +4674,14 @@ function drawLaunchActors(ctx, V, t) {
     drawDuck(ctx, d, -G.head[0] * u + jig, -G.head[1] * u, sz, duckDrawOpts(pl, { pose: nervous ? 'peek' : 'stand' }));
     ctx.restore();
   };
+  drawWaitingLine(ctx, V, t);
   if (ph === 'intro' || ph === 'ladder') {
     ART.cannon(ctx, V, cannonSt);
     const lad = ART.ladder(ctx, V, L.barrel);
     let x, y, flip = true, pose = 'stand', hide = false, rot = 0;
     const pace = PACE();
-    if (ph === 'intro') { x = lad.bx + 12; y = lad.by; pose = 'walk'; flip = true; x += Math.max(0, 1 - L.pt / (1.2 * pace)) * 30; }
+    // the next duck waddles over from the front of the line to the ladder
+    if (ph === 'intro') { const k = easeInOut(clamp(L.pt / (1.3 * pace), 0, 1)); x = lerp(-84, lad.bx + 4, k); y = SIM.groundY(x); pose = k < 1 ? 'walk' : 'stand'; flip = k >= 1; }
     else {
       const u = clamp((L.pt - 0.2 * pace) / (1.5 * pace), 0, 1);
       const h = clamp((L.pt - 1.7 * pace) / (0.4 * pace), 0, 1);
@@ -4714,6 +4745,27 @@ function drawLaunchActors(ctx, V, t) {
   }
   drawEventActors(ctx, V, t, s, px, false);
 }
+// Today's next few ducks wait their turn on the hill behind the cannon (and hop when it fires)
+function drawWaitingLine(ctx, V, t) {
+  const R = S.race;
+  if (!R || V.sx(-200) > 1920 || V.sx(-80) < -100) return;
+  const ph = L.phase;
+  const start = (ph === 'result' || ph === 'idle' || ph === 'loading') ? R.idx : R.idx + 1;
+  const seen = new Set(L.pl ? [L.pl.key] : []), line = [];
+  for (let i = start; i < R.queue.length && line.length < 4; i++) { const pl = R.players[R.queue[i].p]; if (!pl.out && !seen.has(pl.key)) { seen.add(pl.key); line.push(pl); } }
+  if (!line.length) return;
+  const sz = clamp(10 * V.z, 46, 72);
+  const sinceBoom = L.tl && ph === 'flight' ? t - L.tl.launchT : 99;
+  const cheer = (ph === 'result' && L.result && (L.result.newLeader || L.result.newRecord) && L.pt < 2) || (sinceBoom >= 0 && sinceBoom < 1.2);
+  line.forEach((pl, i) => {
+    const x = -88 - i * 17, gy = SIM.groundY(x);
+    const ph2 = S.time * 7 + i * 1.7;
+    const hop = cheer ? Math.abs(Math.sin(ph2)) * sz * 0.35 : Math.max(0, Math.sin(S.time * 2 + i * 2.1)) * sz * 0.04;
+    drawDuck(ctx, pl.duck, V.sx(x), V.sy(gy) - sz * 0.45 - hop, sz, duckDrawOpts(pl, { pose: cheer ? 'happy' : 'stand', flap: cheer ? S.time * 3 + i : null }));
+  });
+  const lx = V.sx(-88 - (line.length - 1) * 8.5), ly = V.sy(SIM.groundY(-100)) - sz * 1.25;
+  if (ph !== 'flight' && V.z > 2.5) txt(ctx, 'UP NEXT', lx, ly, { px: 22, color: '#fff', sw: 5 });
+}
 // actors for distance events and gags; behind=true draws the ones that go behind the duck
 function drawEventActors(ctx, V, t, s, px, behind) {
   const tl = L.tl;
@@ -4727,7 +4779,7 @@ function drawEventActors(ctx, V, t, s, px, behind) {
     switch (e.id) {
       case 'geese': if (!behind && rt < 2.4) { const [x, y] = W(e.x - rt * 110, e.y + 8 + (rt > 0 ? rt * 6 : 0)); ART.actor.geese(ctx, x + 30, y, 90 * ds, 0, S.time); } break;
       case 'migration': if (behind && rt < e.tEnd - e.t + 2) { const k = rt < 0 ? rt : rt > e.tEnd - e.t ? rt - (e.tEnd - e.t) : 0; const [x, y] = rt < 0 ? W(e.x - rt * 60, e.y + 20) : W(s.x + (k > 0 ? k * 90 : 0) + 30, s.y + 12 + (k > 0 ? k * 25 : 0)); ART.actor.migration(ctx, x + 80, y - 30, 80 * ds, 0, S.time); } break;
-      case 'pelican': if (!behind) { const dur = e.tEnd - e.t; let x, y; if (rt < 0) [x, y] = W(e.x - rt * 80 + 10, e.y + 18 - rt * 8); else if (rt <= dur) [x, y] = W(s.x + 2, s.y + 14); else [x, y] = W(s.x + (rt - dur) * 90, s.y + 14 + (rt - dur) * 40); ART.actor.pelican(ctx, x, y - px * 0.25, 190 * ds, 0, S.time); } break;
+      case 'pelican': if (behind) { const dur = e.tEnd - e.t; let x, y; if (rt < 0) [x, y] = W(e.x - rt * 80 + 10, e.y + 18 - rt * 8); else if (rt <= dur) [x, y] = W(s.x - 3, s.y); else [x, y] = W(s.x + (rt - dur) * 90, s.y + 14 + (rt - dur) * 40); ART.actor.pelican(ctx, x, y - px * 0.95, 190 * ds, 0, S.time); } break;
       case 'glider': if (!behind) { const dur = e.tEnd - e.t; if (rt < 0) { const [x, y] = W(e.x - rt * 60, e.y + 22); ART.actor.glider(ctx, x, y, 200 * ds, 0, S.time); } else if (rt <= dur + 0.05) { ART.actor.glider(ctx, V.sx(s.x), V.sy(s.y) - px * 0.75, 200 * ds, 0, S.time); } else { const [x, y] = W(s.x + (rt - dur) * 40, s.y + 20 + (rt - dur) * 15); ART.actor.glider(ctx, x, y, 200 * ds, 0, S.time); } } break;
       case 'drone': if (!behind) { const k = rt < 0 ? rt : Math.max(0, rt - 0.3); const [x, y] = rt < 0 ? W(e.x - rt * 50 + 6, e.y + 26 - rt * 20) : W(e.x + 6 + k * 40, e.y + 26 + k * 60); ART.actor.drone(ctx, x, y, 110 * ds, 0, S.time); } break;
       case 'pepper': if (!behind && rt < 0) { const [x, y] = W(e.x + 4, e.y + 2); ART.actor.pepper(ctx, x + 30, y, 60 * ds, 0, S.time); } break;
@@ -4854,6 +4906,8 @@ function drawLaunchHUD(ctx, V, t) {
   if (L.replay) badge('REPLAY', '#ffffff');
   if (L.q && L.q.bonus) badge('BONUS SHOT', '#ffd23f');
   drawSidebar(ctx);
+  // a quiet reminder of the host keys
+  if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
   Caps.drawBigs(ctx, L.duckScreen && (ph === 'flight' || ph === 'result') ? L.duckScreen.y : null);
   if (L.duckScreen && (ph === 'flight' || ph === 'result' || ph === 'idle')) Caps.drawBubble(ctx, L.duckScreen.x, L.duckScreen.y);
   else if (ph === 'armed' || ph === 'countdown' || ph === 'ladder') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
@@ -4889,10 +4943,11 @@ function drawIntroCard(ctx, pl) {
   let yy = y + 118 + nl.length * npx * 1.04 + 6;
   txt(ctx, duckDescription(d), tx, yy, { px: 28, color: '#6b6577', sw: 0, align: 'left', maxW: tw, weight: 800 });
   yy += 50;
-  ctx.font = font(32, 800);
-  const bl = wrapText(ctx, '“' + d.bio + '”', tw, 2);
-  bl.forEach((ln, i) => txt(ctx, ln, tx, yy + i * 38, { px: 32, weight: 800, color: OUT, sw: 0, align: 'left' }));
-  yy += bl.length * 38 + 22;
+  let bpx = 32; ctx.font = font(bpx, 800);
+  let bl = wrapText(ctx, '“' + d.bio + '”', tw);
+  if (bl.length > 2) { bpx = 28; ctx.font = font(bpx, 800); bl = wrapText(ctx, '“' + d.bio + '”', tw, 3); }
+  bl.forEach((ln, i) => txt(ctx, ln, tx, yy + i * (bpx + 6), { px: bpx, weight: 800, color: OUT, sw: 0, align: 'left' }));
+  yy += bl.length * (bpx + 6) + (bl.length > 2 ? 12 : 22);
   for (const st of d.stats) {
     rr(ctx, tx, yy - 22, tw, 46, 14); ctx.fillStyle = '#f1e9d4'; ctx.fill();
     txt(ctx, st.k + ':', tx + 16, yy + 1, { px: 30, color: '#6b6577', sw: 0, align: 'left', weight: 800 });
@@ -4972,6 +5027,7 @@ function drawResultPanel(ctx, r) {
   txt(ctx, rank, 960, y + 232, { px: 32, color: OUT, sw: 0, maxW: 530 });
   ctx.restore();
 }
+const SB = { seen: {} };
 function drawSidebar(ctx) {
   const R = S.race;
   if (!R) return;
@@ -4989,8 +5045,16 @@ function drawSidebar(ctx) {
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
   txt(ctx, st.length + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
   let yy = y + 66;
+  SB.seen = SB.seen || {};
   const row = (e, rank, hl) => {
     const pl = e.pl;
+    // rows glide to their new spot when the order changes
+    const key = pl.key;
+    const target = yy;
+    const prev = SB.seen[key];
+    const ry = prev == null ? target : approach(prev, target, 7, 1 / 60);
+    SB.seen[key] = ry;
+    const saveY = yy; yy = ry;
     if (hl) { rr(ctx, x + 8, yy, w - 16, rh - 6, 16); ctx.fillStyle = 'rgba(255,210,63,0.45)'; ctx.fill(); }
     txt(ctx, rank, x + 30, yy + rh / 2 - 2, { px: 30, color: OUT, sw: 0 });
     const pc = duckPortrait(pl.duck, 50, S.cond.friday ? 'party' : '');
@@ -4999,7 +5063,7 @@ function drawSidebar(ctx) {
     txt(ctx, pl.duck.name, x + 136, yy + 22, { px: 28, color: OUT, sw: 0, align: 'left', maxW: w - 150 });
     txt(ctx, pl.name, x + 112, yy + 54, { px: 26, color: '#6b6577', sw: 0, align: 'left', maxW: w - 250, weight: 800 });
     txt(ctx, e.r ? fmtFt(e.dist) : '…', x + w - 18, yy + 54, { px: 28, color: OUT, sw: 0, align: 'right' });
-    yy += rh;
+    yy = saveY + rh;
   };
   rows.forEach((e, i) => row(e, String(i + 1), e.pl.key === curKey && (L.phase === 'result' || L.phase === 'idle')));
   if (showCur) { yy += 6; txt(ctx, 'NOW', x + 30, yy + 8, { px: 20, color: '#e8412c', sw: 0 }); row({ pl: L.pl, r: null }, '▶', true); }
@@ -5016,7 +5080,7 @@ function go(screen) {
   if (screen === 'roster') { refreshWorld(); Roster.show(); }
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
-  if (screen === 'results') startResults();
+  if (screen === 'results') { if (RS.back) { RS.back = false; setBig('DONE', true); } else startResults(); }
   if (screen === 'fame') { Particles.clear(); FM.page = 0; FM.t = 0; setBig('NEXT PAGE', true); }
   if (screen === 'gallery') { GL.seed = freshSeed(); setBig('NEW BATCH', true); }
 }
@@ -5048,11 +5112,22 @@ function resumeRace(c) {
 
 /* ---------- title ---------- */
 let titleDuck = null;
+const DEMO = { cyc: -1, duck: null };
 function drawTitle(ctx, dt) {
   const t = S.time;
   const V = makeView(150, GROUND_Y + 30, 4.2);
   drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0 });
-  ART.cannon(ctx, V, { angle: 38 + Math.sin(t * 0.6) * 1.5, burn: 0, smolder: true, t, stick: true, reach: 0 });
+  // attract mode: every few seconds Thunderbill lobs a demo duck off into the distance
+  const ang = 40, CYC = 6.5, u = t % CYC, cyc = Math.floor(t / CYC);
+  const mz = cannonMuzzle(ang);
+  if (S.screen === 'title' && cyc !== DEMO.cyc) {
+    DEMO.cyc = cyc; DEMO.duck = generateDuck(hash('demo', cyc, S.day), {});
+    for (let i = 0; i < 6; i++) Particles.add({ type: 'smoke', layer: 'screen', x: V.sx(mz.x) + fx.range(-10, 10), y: V.sy(mz.y) + fx.range(-10, 10), vx: fx.range(20, 90), vy: fx.range(-60, -10), drag: 1.5, life: fx.range(0.9, 1.6), r: fx.range(18, 30), a: 0.7 });
+    if (cyc > 0) SFX.play('puff');
+  }
+  const recoil = u < 0.5 ? Math.sin(u / 0.5 * Math.PI) : 0;
+  ART.cannon(ctx, V, { angle: ang, burn: 0, smolder: true, t, stick: true, reach: 0, recoil });
+
   if (!titleDuck) titleDuck = generateDuck(hash('title', S.day), {});
   const wx = 26 + Math.sin(t * 0.35) * 22, dir = Math.cos(t * 0.35) > 0;
   drawDuck(ctx, titleDuck, V.sx(wx), V.sy(SIM.groundY(wx)) - 58, 120, { pose: 'walk', flip: !dir, t, party: S.cond.friday, blink: (t % 3.1) < 0.12 });
@@ -5065,6 +5140,10 @@ function drawTitle(ctx, dt) {
   txt(ctx, "TODAY'S POND FORECAST", px, py + 58, { px: 26, color: '#e8412c', sw: 0 });
   txt(ctx, conditionsSummary(S.cond), px, py + 104, { px: 32, color: '#4a4458', sw: 0, maxW: 760, weight: 800 });
   const c = savedShow();
+  if (DEMO.duck && u < 2.4 && S.screen === 'title') {
+    const dx = mz.x + 150 * u, dy = mz.y + 105 * u - 18 * u * u;
+    drawDuck(ctx, DEMO.duck, V.sx(dx), V.sy(dy), 84, { pose: 'scared', rot: u * 5, flap: t * 4, t, mouth: 0.8 });
+  }
   if (c) txt(ctx, 'A show is in progress (' + c.players.length + ' ducks, race ' + c.id + ')', px, py + 186, { px: 28, color: '#fff', sw: 6 });
   if (S.screen !== 'title') return;
   button(ctx, 'fame', 40, 948, 330, 76, 'Waddle of Fame', { fn: () => { FM.back = 'title'; go('fame'); } });
@@ -5109,7 +5188,12 @@ function updateReveal(dt) {
   }
   if (RV.shuf >= 0 && RV.shuf < 50) {
     RV.shuf += dt;
-    if (RV.shuf > 1.6 && RV.fc < 0) { RV.fc = 0; SFX.play('ding'); const w = S.cond.wind; say('quiet', {}, {}); Caps.say('Pond Forecast: ' + conditionsSummary(S.cond) + '. Same for every duck today!', { prio: 1 }); }
+    if (RV.shuf > 1.6 && RV.fc < 0) {
+      RV.fc = 0; SFX.play('ding');
+      Caps.say('Pond Forecast: ' + conditionsSummary(S.cond) + '. Same for every duck today!', { prio: 1 });
+      const pk = billPickKey(R), pp = pk && R.players.find(p => p.key === pk);
+      if (pp) say('billPick', { player: pp.name, duck: pp.duck.name }, { prio: 1, delay: 2.4 });
+    }
   }
   if (RV.fc >= 0 && RV.fc < 50) { RV.fc += dt; if (RV.fc > 0.6) setBig("LET'S LAUNCH!", true); }
 }
@@ -5225,7 +5309,12 @@ function startResults() {
     SFX.play('fanfare'); setTimeout(() => SFX.play('cheer', 2), 300);
     say('winner', { duck: st[0].pl.duck.name }, { prio: 2, delay: 0.6 });
     if (RS.feather) say('feather', { duck: RS.feather.pl.duck.name }, { delay: 3.2 });
+    const tod = teamOfDay(R);
+    if (tod) say('teamDay', { team: tod.name }, { delay: 5.6 });
+    const pk = billPickKey(R), pi = st.findIndex(e => e.pl.key === pk);
+    if (pk && pi >= 0) say(pi === 0 ? 'billPickWon' : 'billPickLost', { duck: st[pi].pl.duck.name, rank: ordinal(pi + 1) }, { delay: 8 });
   }
+  RS.tod = teamOfDay(R);
   RS.conf = 0;
 }
 function resultsPrimary() {
@@ -5285,6 +5374,15 @@ function drawPodium(ctx, st) {
     txt(ctx, 'GOLDEN LOAF', 960, 132, { px: 30, color: '#fff', sw: 5 });
     txt(ctx, w.pl.duck.name, 960, 186, { px: 56, color: '#ffd23f', sw: 9, maxW: 1100 });
     txt(ctx, w.pl.name + ' · ' + fmtFt(w.dist) + (st.length === 1 && S.race.recordStart != null ? (w.dist > S.race.recordStart ? ' · NEW RECORD!' : ' · record is ' + fmtFt(S.race.recordStart)) : ''), 960, 240, { px: 34, color: '#fff', sw: 6, maxW: 1200 });
+  }
+  if (RS.tod) {
+    const tk = easeBack(clamp((k - 3.2) / 0.5, 0, 1));
+    ctx.save(); ctx.translate(1700, 250); ctx.scale(tk, tk);
+    rr(ctx, -200, -60, 400, 120, 26); fillStroke(ctx, RS.tod.color, 5);
+    txt(ctx, 'TEAM OF THE DAY', 0, -30, { px: 22, color: '#fff', sw: 4 });
+    txt(ctx, RS.tod.name, 0, 6, { px: 38, color: '#fff', sw: 6, maxW: 370 });
+    txt(ctx, 'avg ' + fmtFt(RS.tod.avg), 0, 42, { px: 24, color: '#fff', sw: 4 });
+    ctx.restore();
   }
   const f = RS.feather;
   if (f && st.length > 3 || (f && st.length > 1 && !spots.some(sp => st[sp.i] && st[sp.i].pl.key === f.pl.key))) {
@@ -5380,7 +5478,7 @@ function drawPanorama(ctx, st) {
   txt(ctx, 'Duck Duck BOOM!  ·  ' + shortDate(R.day) + '  ·  ' + st.length + ' duck' + (st.length === 1 ? '' : 's') + '  ·  ' + modName(S.cond), 960, 66, { px: 40, color: OUT, sw: 0, maxW: 1740 });
   txt(ctx, 'Race ID ' + R.id + (R.practice ? ' · Practice' : '') + (st[0] ? '  ·  Winner: ' + st[0].pl.name + ' · ' + st[0].pl.duck.name + ' · ' + fmtFt(st[0].dist) : ''), 960, 108, { px: 28, color: '#6b6577', sw: 0, maxW: 1740 });
   button(ctx, 'copy', 40, 948, 330, 76, 'Copy results', { bg: '#9be58b', fn: () => copyText(resultsText(R), 'Results for the team chat') });
-  button(ctx, 'fame2', 390, 948, 330, 76, 'Waddle of Fame', { fn: () => { FM.back = 'results'; go('fame'); } });
+  button(ctx, 'fame2', 390, 948, 330, 76, 'Waddle of Fame', { fn: () => { FM.back = 'results'; RS.back = true; go('fame'); } });
 }
 
 /* ---------- Waddle of Fame ---------- */
@@ -5540,7 +5638,7 @@ window.addEventListener('keydown', e => {
   if (typingTarget(e)) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const k = e.key.toLowerCase();
-  if (Modal.isOpen) { if (k === 'p') { e.preventDefault(); Modal.close(); } return; }
+  if (Modal.isOpen) { if (k === 'p' || k === 'escape') { e.preventDefault(); Modal.close(); } return; }
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); primeAudio(); if (!e.repeat) primary(); return; }
   if (k === 'f') { toggleFullscreen(); return; }
   if (k === 'm') { primeAudio(); S.settings.muted = !S.settings.muted; SFX.setMuted(S.settings.muted); saveSettings(); Toast.show(S.settings.muted ? 'Muted' : 'Sound on'); return; }

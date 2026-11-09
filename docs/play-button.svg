@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="140" viewBox="0 0 520 140" role="img" aria-label="Play Duck Duck BOOM!">
+  <title>Play Duck Duck BOOM!</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe066"/>
+      <stop offset="1" stop-color="#ffc531"/>
+    </linearGradient>
+    <linearGradient id="red" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff6a52"/>
+      <stop offset="1" stop-color="#d9351f"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="14" width="504" height="118" rx="34" fill="#1f1a2e"/>
+  <rect x="8" y="6" width="504" height="118" rx="34" fill="url(#bg)" stroke="#1f1a2e" stroke-width="6"/>
+  <!-- the big red button -->
+  <ellipse cx="82" cy="78" rx="50" ry="26" fill="#8f1f12" stroke="#1f1a2e" stroke-width="5"/>
+  <rect x="32" y="56" width="100" height="22" fill="#8f1f12"/>
+  <ellipse cx="82" cy="56" rx="50" ry="26" fill="url(#red)" stroke="#1f1a2e" stroke-width="5"/>
+  <ellipse cx="66" cy="47" rx="16" ry="6" fill="#ffffff" fill-opacity="0.55" transform="rotate(-10 66 47)"/>
+  <!-- label -->
+  <g font-family="ui-rounded, 'Arial Rounded MT Bold', 'Segoe UI Black', 'Segoe UI', Arial, sans-serif" font-weight="900" text-anchor="middle">
+    <text x="320" y="70" font-size="50" fill="#1f1a2e" stroke="#1f1a2e" stroke-width="2">PLAY NOW</text>
+    <text x="320" y="102" font-size="24" fill="#c22f1f">Duck Duck BOOM!</text>
+  </g>
+</svg>

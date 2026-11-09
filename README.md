@@ -1,13 +1,32 @@
 # Duck Duck BOOM!
 
+<p align="center">
+  <a href="https://raw.githack.com/sauterreed24/duck-duck-boom/main/index.html"><img src="docs/play-button.svg" alt="Play Duck Duck BOOM!" width="440"></a>
+</p>
+
+<p align="center">
+  <b><a href="https://raw.githack.com/sauterreed24/duck-duck-boom/main/index.html">▶ Play now</a></b>
+  &nbsp;·&nbsp; <a href="https://sauterreed24.github.io/duck-duck-boom/">GitHub Pages link</a> (once Pages is on, see below)
+  &nbsp;·&nbsp; <a href="https://github.com/sauterreed24/duck-duck-boom/blob/main/index.html">Download to play offline</a>
+</p>
+
+<p align="center"><img src="docs/screenshot-title.jpg" alt="Title screen: Ol' Thunderbill fires a duck past the Duck Duck BOOM! logo" width="720"></p>
+
 A daily cannon-launch duck game for team calls. Everyone who booked a meeting today gets a randomly generated duck. **Ol' Thunderbill** fires each one across a field full of trampolines, geese, reply-all storms and the occasional UFO. The duck that lands farthest takes home **the Golden Loaf**.
+
+| Reveal today's ducks | Launch them one by one | Crown the winner |
+| --- | --- | --- |
+| <img src="docs/screenshot-reveal.jpg" alt="Duck reveal cards" width="280"> | <img src="docs/screenshot-flight.jpg" alt="A duck riding the Pelican Express mid-flight" width="280"> | <img src="docs/screenshot-podium.jpg" alt="Results podium with the Golden Loaf" width="280"> |
 
 It is one self-contained file, `index.html`. There are no frameworks, CDNs, web fonts, images, audio files or network requests. Every visual is drawn with Canvas 2D and every sound is synthesized with the Web Audio API, so it runs offline in Chrome or Edge.
 
 ## Running it
 
-- **Hosted:** turn on GitHub Pages for this repo (Settings → Pages → Deploy from branch → `main`, folder `/ (root)`). The game is then at `https://<your-user>.github.io/duck-duck-boom/`.
-- **Local:** download `index.html` and double-click it.
+- **Play from this page:** click **Play now** above. It opens the latest `index.html` from this repo straight in your browser through raw.githack.com (a free service that serves files from public GitHub repos). Nothing to install.
+- **GitHub Pages (the permanent home):** one-time setup, about 30 seconds. Go to the repo's **Settings → Pages**, set **Source** to *Deploy from a branch*, pick **`main`** and **`/ (root)`**, and click **Save**. A minute later the **GitHub Pages link** above works and always serves the latest version.
+- **Offline:** download `index.html` and double-click it.
+
+Your roster, settings and Waddle of Fame are saved in the browser for whichever link you use. Each link keeps its own copy, so stick to one. To move your data, use **Settings → Export everything** on the old link and **Import…** on the new one.
 
 ### On a Teams call
 
@@ -62,7 +81,8 @@ At 1x, each duck takes roughly 21 seconds: intro 1.5 s, ladder and gauges 2.5 s,
 - **Events:** 12 boosts, 12 obstacles (pond plop included), 7 wildcards and 9 gags. Each one is a data entry in `C.EVENTS` with its trigger, physics effect, art, sound and caption. Ground set pieces come from the day's course and trigger on a seeded chance per flight. Air events trigger by chance in their altitude band. Gags never change distance.
 - **Cannon moments:** misfire with a bonus-powder comeback (about 1.3%), backfire to a negative distance (about 1%) and the fake-out fizzle (about 2%, cosmetic only). Other flight touches are the hat that flies off and sometimes beats its duck, a photo finish in slow motion when a duck lands within 25 ft of the leader, and a drumroll for a last duck who can still win.
 - **Daily conditions:** wind (calm, tailwind or headwind, up to 20 mph), sky (sunny, overcast, drizzle, fog, sunset or night) and a modifier of the day on about half of days: Low Gravity, Bouncy Day, Goose Migration, Trampoline Park, Ice Rink, Big Head Mode, Throwback Mode or Turbo Cannon. Fridays add Fri-Yay party mode. Seasonal themes come from the date: pumpkins and bats in October, falling leaves in autumn, a turkey in a duck disguise during Thanksgiving week, snow and twinkle lights from December to February, flowers and rain in spring, and a beach in summer. The course changes daily too.
-- **Commentary:** Bill Featherstone narrates in a lower-third caption bar (about 190 lines), and the ducks talk back in speech bubbles (about 115 lines). Lines are drawn from shuffled bags so nothing repeats within a show. Commentary roasts the duck, never the player. An optional announcer voice uses the Web Speech API and is off by default.
+- **Commentary:** Bill Featherstone narrates in a lower-third caption bar (about 200 lines), and the ducks talk back in speech bubbles (about 115 lines). Lines are drawn from shuffled bags so nothing repeats within a show, and Bill always talks about what's happening now instead of falling behind. Commentary roasts the duck, never the player. An optional announcer voice uses the Web Speech API and is off by default.
+- **Show moments:** the next few ducks wait their turn on the hill (**UP NEXT**) and hop when the cannon fires, and each duck waddles over to the ladder. Bill invites the call to count down the first launch, announces **Bill's pick** to win after the Pond Forecast and owns up at the end, and the results crown a **Team of the Day** (the team whose ducks flew farthest on average). Leaderboard rows slide into place when a duck takes the lead. On the title screen, Thunderbill lobs a demo duck every few seconds while people join.
 - **Sound:** fuse sizzle, crank clicks, the cannon BOOM, whoosh, slide whistle, BOING, splat, honk, bonk, bell DING, per-duck quacks, crowd ooh and cheer, sad trombone and a kazoo fanfare. All melodies are original. Everything runs through one master compressor, and the default volume is 60%.
 - **Waddle of Fame:** wins per player and per team, the current win streak, the top 10 longest launches, Duck of the Month standings and a log of legendary moments. The last real race's winner gets a small crown, and a new pond record gets fireworks.
 - **Bonus Ammo** (off by default): in Settings, turn it on, then give a player up to 3 extra shots on the roster screen. Bonus shots launch at the end, and each player's best shot counts.
