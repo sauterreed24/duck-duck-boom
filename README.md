@@ -65,8 +65,8 @@ The roster is saved in the browser, so you only build it once. Each day you just
 | Key | Action |
 | --- | --- |
 | Space | The big red button |
-| R | Instant replay of the last flight, with sound and captions |
-| T | Turbo (2x). Quiet parts of a flight go faster. |
+| R | Instant replay of the last flight, with sound and captions. Replays use the quicker turbo pacing. |
+| T | Turbo (about 1.5x overall): shorter intros and countdown, quicker flights. |
 | S | Skip to this flight's result (silent) |
 | M | Mute |
 | F | Fullscreen |
@@ -76,16 +76,18 @@ Hotkeys are ignored while you're typing in a text field. Esc stays the browser's
 
 ### Pacing
 
-At 1x, each duck takes roughly 21 seconds: intro 1.5 s, ladder and gauges 2.5 s, countdown 3 s, flight 6–10 s (capped at 14 s) and result 2.5 s. Quiet stretches of a flight are fast-forwarded and events play at 1x. Captions and speech bubbles always run in real time and stay up for at least 2 seconds. Shows with more than 15 ducks start in turbo.
+At 1x, each duck takes roughly 24 seconds: intro 1.5 s, ladder and gauges 2.5 s, countdown 3 s, the flight and a 2.5 s result. A flight with no events plays for about 11 s, a typical one about 12 s, and one packed with events 15–20 s (9 in 10 flights are done within 18 s; the rare monster flight tops out around 24 s). In turbo a typical flight takes about 8 s.
+
+Flights play close to real time. The launch always plays at exactly full speed, and every event, the landing and the finish play at or very near it. Only quiet stretches run faster, and the speed always eases up and down, so the duck never appears to skip ahead. Close to the ground it barely speeds up; it speeds up most high in the sky, where the camera is zoomed far out. A long quiet slide or bounce-out is fitted into a few seconds, and the camera pulls back while it runs faster so the scenery never streaks past. Captions and speech bubbles always run in real time and stay up for at least 2 seconds. Shows with more than 15 ducks start in turbo.
 
 ## What's in it
 
 - **Ducks:** seeded per player per day (local date + name), so a reload gives the same duck. There are 5 base types (mallard, classic rubber duck, fluffy duckling, white farm duck, Carolina duck), 16 colors, 6 patterns, 16 hats, 17 accessories and 8 eye styles. Rarities are Common 60%, Uncommon 25%, Rare 10%, Epic 4% and Legendary 1%. The six legendaries are Golden Duck, Disco Ball Duck, Robo-Duck, Ghost Duck, Pixel Duck and Definitely A Duck (a goose in a duck costume). Names mix templates with 96 handwritten one-offs and avoid names used on recent days. Every generated name, bio and caption goes through a blocklist, and any duck name containing a first name from the roster is rerolled. Looks never affect distance.
 - **Events:** 12 boosts, 12 obstacles (pond plop included), 7 wildcards and 9 gags. Each one is a data entry in `C.EVENTS` with its trigger, physics effect, art, sound and caption. Ground set pieces come from the day's course and trigger on a seeded chance per flight. Air events trigger by chance in their altitude band. Gags never change distance.
-- **Cannon moments:** misfire with a bonus-powder comeback (about 1.3%), backfire to a negative distance (about 1%) and the fake-out fizzle (about 2%, cosmetic only). Other flight touches are the hat that flies off and sometimes beats its duck, a photo finish in slow motion when a duck lands within 25 ft of the leader (with the margin called out), **personal bests**, and a drumroll for a last duck who can still win that ends right on the landing cymbal.
+- **Cannon moments:** misfire with a bonus-powder comeback (about 1.3%), backfire to a negative distance (about 1%) and the fake-out fizzle (about 2%, cosmetic only). Other flight touches are the hat that flies off and sometimes beats its duck, a photo finish in slow motion when a duck lands within 25 ft of the leader (with the margin called out), **personal bests**, and a drumroll for a last duck who can still win, which builds over the final seconds of the flight and ends right on the landing cymbal.
 - **Daily conditions:** wind (calm, tailwind or headwind, up to 20 mph), sky (sunny, overcast, drizzle, fog, sunset or night) and a modifier of the day on about half of days: Low Gravity, Bouncy Day, Goose Migration, Trampoline Park, Ice Rink (some ponds freeze over), Big Head Mode, Throwback Mode or Turbo Cannon. Fridays add Fri-Yay party mode. Seasonal themes come from the date: pumpkins and bats in October, falling leaves in autumn, a turkey in a duck disguise during Thanksgiving week, snow and twinkle lights from December to February, flowers and rain in spring, and a beach in summer. The course changes daily too.
 - **Commentary:** Bill Featherstone narrates in a lower-third caption bar (about 200 lines), and the ducks talk back in speech bubbles (about 115 lines). Lines are drawn from shuffled bags so nothing repeats within a show, and Bill always talks about what's happening now instead of falling behind. Commentary roasts the duck, never the player. An optional announcer voice uses the Web Speech API and is off by default.
-- **Show moments:** the next few ducks wait their turn on the hill (**UP NEXT**) and hop when the cannon fires, and each duck waddles over to the ladder. Bill invites the call to count down the first launch, welcomes back the last show's champion and anyone on a winning streak, announces **Bill's pick** to win after the Pond Forecast (it's also tagged on that duck's card) and owns up at the end, and the results crown a **Team of the Day** (the team whose ducks flew farthest on average). Leaderboard rows slide into place when a duck takes the lead. On the title screen, Thunderbill lobs a demo duck every few seconds while people join.
+- **Show moments:** the next few ducks wait their turn on the hill (**UP NEXT**) and hop when the cannon fires, and each duck waddles over to the ladder. Bill invites the call to count down the first launch, welcomes back the last show's champion and anyone on a winning streak, announces **Bill's pick** to win after the Pond Forecast (it's also tagged on that duck's card) and owns up at the end, and the results crown a **Team of the Day** (the team whose ducks flew farthest on average). Leaderboard rows slide into place when a duck takes the lead. On the title screen, Thunderbill lobs a demo duck every few seconds while people join. During a flight, a chip under the distance counter shows the live gap to the leader (it turns green once the duck is ahead), the altitude gauge keeps a **PEAK** marker, Bill calls the top of the arc and the first touchdown when nothing else is happening, and a long slide gets a **STILL GOING!** banner and a word from the duck.
 - **Sound:** fuse sizzle, crank clicks, the cannon BOOM, whoosh, slide whistle, BOING, splat, honk, bonk, bell DING, per-duck quacks, crowd ooh and cheer, sad trombone and a kazoo fanfare. All melodies are original. Everything runs through one compressor and a limiter, and the volume slider scales the whole mix evenly. The default volume is 60%. Long sounds stop when you skip a flight or leave the screen.
 - **Waddle of Fame:** wins per player and per team, the current win streak, the top 10 longest launches, Duck of the Month standings and a log of legendary moments. The last real race's winner gets a small crown, and a new pond record gets fireworks.
 - **Bonus Ammo** (off by default): in Settings, turn it on, then give a player up to 3 extra shots on the roster screen. Bonus shots launch at the end, and each player's best shot counts.
@@ -116,9 +118,9 @@ At 1x, each duck takes roughly 21 seconds: intro 1.5 s, ladder and gauges 2.5 s,
 Latest balance run (10,000 flights):
 
 ```text
-distance  min -632  p10 723  p25 1,039  median 1,375  p75 1,840  p90 2,453  p99 4,157  max 6,862 ft
+distance  min -622  p10 721  p25 1,037  median 1,372  p75 1,839  p90 2,452  p99 4,156  max 6,861 ft
 past 2,500 ft: 9.2%   past 5,000 ft: 2.4 per 1,000   backfire: 0.91%   misfire: 1.26%
-distance-changing events per flight: 1.93 avg   0: 15.9%  1: 32.4%  2: 21.3%  3: 13.2%  4: 7.8%  5: 9.4%
+distance-changing events per flight: 1.93 avg   0: 15.9%  1: 32.4%  2: 21.3%  3: 13.2%  4: 7.8%  5: 9.3%
 most decisive events: jet stream (the winner had it in 36% of races) and spicy pepper (33%)
 ```
 
