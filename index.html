@@ -479,7 +479,9 @@ C.LINES = {
   quiet: [
     'Look at that form.', 'Aerodynamically speaking, that is a duck.', "That's some serious hang time.", 'The crowd is on its feet. Webbed feet.',
     'What a view from up there!', 'Somewhere, a pond is very proud.', 'I love this sport.', 'That duck has somewhere to be.', 'Fly, little duck, fly!', 'The judges are watching closely.', 'Steady... steady...'],
-  apex: ['{duck} tops out at {alt}!', 'Peak altitude: {alt}! The view must be lovely.', "That's {alt} straight up, folks!", '{alt} high and still smiling. Probably.', 'Top of the arc: {alt}!'],
+  apex: ['{duck} tops out at {alt}!', 'Peak altitude: {alt}! The view must be lovely.', "That's {alt} straight up, folks!", '{alt} high and still smiling. Probably.', 'Top of the arc: {alt}!',
+    '{alt}! That is higher than my last performance review.', 'Up at {alt}, the pond looks like a puddle.', '{duck} waves from {alt} up!', 'All the way up to {alt}. Now for the tricky part.', "{alt} up. What goes up... you know the rest."],
+  touchdown: ['Touchdown at {distance}! And still going!', 'First bounce at {distance}!', '{duck} is DOWN... and up again!', 'And a bounce! How far will it roll?', "That's a landing. Technically.", 'Down on the turf and still moving!', 'Bounce! The grass barely slowed that duck down.', 'Wheels down! Well. Feet down.'],
   fakeout: ['Uh oh. The fuse went out.', 'Hold on, folks... the crew is checking...', 'Is it...? Is it out?'],
   fakeoutBoom: ['Oh, it was NOT out!', 'NOPE! Still lit!', "Folks, I'm going to need a minute."],
   misfire: ['Oh no. That is a misfire.', "{duck} just plopped out. That's not how cannons work.", 'Misfire! The crew is adding more powder!'],
@@ -566,6 +568,9 @@ C.DUCK_LINES = {
   launch: ['Wheeeee—wait', 'AAAAAAA', "I'm a duck, not a pilot!", 'Wing it! WING IT!', 'Weeeee!', "Who's driving this thing?!", 'I REGRET NOTHING'],
   peek: ['Is it too late to reschedule?', 'Can I get a window seat?', 'Okay. Okay. Okay.', "Let's do this. Probably.", 'Tell the pond I said hi.', 'Is this thing on?'],
   landGood: ['Calculated.', 'Nailed it.', 'Smooth landing!', 'Right where I wanted to be.', 'Ten out of ten. Would launch again.', 'Did anyone get that on camera?'],
+  bounce: ['Boing!', 'Ow. Ow. Ow.', 'Still bouncing!', 'One more bounce!', 'Is the ground always this hard?', 'Wheee!'],
+  slide: ['Wheeeee!', 'Brakes! BRAKES!', 'Still going!', 'Is there a speed limit?', 'I can stop any time. Probably.', 'Grass stains. Great.', 'Coming through!'],
+  iceslide: ['So. Slippery.', 'No brakes! NO BRAKES!', 'Who waxed the field?!', 'Wheeeee!', 'I should have taken skating lessons!', 'Somebody catch me!'],
   wrongWay: ['Wrong way?! Says who?', 'I prefer to call it reverse.', 'Okay, which way is the pond?'],
   pb: ['New personal best!', 'Best. Flight. EVER.', 'Did anyone get that on camera?!'],
   landBad: ['Totally on purpose.', "I'm fine! I'm fine!", 'Is it over? Did I win?', 'Worth it.', "I'll be in my pond.", 'That was a warm-up.'],
@@ -1374,7 +1379,7 @@ const SIM = (() => {
           return;
         }
         case 'slidedown': {
-          s.x = approach(s.x, sc.x0, 14, dt); s.vy = -14; s.y += s.vy * dt; s.rot = 0.4; s.pose = POSE.dizzy;
+          s.x = approach(s.x, sc.x0, 14, dt); s.vy = -26; s.y += s.vy * dt; s.rot = 0.4; s.pose = POSE.dizzy;
           if (s.y <= groundY(s.x)) { s.y = groundY(s.x); deadStop(POSE.dizzy, { held: true }); }
           return;
         }
@@ -1557,6 +1562,7 @@ const SIM = (() => {
         let decel = s.slick ? Math.max(4, P.mu * P.g * 0.3) : P.mu * P.g;
         if (s.t > 52) decel *= 1 + (s.t - 52) * 0.6;   // nothing slides into the time cap
         decel = Math.max(decel, 1.2) + 0.0005 * s.vx * s.vx;   // air drag on a sliding duck: no runaway slides
+        decel += Math.max(0, 14 - Math.abs(s.vx)) * 0.45;      // the last few ft/s dig in: no long crawl to a stop
         const sg = Math.sign(s.vx);
         s.vx -= sg * decel * dt;
         if (Math.sign(s.vx) !== sg || Math.abs(s.vx) < 1.2) { s.vx = 0; s.rot = 0; deadStopNatural(); }
@@ -3050,6 +3056,11 @@ const SFX = (() => {
     drum = null;
     try { d.env.gain.cancelScheduledValues(t); d.env.gain.setValueAtTime(Math.max(0.0001, d.env.gain.value), t); d.env.gain.exponentialRampToValueAtTime(0.0001, t + f + 0.01); d.src.stop(t + f + 0.05); d.lfo.stop(t + f + 0.05); } catch (e) { /* ignore */ }
   }
+  // the flight was re-planned (turbo toggled): the swell now has this long to reach full level
+  function retimeDrum(swell) {
+    if (!drum || !ac) return;
+    try { const g = drum.env.gain, t = ac.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0.0001, g.value), t); g.linearRampToValueAtTime(0.16, t + Math.max(0.3, swell)); } catch (e) { /* ignore */ }
+  }
   // pause freezes every scheduled sound in step with the game
   let held = false;
   // no state checks: suspend()/resume() apply in call order, so a quick off-on (Cancel in a confirm box) still ends suspended
@@ -3200,7 +3211,7 @@ const SFX = (() => {
     sneeze() { const t = now(); noise(t, 0.25, 'bandpass', 900, 1100, 2, 0.1, { a: 0.2 }); noise(t + 0.45, 0.18, 'bandpass', 2400, 1200, 1.5, 0.3); },
     plane() { const t = now(); noise(t, 2.6, 'lowpass', 500, 300, 1, 0.16, { a: 1.0, hold: 0.4 }); tone('sawtooth', 95, 80, t, 2.6, 0.04, { filter: 'lowpass', ff: 500, a: 1.0 }); },
     moo() { const t = now(); for (let i = 0; i < 3; i++) tone('sawtooth', 120 + i * 18, 100 + i * 15, t + i * 0.05, 1.1, 0.07, { filter: 'lowpass', ff: 520, a: 0.15 }); },
-    scream(dur) { const t = now(); dur = Math.min(2.2, dur || 1.5); tone('sawtooth', 520, 880, t, dur, 0.13, { filter: 'bandpass', ff: 1300, q: 1.4, vib: [8, 25], a: 0.08 }); },
+    scream(dur) { const t = now(); dur = clamp(dur || 1.5, 0.8, 3.2); tone('sawtooth', 520, 880, t, dur, 0.13, { filter: 'bandpass', ff: 1300, q: 1.4, vib: [8, 25], a: 0.08 }); },
     thud() { const t = now(); tone('sine', 120, 55, t, 0.18, 0.4); noise(t, 0.1, 'lowpass', 500, 200, 1, 0.3); },
     parachute() { const t = now(); noise(t, 0.35, 'lowpass', 700, 200, 1, 0.35, { a: 0.03 }); },
     beep() { const t = now(); tone('sine', 1320, 1320, t, 0.08, 0.08); tone('sine', 1760, 1760, t + 0.12, 0.08, 0.08); },
@@ -3222,7 +3233,7 @@ const SFX = (() => {
   }
   // QA hook: an analyser on the master output so tests can measure levels
   function tap() { if (!ac) return null; const an = ac.createAnalyser(); an.fftSize = 2048; master.connect(an); return an; }
-  return { init, resume, play, stopLong, startDrum, stopDrum, pause, get drumOn() { return !!drum; }, get state() { return ac ? ac.state : 'none'; }, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
+  return { init, resume, play, stopLong, startDrum, stopDrum, retimeDrum, pause, get drumOn() { return !!drum; }, get state() { return ac ? ac.state : 'none'; }, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
 })();
 
 /* ---------- announcer voice (Web Speech, off by default) ---------- */
@@ -3630,12 +3641,18 @@ function drawBig(ctx, dt) {
 
 /* ---------- captions: Bill's lower third + big impact text + duck speech bubbles ---------- */
 const Caps = {
-  queue: [], cur: null, curStart: 0, bigs: [], bubble: null,
+  queue: [], cur: null, curStart: 0, bigs: [], bubble: null, lastAt: 0,   // lastAt: when something new last appeared
   reset() { this.queue = []; this.cur = null; this.bigs = []; this.bubble = null; this.side = null; },
+  // is Bill free to start a new line right now?
+  free() { return !this.queue.length && (!this.cur || S.rt - this.curStart >= this.cur.min); },
   say(text, o) {
     if (!text) return;
     o = o || {};
-    const item = { text, min: Math.max(2.0, o.min || 0), at: S.rt + (o.delay || 0), prio: o.prio || 0 };
+    // a filler remark only speaks when Bill is free right now: it never waits in line, never replaces anything,
+    // and leaves the bar after a few seconds
+    if (o.filler && !this.free()) return false;
+    const item = { text, min: Math.max(2.0, o.min || 0), at: S.rt + (o.delay || 0), prio: o.prio || 0, filler: o.filler || null, max: o.filler ? 2.8 : 0 };
+    this.lastAt = Math.max(this.lastAt, item.at);
     // Bill never falls behind the action: a newer line replaces anything still waiting at the same or lower priority
     // (lines scheduled for later at the same priority are a planned sequence and stay)
     const now = S.rt;
@@ -3650,13 +3667,15 @@ const Caps = {
     // one impact caption at a time: the previous one fades out quickly
     const now = S.rt;
     for (const b of this.bigs) if (b.t0 <= now && (o.delay || 0) <= 0.05) b.dur = Math.min(b.dur, now - b.t0 + 0.22);
+    this.lastAt = Math.max(this.lastAt, S.rt + (o.delay || 0));
     this.bigs.push({ text, t0: S.rt + (o.delay || 0), dur: Math.max(2, o.dur || 2), color: o.color || '#ffd23f', px: o.px || 96, y: o.y || 300, fixedY: !!o.y }); if (this.bigs.length > 2) this.bigs.shift(); },
-  shift(d) { if (!(d > 0)) return; this.queue.forEach(q => { q.at += d; }); this.curStart += d; this.bigs.forEach(b => { b.t0 += d; }); if (this.bubble) this.bubble.t0 += d; },
-  bubbleSay(text, o) { if (!text) return; this.bubble = { text, t0: S.rt + ((o && o.delay) || 0), dur: Math.max(2, (o && o.dur) || 2.4) }; },
+  shift(d) { if (!(d > 0)) return; this.lastAt += d; this.queue.forEach(q => { q.at += d; }); this.curStart += d; this.bigs.forEach(b => { b.t0 += d; }); if (this.bubble) this.bubble.t0 += d; },
+  bubbleSay(text, o) { if (!text) return; this.lastAt = Math.max(this.lastAt, S.rt + ((o && o.delay) || 0)); this.bubble = { text, t0: S.rt + ((o && o.delay) || 0), dur: Math.max(2, (o && o.dur) || 2.4) }; },
   update() {
     const now = S.rt;
-    if (this.cur && now - this.curStart >= this.cur.min && this.queue.some(q => q.at <= now)) this.cur = null;
-    if (this.cur && now - this.curStart > this.cur.min + 3.5) this.cur = null;
+    // a real line waits for the current one's 2 s; a filler steps aside for it after a moment
+    if (this.cur && now - this.curStart >= (this.cur.filler ? 0.9 : this.cur.min) && this.queue.some(q => q.at <= now)) this.cur = null;
+    if (this.cur && now - this.curStart > (this.cur.max || this.cur.min + 3.5)) this.cur = null;
     if (!this.cur) {
       const i = this.queue.findIndex(q => q.at <= now);
       if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; Voice.speak(this.cur.text); }
@@ -3696,7 +3715,7 @@ const Caps = {
       if (t < 0) continue;
       const hh = String(b.text).split('\n').length * b.px * 1.05;
       if (avoidY != null && !b.fixedY) {
-        const ty = this.side === 'low' ? 790 - hh / 2 - off : 150 + hh / 2 + off;
+        const ty = this.side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off;
         b.y = b.yset ? approach(b.y, ty, 12, 1 / 60) : ty; b.yset = true;
       }
       off += hh + 16;
@@ -3718,7 +3737,7 @@ const Caps = {
     const lines = wrapText(ctx, b.text, 440, 3);
     const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 44, h = lines.length * 38 + 30;
     // left: after landing, the duck's own flag label is to the right, so the bubble goes left
-    let bx = clamp(left ? x - 60 - w : x + 50, 20, 1490 - w), by = clamp(y - h - (left ? 150 : 70), 130, 780 - h);
+    let bx = clamp(left ? x - 60 - w : x + 50, 20, 1490 - w), by = clamp(y - h - (left ? 150 : 70), 174, 780 - h);
     ctx.translate(bx + w / 2, by + h / 2); ctx.scale(k, k); ctx.translate(-(bx + w / 2), -(by + h / 2));
     const tx = clamp(x + 20, bx + 30, bx + w - 30), ty = by + h;
     ctx.beginPath(); ctx.moveTo(tx - 16, ty - 6); ctx.lineTo(clamp(x + 10, bx - 40, bx + w + 40), clamp(y - 40, ty + 10, ty + 60)); ctx.lineTo(tx + 12, ty - 6); ctx.closePath(); fillStroke(ctx, '#ffffff', 5);
@@ -4482,51 +4501,69 @@ function nextDuck() {
 }
 
 /* ---------- playback pacing: the flight plays close to real time ----------
-   Events, the launch, the landing and the finish always play at 1x. Quiet stretches may run faster, but the
-   speed only ever eases up and down (stepRate), so the duck never seems to skip ahead. How much a quiet
-   stretch may speed up depends on what the audience can see: close to the ground (camera zoomed in) barely at
-   all, high in the sky (camera zoomed far out, the duck hardly moves on screen) the most.
-   A flight is planned to last roughly 10-17 s (turbo: about half). */
+   The launch always plays at exactly 1x; every event plays at (almost) 1x. Quiet stretches may run faster, but
+   the speed only ever eases up and down (stepRate), so the duck never seems to skip ahead. How much a quiet
+   stretch may speed up depends on what the audience can see: close to the ground and moving fast, barely at
+   all; high in the sky (camera zoomed far out, the duck hardly moves on screen), the most. The bounce-and-slide
+   tail after the last event gets a time budget so the ending never drags.
+   A flight is planned to last roughly 10-17 s (turbo and instant replays: about 60% of that). */
 const PACING = {
-  normal: { easy: 10.5, stretch: 0.22, cap: 14.5, capEv: 1.3, over: 3, rmax: 2.6, rhard: 5, rAbs: 5, winMax: 1.5, launch: 2.2, gag: 1.4, wWin: 0.2, wLow: 0.5, wHigh: 2.0, wAfter: 1.2, wGround: 1.3, up: 3, down: 6 },
-  turbo: { easy: 6.5, stretch: 0.2, cap: 8.5, capEv: 0.7, over: 3, rmax: 4.5, rhard: 6.5, rAbs: 6.5, winMax: 2, launch: 1.2, gag: 2.4, wWin: 0.3, wLow: 0.6, wHigh: 2.0, wAfter: 1.3, wGround: 1.4, up: 4.5, down: 7 },
+  normal: { easy: 10.5, stretch: 0.2, cap: 14, capEv: 1.0, rmax: 2.6, rhard: 5, rAbs: 5, winMax: 1.6, launch: 2.2, gag: 1.4, minGap: 2.0, tail: 2.4, tailMax: 7, px: 1500, wWin: 0.25, wLow: 0.5, wHigh: 2.0, wAfter: 1.2, wGround: 1.3, up: 3, down: 6, uMax: 4.5, dMax: 16, photoLen: 1.1, photoRate: 0.42 },
+  turbo: { easy: 5.5, stretch: 0.15, cap: 7.5, capEv: 0.6, rmax: 4.5, rhard: 7, rAbs: 7, winMax: 2.6, launch: 1.1, gag: 2.4, minGap: 1.0, tail: 1.6, tailMax: 9, px: 3000, wWin: 0.5, wLow: 0.7, wHigh: 2.0, wAfter: 1.4, wGround: 1.5, up: 4.5, down: 7, uMax: 9, dMax: 26, photoLen: 1.0, photoRate: 0.5 },
 };
-function buildPlayback(tl, photo) {
-  const P = S.turbo ? PACING.turbo : PACING.normal;
+function buildPlayback(tl, photo, fast) {
+  const P = S.turbo || fast ? PACING.turbo : PACING.normal;
   const wins = [];
   const add = (a, b) => { a = Math.max(0, a); b = Math.min(tl.endT, b); if (b > a) wins.push([a, b]); };
   add(tl.launchT - 0.05, tl.launchT + P.launch);
   if (tl.special === 'misfire') add(0, tl.launchT);
   const LONG = { pelican: 1, glider: 1, migration: 1, walkway: 1, jetstream: 1 };
+  let lastEv = 0;
   for (const e of tl.events) {
     const d = C.EVENTS[e.id], a0 = e.t - (d ? d.antic : 0.4) - 0.15, end = Math.max(e.tEnd, e.t);
+    // a boost that sends the duck flying again is a little launch of its own: give it a full second
+    const post = d && d.kind === 'boost' && end - e.t < 0.3 ? 0.9 : 0.4;
     // long carries: the pickup and the drop play at 1x, the cruise in between may run faster
     if (LONG[e.id] && end - e.t > 2.4) { add(a0, e.t + 1.2); add(end - 0.4, end + 0.4); }
-    else add(a0, end + 0.4);
+    else add(a0, end + post);
+    lastEv = Math.max(lastEv, end + post);
   }
   add(tl.landT - 0.4, tl.landT + 0.6);
   add(tl.endT - 0.7, tl.endT);
   wins.sort((a, b) => a[0] - b[0]);
+  // windows that are close together stay one stretch: there is no point speeding up into a gap too short to cruise
   const merged = [];
-  for (const w of wins) { const m = merged[merged.length - 1]; if (m && w[0] <= m[1] + 0.15) m[1] = Math.max(m[1], w[1]); else merged.push(w.slice()); }
+  for (const w of wins) { const m = merged[merged.length - 1]; if (m && w[0] <= m[1] + P.minGap) m[1] = Math.max(m[1], w[1]); else merged.push(w.slice()); }
   // the last stretch on the ground (after the final bounce)
   let tG = 0;
   for (let k = tl.n - 1; k >= 0; k--) if (tl.y[k] > SIM.groundY(tl.x[k]) + 3) { tG = (k + 1) / tl.fps; break; }
+  // the tail: everything after the last event and the first landing (bounces, then the slide); a quiet stretch
+  // counts as bouncing-out or sliding from there on, or once the duck is on the ground for good (tG)
+  const tTail = Math.max(tl.landT + 0.6, lastEv);
+  const at = t => clamp(Math.round(t * tl.fps), 0, tl.n - 1);
   // how much a moment may speed up (w): by altitude in the air, a little more for the bounces after the first
   // landing, and a fixed amount for the final slide
   const weightAt = t => {
     if (t >= tG) return P.wGround;
-    const k = clamp(Math.round(t * tl.fps), 0, tl.n - 1), alt = Math.max(0, tl.y[k] - SIM.groundY(tl.x[k]));
+    const k = at(t), alt = Math.max(0, tl.y[k] - SIM.groundY(tl.x[k]));
     const w = Math.round(clamp(P.wLow + (P.wHigh - P.wLow) * (alt - 40) / 360, P.wLow, P.wHigh) * 5) / 5;
     return t > tl.landT + 0.6 ? Math.max(w, P.wAfter) : w;
+  };
+  // the fastest a piece may play before the scenery streaks past: speed on screen = ft/s x zoom x playback speed
+  const pxCap = (a, b) => {
+    const ka = at(a), kb = Math.max(ka + 1, at(b)), v = Math.abs(tl.x[Math.min(kb, tl.n - 1)] - tl.x[ka]) / Math.max(0.02, (kb - ka) / tl.fps);
+    const alt = Math.max(0, tl.y[at((a + b) / 2)] - SIM.groundY(tl.x[at((a + b) / 2)]));
+    // (the camera pulls back by 16% per 1x of extra speed, which is why the limit loosens as the speed goes up)
+    const vz = Math.max(v, 8) * clamp(560 / (alt + 75), 0.42, 5.2);
+    return vz > 0.16 * P.px + 1 ? Math.max(1.25, 0.84 * P.px / (vz - 0.16 * P.px)) : 99;
   };
   // segments: q = 1 is a quiet stretch (cut into short pieces so its weight w can follow the altitude); q = 0 is an
   // event window, which only ever gets a barely visible nudge (wWin)
   let segs = [];
   const quiet = (a, b) => {
     for (let x = a; x < b - 1e-6; x += 0.4) {
-      const y = Math.min(b, x + 0.4), w = weightAt((x + y) / 2), last = segs[segs.length - 1];
-      if (last && last.q && last.w === w && Math.abs(last.b - x) < 1e-6 && !last.cap) last.b = y; else segs.push({ a: x, b: y, r: 1, w, q: 1 });
+      const y = Math.min(b, x + 0.4), w = weightAt((x + y) / 2), tail = (x + y) / 2 >= Math.min(tTail, tG) ? 1 : 0, px = Math.round(pxCap(x, y) * 4) / 4, last = segs[segs.length - 1];
+      if (last && last.q && last.w === w && last.tail === tail && last.px === px && Math.abs(last.b - x) < 1e-6 && !last.cap) last.b = y; else segs.push({ a: x, b: y, r: 1, w, q: 1, tail, px });
     }
   };
   let t = 0;
@@ -4538,68 +4575,131 @@ function buildPlayback(tl, photo) {
     const out = [];
     for (const sg of segs) {
       if (!sg.q || sg.b <= a || sg.a >= b) { out.push(sg); continue; }
-      if (sg.a < a) out.push({ a: sg.a, b: a, r: 1, w: sg.w, q: 1, cap: sg.cap });
-      out.push({ a: Math.max(a, sg.a), b: Math.min(b, sg.b), r: 1, w: sg.w, q: 1, cap: P.gag });
-      if (sg.b > b) out.push({ a: b, b: sg.b, r: 1, w: sg.w, q: 1, cap: sg.cap });
+      if (sg.a < a) out.push(Object.assign({}, sg, { b: a }));
+      out.push(Object.assign({}, sg, { a: Math.max(a, sg.a), b: Math.min(b, sg.b), cap: P.gag }));
+      if (sg.b > b) out.push(Object.assign({}, sg, { a: b }));
     }
     segs = out;
   }
   // the launch itself always plays at exactly full speed: this is the moment everyone is watching
   const tL = tl.launchT + P.launch;
   segs = [].concat(...segs.map(sg => (sg.a < tL && sg.b > tL ? [Object.assign({}, sg, { b: tL }), Object.assign({}, sg, { a: tL })] : [sg])));
-  for (const sg of segs) if (sg.b <= tL + 1e-6) { sg.w = 0; sg.r = 1; sg.fix = 1; }
-  // photo finish: the last 1.6 s of the flight in slow motion
+  for (const sg of segs) if (sg.b <= tL + 1e-6) { sg.w = 0; sg.r = 1; sg.fix = 1; sg.q = 0; }
+  // photo finish: the last second of the flight in slow motion
   let photoAt = -1;
   if (photo) {
-    photoAt = Math.max(tl.launchT + 0.5, tl.endT - 1.6);
+    photoAt = Math.max(tl.launchT + 0.5, tl.endT - P.photoLen);
     segs = segs.filter(sg => sg.a < photoAt).map(sg => (sg.b > photoAt ? Object.assign({}, sg, { b: photoAt }) : sg));
-    segs.push({ a: photoAt, b: tl.endT, r: 0.36, w: 0, q: 0, fix: 1 });
+    segs.push({ a: photoAt, b: tl.endT, r: P.photoRate, w: 0, q: 0, fix: 1 });
   }
   segs[segs.length - 1].b = tl.endT + 1;
+  // the slide budget: each quiet run of bouncing-out or sliding (the ending above all, but also a long slide between
+  // two events on an Ice Rink day) should take about P.tail seconds however long it really is
+  for (let i = 0; i < segs.length; i++) {
+    if (!segs[i].q || !segs[i].tail) continue;
+    let j = i, len = 0;
+    while (j < segs.length && segs[j].q && segs[j].tail) { len += Math.min(segs[j].b, tl.endT) - segs[j].a; j++; }
+    for (let k = i; k < j; k++) segs[k].floor = len / P.tail;
+    i = j - 1;
+  }
   // One dial (rq) sets the whole flight: the slowest setting that fits the plan. Quiet stretches follow it by their
-  // weight; event windows barely move (1.2x at most in a normal flight), so every beat still reads.
-  const setRates = rq => { for (const sg of segs) if (sg.w) sg.r = Math.max(1, Math.min(1 + (rq - 1) * sg.w, sg.q ? P.rAbs : P.winMax, sg.cap || 99)); };
+  // weight; event windows barely move (1.3x at most in a normal flight), so every beat still reads.
+  const setRates = rq => {
+    for (const sg of segs) {
+      if (sg.fix) continue;
+      let r = 1 + (rq - 1) * sg.w;
+      if (sg.q) { if (sg.tail) r = Math.min(Math.max(r, sg.floor || 1), P.tailMax); else r = Math.min(r, P.rAbs); r = Math.min(r, sg.px, sg.cap || 99); }
+      else r = Math.min(r, P.winMax);
+      sg.r = Math.max(1, r);
+    }
+  };
+  // impact freezes (0.3 s each, at most one a second) are part of the plan
+  const imp = tl.events.filter(e => C.EVENTS[e.id] && C.EVENTS[e.id].dist).map(e => e.t).concat(tl.special === 'misfire' ? [tl.launchT] : []).sort((x, y) => x - y);
   const nEv = tl.events.filter(e => C.EVENTS[e.id] && C.EVENTS[e.id].dist).length;
-  const holds = 0.3 + nEv * 0.3 + (tl.special === 'misfire' ? 0.3 : 0);
   // a flight packed with events may run longer than a quiet one: it is never dull
-  const cap = P.cap + P.capEv * nEv + (photo ? 2.5 : 0);
-  const run = rq => { setRates(rq); return holds + pbRun(tl, segs, P); };
+  const cap = P.cap + P.capEv * nEv + (photo ? 2 : 0);
+  const run = rq => { setRates(rq); return pbRun(tl, segs, P, imp).T; };
   const fit = (lo, hi, goal) => { for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (run(mid) > goal) lo = mid; else hi = mid; } return hi; };
   const full = run(1);
   const want = Math.min(cap, full <= P.easy ? full : P.easy + (full - P.easy) * P.stretch);
   let rq = 1;
   if (full > want + 0.05) { const atMax = run(P.rmax); rq = atMax <= want ? fit(1, P.rmax, want) : atMax <= cap ? P.rmax : fit(P.rmax, P.rhard, cap); }
-  let dur = run(rq);
-  // the rare monster flight that still runs well past its cap: everything goes a little faster, still eased
-  for (let i = 0; i < 3 && dur > cap + P.over + 0.1; i++) { const k = (dur - holds) / (cap + P.over - holds); for (const sg of segs) if (!sg.fix) sg.r = Math.min(sg.r * k, P.rAbs * 1.2); dur = holds + pbRun(tl, segs, P); }
-  return { segs, photoAt, dur, rq, cap, up: P.up, down: P.down };
+  setRates(rq);
+  // the rare monster flight that still runs well past its cap: everything goes a little faster (events at most
+  // about 1.8x, quiet stretches at most a quarter over their limits), still eased
+  const over = pbRun(tl, segs, P, imp).T / (cap + 1);
+  if (over > 1.02) { const k = Math.min(1.25, over); for (const sg of segs) if (!sg.fix) sg.r = Math.max(sg.r, Math.min(sg.r * k, sg.q ? Math.min(sg.px * 1.25, (sg.cap || 99) * 1.25, sg.tail ? P.tailMax : P.rAbs) : P.winMax * 1.2)); }
+  const plan = pbRun(tl, segs, P, imp, null, true);
+  // the last duck's drumroll covers the final 6 s or so, not the whole flight
+  let drumAt = 0;
+  for (const m of plan.marks) if (m[0] <= plan.T - 6) drumAt = m[1];
+  return { segs, photoAt, dur: plan.T, rq, cap, imp, drumAt, tG, P };
 }
 function rateAt(pb, t) { for (const s of pb.segs) if (t < s.b) return s.r; return 1; }
 // The playback speed eases toward the schedule: it brakes early for whatever is coming up and speeds up gently.
 function stepRate(pb, dt) {
   const look = pb.simT + Math.max(0.3, pb.rate * 0.5);
-  let target = 99;
-  for (const s of pb.segs) { if (s.b <= pb.simT) continue; if (s.a >= look) break; if (s.r < target) target = s.r; }
+  let target = 99, cur = 99, slow = null;
+  for (const s of pb.segs) {
+    if (s.b <= pb.simT) continue;
+    if (s.a >= look) break;
+    if (cur === 99) cur = s.r;
+    if (s.r < target) { target = s.r; slow = s; }
+  }
   if (target === 99) target = 1;
-  pb.rate = approach(pb.rate, target, target < pb.rate ? (pb.down || 6) : (pb.up || 2.6), dt);
+  // once braking for a slower stretch has begun it stays the target until that stretch starts (no see-sawing)
+  if (slow && slow.a > pb.simT && target < cur) pb.brake = slow;
+  if (pb.brake) { if (pb.simT < pb.brake.a) target = Math.min(target, pb.brake.r); else pb.brake = null; }
+  // ease toward the target, and never change faster than a set amount per second (so a speed-up builds gradually)
+  const P = pb.P || PACING.normal, braking = target < pb.rate;
+  const lim = (braking ? P.dMax : P.uMax) * dt;
+  pb.rate += clamp(approach(pb.rate, target, braking ? P.down : P.up, dt) - pb.rate, -lim, lim);
   return pb.rate;
 }
-// how long a schedule takes in real seconds (without the impact freezes), stepped the same way the game plays it
-function pbRun(tl, segs, P) {
-  const pb = { simT: 0, rate: 1, segs, up: P.up, down: P.down }, dt = 1 / 60;
-  let T = 0;
-  while (pb.simT < tl.endT && T < 90) { pb.simT += dt * stepRate(pb, dt); T += dt; }
-  return T;
+// How long a schedule takes in real seconds, stepped the same way the game plays it (impact freezes included).
+// from: start from a flight already in progress; marks: also return [real time, flight time] pairs.
+function pbRun(tl, segs, P, imp, from, marks) {
+  const pb = { simT: from ? from.simT : 0, rate: from ? from.rate : 1, segs, P }, dt = 1 / 60;
+  let T = from ? 0 : 0.3, holdEnd = T, i = 0;
+  const out = marks ? [] : null;
+  while (i < imp.length && imp[i] <= pb.simT) i++;
+  let n = 0;
+  while (pb.simT < tl.endT && T < 90) {
+    pb.simT += dt * stepRate(pb, dt); T += dt;
+    while (i < imp.length && pb.simT >= imp[i]) { if (T - holdEnd >= 0.7) { T += 0.3; holdEnd = T; } i++; }
+    if (out && n++ % 6 === 0) out.push([T, pb.simT]);
+  }
+  return { T, marks: out };
+}
+// the flight time the playback will have reached after sec more real seconds (for "is anything about to happen?")
+function simAfter(pb, sec) {
+  const c = { simT: pb.simT, rate: pb.rate, segs: pb.segs, P: pb.P, brake: pb.brake };
+  for (let x = 0; x < sec; x += 1 / 30) c.simT += stepRate(c, 1 / 30) / 30;
+  return c.simT;
 }
 
+// Turbo was switched mid-flight: re-plan the rest of this flight from where it is (the speed still eases over)
+function replanFlight() {
+  const pb = L.pb, tl = L.tl;
+  if (!pb || !tl || pb.done) return;
+  const nb = buildPlayback(tl, L.photo, L.replay);
+  pb.segs = nb.segs; pb.P = nb.P; pb.brake = null; pb.photoAt = nb.photoAt;
+  const rest = pbRun(tl, pb.segs, nb.P, nb.imp, { simT: pb.simT, rate: pb.rate }, true);
+  pb.dur = pb.T + Math.max(0, pb.hold) + rest.T;
+  if (L.drum && !L.replay) {
+    if (pb.drumOn) SFX.retimeDrum(Math.max(0, pb.hold) + rest.T);
+    else { pb.drumAt = pb.simT; for (const m of rest.marks) if (m[0] <= rest.T - 6) pb.drumAt = m[1]; }
+  }
+}
 function startFlight(replay) {
   const tl = L.tl;
   if (!replay) { L.barrel = tl.angle; L.gauge.locked = true; L.gauge.a = tl.angle; L.gauge.p = Math.round(tl.power * 100); }
   const lead = leaderEntry();
   L.photo = !replay && lead && S.race.players.length > 1 && Math.abs(tl.final - lead.dist) < 25 && lead.pl.key !== L.pl.key;
   if (replay) L.photo = L.result && L.result.photo;
-  const sched = buildPlayback(tl, L.photo);
-  L.pb = { simT: 0, rate: 1, up: sched.up, down: sched.down, hold: 0.3, segs: sched.segs, photoAt: sched.photoAt, dur: sched.dur, fired: new Set(), done: false, lastSmoke: 0, prevSimT: 0, cutAt: [] };
+  // instant replays use the quicker pacing: a highlight, not the whole wait again
+  const sched = buildPlayback(tl, L.photo, replay);
+  L.pb = { simT: 0, rate: 1, T: 0, hold: 0.3, holdEnd: 0.3, segs: sched.segs, photoAt: sched.photoAt, dur: sched.dur, imp: sched.imp, P: sched.P, drumAt: sched.drumAt, tG: sched.tG, peak: 0, fired: new Set(), done: false, lastSmoke: 0, prevSimT: 0, cutAt: [] };
   L.replay = !!replay;
   L.landed = false; L.shownLeader = false; L.prevY = tl.y[0];
   L.leaderX = lead && lead.pl.key !== L.pl.key ? lead.dist : null;
@@ -4613,7 +4713,6 @@ function startFlight(replay) {
   boomFX(tl.special === 'misfire');
   // the final-duck drumroll is decided at launch, so skips and late players can't make it wrong
   if (!replay) L.drum = isLastShot() && S.race.queue.length > 1 && !L.q.bonus;
-  if (L.drum && !replay) SFX.startDrum(L.pb.dur);
 }
 function boomFX(misfire) {
   const m = cannonMuzzle(L.barrel);
@@ -4636,34 +4735,45 @@ function boomFX(misfire) {
   Caps.big('FIRE IN THE DUCK!', { px: 104, dur: 2, y: 200 });
   if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 330 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }
   else if (L.fuseOut) { /* the fake-out has its own punchline */ }
-  else { say('launch', { duck: L.pl.duck.name }, { delay: 0.5 }); if (!L.tl.gags.some(g => g.id === 'scream')) quip('launch', { delay: 1.2 }); }
+  else { say('launch', { duck: L.pl.duck.name }, { delay: 0.5 }); if (!L.tl.gags.some(g => g.id === 'scream')) quip('launch', { delay: 2.1 }); }   // once the big caption has cleared
   L.boomed = true;
 }
 
 /* ---------- flight playback (renderer only plays the timeline back) ---------- */
 function s0x(tl, t) { const i = clamp(Math.round(t * tl.fps), 0, tl.n - 1); return tl.x[i]; }
 function sampleTL(tl, t) {
-  const f = clamp(t * tl.fps, 0, tl.n - 1), i = Math.floor(f), j = Math.min(tl.n - 1, i + 1), k = f - i;
+  const f = clamp(t * tl.fps, 0, tl.n - 1), i = Math.floor(f), j = Math.min(tl.n - 1, i + 1);
+  // never blend across a teleport or a vanish: that would draw a ghost duck half-way to the exit for one frame
+  const jump = tl.vis[i] !== tl.vis[j] || Math.abs(tl.x[j] - tl.x[i]) > 25 || Math.abs(tl.y[j] - tl.y[i]) > 25;
+  const k = jump ? 0 : f - i;
   const x = lerp(tl.x[i], tl.x[j], k), y = lerp(tl.y[i], tl.y[j], k);
   const i2 = Math.min(tl.n - 1, i + 2);
-  return { x, y, rot: lerp(tl.rot[i], tl.rot[j], k), mode: tl.mode[i], pose: tl.pose[i], vis: tl.vis[i], vx: (tl.x[i2] - tl.x[i]) * tl.fps / Math.max(1, i2 - i), vy: (tl.y[i2] - tl.y[i]) * tl.fps / Math.max(1, i2 - i) };
+  let vx = (tl.x[i2] - tl.x[i]) * tl.fps / Math.max(1, i2 - i), vy = (tl.y[i2] - tl.y[i]) * tl.fps / Math.max(1, i2 - i);
+  if (Math.abs(tl.x[i2] - tl.x[i]) > 25 || Math.abs(tl.y[i2] - tl.y[i]) > 25) { vx = 0; vy = 0; }   // a teleport is not a speed
+  return { x, y, rot: lerp(tl.rot[i], tl.rot[j], k), mode: tl.mode[i], pose: tl.pose[i], vis: tl.vis[i], vx, vy };
 }
 function updateFlight(dt) {
   const tl = L.tl, pb = L.pb;
   if (!tl || !pb || pb.done) return;
   const prev = pb.simT;
+  pb.T += dt;
   if (pb.hold > 0) pb.hold -= dt;
   else pb.simT = Math.min(tl.endT, pb.simT + dt * stepRate(pb, dt));
   const t = pb.simT;
+  // the last duck's drumroll builds over the final seconds and lands on the result
+  if (L.drum && !L.replay && !pb.drumOn && t >= pb.drumAt) { pb.drumOn = true; SFX.startDrum(Math.max(1.2, pb.dur - pb.T)); }
   // crossings
   const cross = x => prev < x && t >= x;
-  if (pb.photoAt > 0 && cross(pb.photoAt)) { SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 1 }); }
-  if (tl.special === 'misfire' && cross(tl.launchT)) { const savedBarrel = L.barrel; boomFX(false); L.barrel = savedBarrel; say('misfireBoom', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); pb.hold = 0.3; }
+  // photo finish: the shutter clicks the moment the picture starts to slow down
+  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 1 }); }
+  // impact freeze: 0.3 s, but never two in quick succession (that reads as a stutter)
+  const freeze = () => { if (pb.T - pb.holdEnd >= 0.7) { pb.hold = 0.3; pb.holdEnd = pb.T + 0.3; } };
+  if (tl.special === 'misfire' && cross(tl.launchT)) { const savedBarrel = L.barrel; boomFX(false); L.barrel = savedBarrel; say('misfireBoom', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); freeze(); }
   tl.events.forEach((e, i) => {
     const def = C.EVENTS[e.id];
     if (!def) return;
     if (!pb.fired.has('a' + i) && t >= e.t - (def.antic || 0) - 0.05 && prev < e.t) { pb.fired.add('a' + i); onAntic(e); }
-    if (!pb.fired.has('i' + i) && t >= e.t) { pb.fired.add('i' + i); onImpact(e); if (def.dist) pb.hold = 0.3; }
+    if (!pb.fired.has('i' + i) && t >= e.t) { pb.fired.add('i' + i); onImpact(e); if (def.dist) freeze(); }
     if (e.id === 'ufo' && !pb.fired.has('u' + i) && t >= e.t + 2.2) { pb.fired.add('u' + i); say('ev_ufo_' + e.data.outcome, { duck: L.pl.duck.name }, { prio: 1 }); }
     if (e.id === 'crate' && !pb.fired.has('c' + i) && t >= e.t + 1.5) { pb.fired.add('c' + i); const pz = C.CRATE_PRIZES.find(p => p.id === e.data.prize); Caps.big(pz.label + '!', { px: 84, color: '#ffffff', y: 420 }); say('ev_crate_' + e.data.prize, { duck: L.pl.duck.name }, { prio: 1 }); }
     if (e.id === 'space' && !pb.fired.has('s1' + i) && t >= e.t + 1.8) { pb.fired.add('s1' + i); SFX.play('beep'); Caps.say('Is that a satellite waving?', { prio: 1 }); }
@@ -4696,20 +4806,56 @@ function updateFlight(dt) {
     Particles.add({ type: 'dust', ws: true, x: s.x, y: gy + 2, vx: -10, vy: 6, life: 0.7, r: 22 });
     Particles.add({ type: 'dust', ws: true, x: s.x, y: gy + 2, vx: 14, vy: 6, life: 0.7, r: 20 });
     SFX.play('thud'); L.squash = 0.18;
-    if (!L.landed) { L.landed = true; if (tl.nDist === 0 && !tl.special) Shake.add(3); }
+    if (!L.landed) {
+      L.landed = true; pb.downAt = pb.T;
+      if (tl.nDist === 0 && !tl.special) Shake.add(3);
+      // a remark about the air doesn't outstay the landing
+      if (Caps.cur && Caps.cur.filler === 'air') Caps.cur.max = Math.min(Caps.cur.max, S.rt - Caps.curStart + 0.5);
+    }
   }
   L.prevY = s.y;
   // pass the leader's flag
   if (L.leaderX != null && !L.shownLeader && s.x > L.leaderX && s.vis && t > tl.launchT + 0.5) { L.shownLeader = true; say('passLeader', { duck: L.pl.duck.name }, { prio: 1 }); SFX.play('ooh'); }
-  // quiet air gets a little colour from Bill: the top of the arc, then one idle remark on the way down
-  const calm = ahead => !tl.events.some(e => e.t > t - 0.3 && e.t < t + ahead) && !tl.gags.some(g => g.t > t - 0.3 && g.t < t + ahead);
+  // ---- Bill and the duck fill the quiet moments. A filler only speaks when Bill is free and nothing is about to
+  // happen (checked in real seconds), it never waits in line, and turbo and replays skip them. ----
+  if (s.vis) pb.peak = Math.max(pb.peak, s.y - gy);
+  const fill = !S.turbo && !L.replay && s.vis && tl.special !== 'backfire';
+  const duckName = L.pl.duck.name;
+  // is any event or gag under way now, or starting within the next sec real seconds?
+  const calm = sec => {
+    const t1 = simAfter(pb, sec);
+    return !tl.events.some(e => { const d = C.EVENTS[e.id], a0 = e.t - (d ? d.antic : 0.4) - 0.2; return a0 < t1 && Math.max(e.tEnd, e.t) + 0.6 > t; }) && !tl.gags.some(g => g.t - 0.3 < t1 && g.t + 0.6 > t);
+  };
+  // the top of the arc (only when it really is the top of the whole flight and Bill has a free moment)
   if (!pb.fired.has('apex') && tl.apexT > tl.launchT && t >= tl.apexT) {
     pb.fired.add('apex');
-    if (s.y - gy >= 150 && s.vis && tl.special !== 'backfire' && calm(1.5) && hash(tl.seed, 'apex') % 4 !== 0) say('apex', { duck: L.pl.duck.name, alt: fmtFt(s.y - gy) }, {});
+    const ka = clamp(Math.round(tl.apexT * tl.fps), 0, tl.n - 1), top = tl.y[ka] - SIM.groundY(tl.x[ka]);
+    if (fill && top >= 150 && top >= tl.maxAlt * 0.9 && hash(tl.seed, 'apex') % 5 !== 0 && calm(1.2)) say('apex', { duck: duckName, alt: fmtFt(top) }, { filler: 'air' });
   }
-  if (!pb.fired.has('idle') && tl.apexT > 0 && t > tl.apexT + 1.2 && t < tl.landT - 1.5 && s.y - gy > 80 && s.vis && calm(2) && !Caps.queue.length && (!Caps.cur || S.rt - Caps.curStart > 2.6)) {
-    pb.fired.add('idle');
-    if (hash(tl.seed, 'idle') % 3 !== 0) say('quiet', { duck: L.pl.duck.name }, {});
+  // silence breaker: after about 4 s with nothing new on screen, Bill (in the air) or the duck (on the ground)
+  // pipes up, at most twice a flight
+  if (fill && (pb.idleN || 0) < 2 && S.rt - Caps.lastAt > 4.2 && (pb.idleChk = (pb.idleChk || 0) + dt) > 0.25) {
+    pb.idleChk = 0;
+    if (pb.dur - pb.T > 1.8 && calm(1.3)) {
+      if (s.y - gy > 60 && t < tl.landT) { if (Caps.free() && simAfter(pb, 1.6) < tl.landT - 0.2) { pb.idleN = (pb.idleN || 0) + 1; say('quiet', { duck: duckName }, { filler: 'air' }); } }
+      else if (L.landed && !Caps.bubble) { pb.idleN = (pb.idleN || 0) + 1; quip(pb.tG != null && t >= pb.tG ? (S.cond.mod === 'ice' ? 'iceslide' : 'slide') : 'bounce', {}); }
+    }
+  }
+  // the first touchdown, when there is still some bouncing and sliding to come
+  if (fill && L.landed && !pb.fired.has('down') && pb.T - pb.downAt > 0.25) {
+    pb.fired.add('down');
+    if (pb.dur - pb.T > 2.4 && hash(tl.seed, 'down') % 4 !== 0 && Caps.free() && calm(1.2)) say('touchdown', { duck: duckName, distance: fmtFt(Math.max(0, s.x)) }, { filler: 'ground' });
+  }
+  // the final slide: the duck pipes up, and a long slide gets a banner
+  if (fill && L.landed && pb.tG != null && t >= pb.tG && !pb.fired.has('slide')) {
+    if (pb.slideAt == null) pb.slideAt = pb.T;
+    const left = pb.dur - pb.T;
+    if (left < 1.5) pb.fired.add('slide');
+    else if (pb.T - pb.slideAt > 0.5 && calm(1.4)) {
+      pb.fired.add('slide');
+      if (!Caps.bubble || S.rt > Caps.bubble.t0 + 1.5) quip(S.cond.mod === 'ice' ? 'iceslide' : 'slide', {});
+      if (left > 2.6) { Caps.big('STILL GOING!', { px: 64, color: '#ffffff', dur: 2 }); SFX.play('slide', 0.9); }
+    }
   }
   // smoke trail + rocket flames
   if (t < tl.launchT + 1.3 && t > tl.launchT && s.vis && S.rt - pb.lastSmoke > 0.04) { pb.lastSmoke = S.rt; Particles.add({ type: 'smoke', ws: true, x: s.x - s.vx * 0.02, y: s.y, vx: 0, vy: 2, life: 1.0, r: 16, a: 0.55 }); }
@@ -4723,11 +4869,14 @@ function updateFlightCamera(dt, s, t) {
   // teleports: the swirl overlay is fully up at this moment, so the camera can jump without a whip pan
   for (const c of pb.cutAt) if (!c.done && t >= c.t) { c.done = true; cam.cx = s.x + 120 / cam.z; }
   const alt = Math.max(0, s.y);
-  const zT = clamp(560 / (alt + 75), 0.42, 5.2);
+  // when the playback speeds up the camera pulls back a little, so the scenery never streaks past
+  const fast = Math.max(1, pb.rate || 1);
+  const zT = clamp(560 / (alt + 75), 0.42, 5.2) / (1 + 0.16 * (fast - 1));
   cam.z = approach(cam.z, zT, alt > cam.z ? 2.0 : 1.6, dt);
-  const lead = clamp(s.vx * 0.3, -60, 160);
-  const cxT = s.x + lead + 160 / cam.z;
-  cam.cx = approach(cam.cx, cxT, 3.2, dt);
+  // the look-ahead eases (and holds still during an impact freeze), so the view never whips sideways
+  if (!(pb.hold > 0)) cam.lead = approach(cam.lead == null ? 0 : cam.lead, clamp(s.vx * 0.3, -60, 160), 4, dt);
+  const cxT = s.x + (cam.lead || 0) + 160 / cam.z;
+  cam.cx = approach(cam.cx, cxT, 3.2 * fast, dt);
   let sx = 960 + (s.x - cam.cx) * cam.z;
   if (sx > 1420) cam.cx += (sx - 1420) / cam.z;
   if (sx < 260) cam.cx -= (260 - sx) / cam.z;
@@ -4774,7 +4923,7 @@ function onGag(g) {
   const d = L.pl.duck;
   const def = C.EVENTS[g.id];
   if (def.sfx && g.id !== 'scream' && g.id !== 'wave') SFX.play(def.sfx);
-  if (g.id === 'scream') SFX.play('scream', g.tEnd - g.t);
+  if (g.id === 'scream') SFX.play('scream', (g.tEnd - g.t) / Math.max(1, L.pb ? L.pb.rate : 1));
   if (g.id === 'wave') SFX.play('quack', d.pitch, 1);
   if (g.id === 'plane') { Caps.bubble = null; L.quietUntil = S.rt + 3; }   // the banner is the joke: keep it clear
   if (def.cap) Caps.big(def.cap, { px: 64, color: '#ffffff', dur: 2 });
@@ -5277,7 +5426,9 @@ function drawLaunchHUD(ctx, V, t) {
     const s = L.tl ? sampleTL(L.tl, ph === 'flight' ? t : L.tl.endT) : { x: 0, y: 0 };
     drawOdometer(ctx, ph === 'flight' && !L.pb.done ? (s.x < 0 && s.x > -40 && L.tl.special !== 'backfire' ? 0 : s.x) : Math.round(L.tl.final));
     // the altimeter slides in once the angle/power panel has gone, so the two never overlap
-    if (ph === 'flight' && gaugeVis <= 0) { const ak = clamp((t - L.tl.launchT - 2.0) / 0.3, 0, 1); ctx.save(); ctx.globalAlpha = ak; ctx.translate((1 - ak) * -60, 0); drawAltimeter(ctx, Math.max(0, s.y - SIM.groundY(s.x))); ctx.restore(); }
+    if (ph === 'flight' && gaugeVis <= 0) { const ak = clamp((t - L.tl.launchT - 2.0) / 0.3, 0, 1); ctx.save(); ctx.globalAlpha = ak; ctx.translate((1 - ak) * -60, 0); drawAltimeter(ctx, Math.max(0, s.y - SIM.groundY(s.x)), L.pb.peak || 0); ctx.restore(); }
+    // the gap to the leader, live: something to root for while the duck is on its way
+    if (ph === 'flight' && L.leaderX != null && !L.pb.done && t > L.tl.launchT + 2 && L.tl.special !== 'backfire') drawToBeat(ctx, L.leaderX, s.x);
   }
   // intro card
   if (ph === 'intro' || (ph === 'ladder' && L.dock < 1)) {
@@ -5407,7 +5558,15 @@ function drawOdometer(ctx, v) {
   });
   txt(ctx, 'ft', cx + 36, y + 10 + ch / 2 + 2, { px: 44, color: '#ffd23f', sw: 0 });
 }
-function drawAltimeter(ctx, alt) {
+function drawToBeat(ctx, lead, x) {
+  const gap = lead - x, ahead = gap <= 0;
+  const label = ahead ? '+' + fmtFt(Math.max(1, -gap)) + ' AHEAD OF THE LEADER' : 'LEADER ' + fmtFt(lead) + '  ·  ' + fmtFt(gap) + ' to go';
+  ctx.font = font(26);
+  const w = ctx.measureText(label).width + 36;
+  rr(ctx, 960 - w / 2, 126, w, 40, 14); fillStroke(ctx, ahead ? '#9be58b' : '#fff8e6', 4);
+  txt(ctx, label, 960, 147, { px: 26, color: OUT, sw: 0 });
+}
+function drawAltimeter(ctx, alt, peak) {
   const x = 26, y = 180, w = 92, h = 520;
   rr(ctx, x, y, w, h, 22); fillStroke(ctx, 'rgba(255,248,230,0.92)', 5);
   txt(ctx, 'ALT', x + w / 2, y + 26, { px: 26, color: OUT, sw: 0 });
@@ -5419,6 +5578,15 @@ function drawAltimeter(ctx, alt) {
   circ(ctx, x + w / 2, py, 16); fillStroke(ctx, '#ffd23f', 4);
   txt(ctx, fmtInt(alt), x + w / 2, y + h - 44, { px: 28, color: OUT, sw: 0 });
   txt(ctx, 'ft up', x + w / 2, y + h - 16, { px: 24, color: '#6b6577', sw: 0 });
+  // the highest point so far stays marked once the duck is on its way down
+  if (peak >= 100 && peak > alt + 12) {
+    const pk = lerp(bot, top, clamp(Math.log(1 + peak) / Math.log(1 + 3000), 0, 1));
+    ctx.beginPath(); ctx.moveTo(x + w / 2 + 14, pk); ctx.lineTo(x + w - 6, pk - 9); ctx.lineTo(x + w - 6, pk + 9); ctx.closePath(); fillStroke(ctx, '#e8412c', 3);
+    const lab = 'PEAK ' + fmtInt(peak) + ' ft';
+    ctx.font = font(24); const lw = ctx.measureText(lab).width + 22;
+    rr(ctx, x + w + 6, pk - 20, lw, 40, 12); fillStroke(ctx, '#fff8e6', 4);
+    txt(ctx, lab, x + w + 6 + lw / 2, pk + 1, { px: 24, color: '#c22f1f', sw: 0 });
+  }
 }
 function drawResultPanel(ctx, r) {
   const k = L.phase === 'result' ? easeBack(clamp(L.pt / 0.35, 0, 1)) : 1;
@@ -6118,7 +6286,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f') { toggleFullscreen(); return; }
   if (k === 'm') { primeAudio(); S.settings.muted = !S.settings.muted; SFX.setMuted(S.settings.muted); if (S.settings.muted) Voice.stop(); saveSettings(); Toast.show(S.settings.muted ? 'Muted' : 'Sound on'); return; }
   if (k === 'p') { openSettings(S.screen === 'launch' && !!S.race); return; }
-  if (k === 't') { S.turbo = !S.turbo; if (S.race) { S.race.turbo = S.turbo; saveRace(); } Toast.show(S.turbo ? 'Turbo ON (2x)' : 'Turbo off'); if (S.screen === 'launch' && L.phase === 'flight' && L.tl && L.pb) { const keep = L.pb; const nb = buildPlayback(L.tl, L.photo); keep.segs = nb.segs; keep.up = nb.up; keep.down = nb.down; } return; }
+  if (k === 't') { S.turbo = !S.turbo; if (S.race) { S.race.turbo = S.turbo; saveRace(); } Toast.show(S.turbo ? 'Turbo ON (2x)' : 'Turbo off'); if (S.screen === 'launch' && L.phase === 'flight' && L.tl && L.pb) replanFlight(); return; }
   if (S.screen === 'launch') {
     if (k === 'r') { replayFlight(); return; }
     if (k === 's') { skipFlight(); return; }
@@ -6176,8 +6344,8 @@ function frame(now) {
     if (!QUAL.probe && !QUAL.locked && QUAL.slow > 1.5 && QUAL.k > 0.7) { QUAL.probe = { k: QUAL.k, m: medianIv(), at: S.rt }; QUAL.iv = []; setK(Math.max(0.7, QUAL.k - 0.15)); }
     else if (QUAL.fast > 25 && QUAL.k < 1) setK(Math.min(1, QUAL.k + 0.15));
   }
-  S.rt += dt;
-  // pause freezes everything the audience sees: the show, captions and screen wipes
+  // pause freezes everything the audience sees: the show, captions (their clock, S.rt, stops too) and screen wipes
+  if (!S.paused) S.rt += dt;
   if (!S.paused) { S.time += dt; try { update(dt); } catch (err) { console.error(err); } Particles.update(dt); Shake.update(dt); Caps.update(); Iris.update(dt); }
   try { draw(dt); } catch (err) { console.error(err); }
   if (S.debugOn && (Math.floor(S.rt * 4) !== Math.floor((S.rt - dt) * 4))) DebugPanel.tick();
