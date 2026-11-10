@@ -1364,7 +1364,10 @@ const SIM = (() => {
         const lily = opts.force === 'lilypad' || (pc.tame < 1 && !forcePlop && !only && rng.next() > pc.tame);
         if (lily && !s.used.has('lilypad') && canFire()) {
           emit('lilypad', { piece: pc.id });
-          s.y = 0.5; s.vy = rng.range(44, 60); s.vx = Math.max(s.vx, 0) * 0.5 + rng.range(28, 52); s.mode = MODE.air; s.pose = POSE.scared; s.spin = rng.range(-4, 4);
+          s.y = 0.5; s.vy = rng.range(44, 60); s.vx = Math.max(s.vx, 0) * 0.5 + rng.range(28, 52);
+          // the hop always carries past the far bank: a lily pad bounce never ends in the same pond
+          s.vx = Math.max(s.vx, (pc.x + pc.w + 14 - s.x) / (2 * s.vy / P.g) * 1.2);
+          s.mode = MODE.air; s.pose = POSE.scared; s.spin = rng.range(-4, 4);
           return true;
         }
         if (s.nDist < 5 && !s.used.has('plop')) emit('plop', { piece: pc.id });
