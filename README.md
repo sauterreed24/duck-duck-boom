@@ -66,7 +66,7 @@ The roster is saved in the browser, so you only build it once. Each day you just
 | --- | --- |
 | Space | The big red button |
 | R | Instant replay of the last flight, with sound and captions |
-| T | Turbo (2x). Quiet parts of a flight go faster. |
+| T | Turbo (about 2x): shorter intros, countdown and flights. |
 | S | Skip to this flight's result (silent) |
 | M | Mute |
 | F | Fullscreen |
@@ -76,7 +76,9 @@ Hotkeys are ignored while you're typing in a text field. Esc stays the browser's
 
 ### Pacing
 
-At 1x, each duck takes roughly 21 seconds: intro 1.5 s, ladder and gauges 2.5 s, countdown 3 s, flight 6–10 s (capped at 14 s) and result 2.5 s. Quiet stretches of a flight are fast-forwarded and events play at 1x. Captions and speech bubbles always run in real time and stay up for at least 2 seconds. Shows with more than 15 ducks start in turbo.
+At 1x, each duck takes roughly 25 seconds: intro 1.5 s, ladder and gauges 2.5 s, countdown 3 s, the flight and a 2.5 s result. A flight with no events plays for about 11–12 s, a typical one 12–14 s, and one packed with events 15–20 s (the rare monster flight tops out around 24 s).
+
+Flights play close to real time. The launch, every event, the landing and the finish play at or very near full speed. Only quiet stretches run faster, and the speed always eases up and down, so the duck never appears to skip ahead: close to the ground it barely speeds up at all, and it speeds up most high in the sky, where the camera is zoomed far out. Captions and speech bubbles always run in real time and stay up for at least 2 seconds. Turbo (**T**) roughly halves everything, and shows with more than 15 ducks start in turbo.
 
 ## What's in it
 
