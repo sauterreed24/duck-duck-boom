@@ -1082,7 +1082,7 @@ function generateCourse(dayKey, cond, lazy) {
   const key = dayKey + JSON.stringify([cond.wind, cond.sky, cond.mod, cond.season, cond.friday]);
   let ent = COURSES.get(key);
   if (!ent) { if (COURSES.size > 500) COURSES.clear(); const course = buildCourse(dayKey, cond); ent = { course, job: balanceSteps(course, cond) }; COURSES.set(key, ent); }
-  if (ent.job && !lazy) { while (!ent.job.next().done); ent.job = null; }
+  if (ent.job && !lazy) { try { while (!ent.job.next().done); } catch (e) { COURSES.delete(key); throw e; } ent.job = null; }   // a failed job is never mistaken for a finished one
   const out = { dayKey: ent.course.dayKey, pieces: ent.course.pieces.map(p => Object.assign({}, p, { data: Object.assign({}, p.data) })) };
   if (ent.job) out.rough = true;
   return out;
@@ -1091,7 +1091,7 @@ function generateCourse(dayKey, cond, lazy) {
 function courseWork(ms) {
   const t0 = performance.now();
   for (const ent of COURSES.values()) {
-    while (ent.job && performance.now() - t0 < ms) if (ent.job.next().done) ent.job = null;
+    try { while (ent.job && performance.now() - t0 < ms) if (ent.job.next().done) ent.job = null; } catch (e) { COURSES.clear(); throw e; }
     if (ent.job) return true;
   }
   return false;
@@ -1163,14 +1163,13 @@ function buildCourse(dayKey, cond) {
    pieces of one kind together at most a third as much again. A pond that stops too many gets a little smaller and grows
    lily pads: some of the ducks that come down in it bounce off one and hop back out. */
 const COURSE_CAP = { obstacle: 0.09, bench: 0.075, wildcard: 0.125, boost: 0.14, walkway: 0.125, stormcloud: 0.125 };
-function balanceCourse(course, cond) { const job = balanceSteps(course, cond); while (!job.next().done); }
-function* balanceSteps(course, cond) {   // a generator, so the work can be done in slices: it yields every few flights
+function* balanceSteps(course, cond) {   // a generator, so the work can be done in slices: it yields after every flight
   const capOf = pc => COURSE_CAP[pc.type] || COURSE_CAP[pc.type === 'pond' ? 'obstacle' : C.EVENTS[pc.ev].kind] || 0.125;
   // a rough cut first (the big offenders), then a finer look at the course as it now stands
   for (let pass = 0; pass < 2; pass++) {
     const got = {}, N = pass ? 160 : 80;
     for (let i = 0; i < N; i++) {
-      if (i % 4 === 3) yield;
+      if (i) yield;
       const tl = SIM.simulate(hash('testfly', course.dayKey, pass, i), cond, course, null, { record: false, probe: true });
       // a piece the duck reached counts by its odds of being live, whether or not it was this time (far less noise
       // than counting hits). A pond counts every duck that came down in it to stay (swam, or was bounced out by a
@@ -2570,7 +2569,7 @@ ART.piece = {
     ctx.beginPath(); ctx.moveTo(0, -8); ctx.quadraticCurveTo(w / 2, -8 + sq * 2, w, -8); ctx.lineTo(w, -11); ctx.quadraticCurveTo(w / 2, -11 + sq * 2, 0, -11); ctx.closePath(); fillStroke(ctx, '#3f8fd9', L);
     ctx.beginPath(); ctx.moveTo(6, -9.6); ctx.quadraticCurveTo(w / 2, -9.6 + sq * 2, w - 6, -9.6); ctx.lineWidth = L * 0.45; ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.stroke();   // stripe on the mat
     ctx.lineWidth = L * 0.45; ctx.strokeStyle = '#5d6876';
-    for (let k = 1; k <= 3; k++) { const x = w * k / 4, top = -8 + sq * 2 * (1 - Math.abs(k - 2) * 0.45); ctx.beginPath(); ctx.moveTo(x, top); for (let j = 1; j <= 4; j++) ctx.lineTo(x + (j % 2 ? 1.6 : -1.6), top + (0 - top) * j / 4.5); ctx.lineTo(x, 0); ctx.stroke(); }   // springs
+    for (let k = 1; k <= 3; k++) { const x = w * k / 4, top = -8 + sq * 4 * (k / 4) * (1 - k / 4); ctx.beginPath(); ctx.moveTo(x, top); for (let j = 1; j <= 4; j++) ctx.lineTo(x + (j % 2 ? 1.6 : -1.6), top + (0 - top) * j / 4.5); ctx.lineTo(x, 0); ctx.stroke(); }   // springs, each topped at the mat's own sag so they stay attached
     rr(ctx, -2, -12, 6, 5, 2); fillStroke(ctx, '#e8412c', L * 0.8); rr(ctx, w - 4, -12, 6, 5, 2); fillStroke(ctx, '#e8412c', L * 0.8);
   },
   castle(ctx, pc, V, st) {
@@ -3762,7 +3761,9 @@ function pumpCourse() {
   if (coursePump) return;
   coursePump = true;
   const slice = () => {
-    if (courseWork(5)) { setTimeout(slice, 0); return; }
+    let more = false;
+    try { more = courseWork(4); } catch (e) { coursePump = false; throw e; }
+    if (more) { setTimeout(slice, 6); return; }   // short slices with gaps: the title screen keeps its frame rate
     coursePump = false;
     if (S.course && S.course.rough) S.course = generateCourse(S.course.dayKey, S.cond);   // swap in the finished course
   };
