@@ -1,12 +1,12 @@
 # Duck Duck BOOM!
 
 <p align="center">
-  <a href="https://raw.githack.com/sauterreed24/duck-duck-boom/main/index.html"><img src="docs/play-button.svg" alt="Play Duck Duck BOOM!" width="440"></a>
+  <a href="https://sauterreed24.github.io/duck-duck-boom/"><img src="docs/play-button.svg" alt="Play Duck Duck BOOM!" width="440"></a>
 </p>
 
 <p align="center">
-  <b><a href="https://raw.githack.com/sauterreed24/duck-duck-boom/main/index.html">▶ Play now</a></b>
-  &nbsp;·&nbsp; <a href="https://sauterreed24.github.io/duck-duck-boom/">GitHub Pages link</a> (once Pages is on, see below)
+  <b><a href="https://sauterreed24.github.io/duck-duck-boom/">▶ Play now</a></b>
+  &nbsp;·&nbsp; <a href="https://raw.githack.com/sauterreed24/duck-duck-boom/main/index.html">Backup link</a>
   &nbsp;·&nbsp; <a href="https://github.com/sauterreed24/duck-duck-boom/blob/main/index.html">Download to play offline</a>
 </p>
 
@@ -22,8 +22,8 @@ It is one self-contained file, `index.html`. There are no frameworks, CDNs, web 
 
 ## Running it
 
-- **Play from this page:** click **Play now** above. It opens the latest `index.html` from this repo straight in your browser through raw.githack.com (a free service that serves files from public GitHub repos). Nothing to install.
-- **GitHub Pages (the permanent home):** one-time setup, about 30 seconds. Go to the repo's **Settings → Pages**, set **Source** to *Deploy from a branch*, pick **`main`** and **`/ (root)`**, and click **Save**. A minute later the **GitHub Pages link** above works and always serves the latest version.
+- **Play from this page:** click **Play now** above. It opens the game at <https://sauterreed24.github.io/duck-duck-boom/>, served by GitHub Pages from the `main` branch. Nothing to install, and it updates itself about a minute after every change to `main`.
+- **Backup link:** the same latest `index.html` through raw.githack.com (a free service that serves files from public GitHub repos), in case Pages is ever unavailable.
 - **Offline:** download `index.html` and double-click it.
 
 Your roster, settings and Waddle of Fame are saved in the browser for whichever link you use. Each link keeps its own copy, so stick to one. To move your data, use **Settings → Export everything** on the old link and **Import…** on the new one.
