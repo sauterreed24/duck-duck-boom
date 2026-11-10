@@ -1167,7 +1167,7 @@ function balanceCourse(course, cond) {
     for (const pc of course.pieces) {
       const cap = capOf(pc), s = share[pc.id];
       const themed = cond.mod === 'trampark' && pc.type === 'trampoline';   // Trampoline Park is meant to be full of them
-      let k = Math.min(s > cap * (pass ? 1.05 : 1.15) ? cap / s : 1, !themed && kind[pc.ev] > cap * 1.4 ? cap * 1.35 / kind[pc.ev] : 1);
+      let k = Math.min(s > cap * (pass ? 1.05 : 1.15) ? cap / s : 1, !themed && pc.type !== 'pond' && kind[pc.ev] > cap * 1.4 ? cap * 1.35 / kind[pc.ev] : 1);
       if (k < 1) {
         k = Math.max(0.3, k);
         // a busy pond gets a little smaller and grows lily pads (half the cut each way), so it stays a proper pond
@@ -1176,6 +1176,7 @@ function balanceCourse(course, cond) {
       }
     }
   }
+  course.pieces.sort((a, b) => a.x - b.x);   // a pond that shrank also moved a little
 }
 // Where a wandering piece is at flight time t. The flight seed picks where its sway starts.
 function driftPhase(pc, seed) { return (hash('drift', seed >>> 0, pc.id) % 6283) / 1000; }
@@ -1220,7 +1221,8 @@ const SIM = (() => {
     return p;
   }
   // the odds that a piece is 'live' for one flight: its own chance, the flight's chaos, and the course balancer's tame
-  function rollOdds(pc, chaos) { return Math.min(0.97, pc.chance * TUNE.pieceMul * (0.3 + 0.75 * chaos)) * (pc.tame || 1); }
+  // (a pond's roll only decides skips; its tame is spent on lily pads instead)
+  function rollOdds(pc, chaos) { return Math.min(0.97, pc.chance * TUNE.pieceMul * (0.3 + 0.75 * chaos)) * (pc.type === 'pond' ? 1 : pc.tame || 1); }
   const AIR_EVENTS = Object.keys(C.EVENTS).filter(k => C.EVENTS[k].trig === 'air');
   const AIR = AIR_EVENTS.map(id => ({ id, ev: C.EVENTS[id] }));   // looked up once: this loop runs every step
 
@@ -1854,7 +1856,8 @@ function runBalance(N, opts) {
   const days = new Map();
   // days spread evenly through a year: 73 of them (every 5th day: all weekdays and seasons) for a full run, fewer for
   // a short one. Each course is test-flown when it is built, which takes a moment, so the tester does not build all 365.
-  const nDays = clamp(Math.round(N / 137), 12, 73), stepD = Math.floor(365 / nDays);
+  const nDays = clamp(Math.round(N / 137), 12, 73);
+  let stepD = Math.floor(365 / nDays); if (stepD % 7 === 0) stepD--;   // never a whole number of weeks: every weekday gets sampled
   const dayFor = i => {
     const base = new Date(2026, 0, 1);
     const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + (opts.day ? 0 : (hash('bday', i) % nDays) * stepD));
@@ -2793,11 +2796,12 @@ ART.piece = {
   tornado(ctx, pc, V, st) {
     // a leaning funnel under a storm cap, with dust at its foot and a few borrowed belongings in orbit
     const L = wlw(V), w = pc.w, h = pc.h, t = st.time || 0, lean = (st.lean || 0) * 30;
-    const busy = st.hit != null && st.hit < 1.7, spin = busy ? 2 : 1, n = 14;
+    const busy = st.hit != null && st.hit < 1.7, n = 14;
+    const ts = t + (st.hit != null ? Math.min(st.hit, 1.7) * 1.4 : 0);   // spins faster while a duck is inside, with no jump before or after
     const cx = u => lean * u * u + Math.sin(t * 1.3 + u * 3) * 10 * u, rw = u => lerp(7, w * 0.92, Math.pow(u, 1.5)), ry = u => 5 + u * 7;
     const debris = (front) => {
       for (let i = 0; i < 7; i++) {
-        const u = 0.16 + ((i * 0.37) % 0.78), a = t * (2.6 + (i % 3) * 0.7) * spin + i * 2.3, dep = Math.sin(a);
+        const u = 0.16 + ((i * 0.37) % 0.78), a = ts * (2.6 + (i % 3) * 0.7) + i * 2.3, dep = Math.sin(a);
         if ((dep > 0) !== front) continue;
         const x = cx(u) + Math.cos(a) * rw(u) * 1.22, y = -u * h + dep * ry(u) * 0.9, k = 0.85 + dep * 0.2;
         ctx.save(); ctx.translate(x, y); ctx.rotate(a * 1.7 + i); ctx.scale(k, k); ctx.globalAlpha = front ? 1 : 0.75;
@@ -2820,16 +2824,16 @@ ART.piece = {
     ctx.lineJoin = 'round'; fillStroke(ctx, g, L);
     ell(ctx, cx(1), -h, rw(1), ry(1)); fillStroke(ctx, '#6d7389', L);
     for (let i = 0; i < n; i++) {
-      const u = ((i + t * 1.6 * spin) % n) / n, x = cx(u), y = -u * h, a = clamp(Math.min(u, 1 - u) * 6, 0, 1);
+      const u = ((i + ts * 1.6) % n) / n, x = cx(u), y = -u * h, a = clamp(Math.min(u, 1 - u) * 6, 0, 1);
       ctx.beginPath(); ctx.ellipse(x, y, rw(u), ry(u), 0, 0, Math.PI);
       ctx.lineWidth = L * 0.8; ctx.strokeStyle = 'rgba(86,92,112,' + 0.75 * a + ')'; ctx.stroke();
-      const a0 = 0.5 + ((i * 1.7 + t * 2.4 * spin) % 2);
+      const a0 = 0.5 + ((i * 1.7 + ts * 2.4) % 2);
       ctx.beginPath(); ctx.ellipse(x, y - ry(u) * 0.9, rw(u) * 0.8, ry(u), 0, a0, a0 + 0.7);
       ctx.lineWidth = wlw(V, 2.5); ctx.strokeStyle = 'rgba(255,255,255,' + (busy ? 0.8 : 0.55) * a + ')'; ctx.stroke();
     }
     debris(true);
     // dust at the foot
-    for (let i = 0; i < 6; i++) { const a = t * 2.4 * spin + i * 1.05, r = 9 + 4 * Math.sin(t * 3.1 + i * 2); ell(ctx, Math.cos(a) * 24, -3 - Math.abs(Math.sin(a * 0.5 + i)) * 7, r, r * 0.6); ctx.fillStyle = 'rgba(226,214,188,0.7)'; ctx.fill(); }
+    for (let i = 0; i < 6; i++) { const a = ts * 2.4 + i * 1.05, r = 9 + 4 * Math.sin(t * 3.1 + i * 2); ell(ctx, Math.cos(a) * 24, -3 - Math.abs(Math.sin(a * 0.5 + i)) * 7, r, r * 0.6); ctx.fillStyle = 'rgba(226,214,188,0.7)'; ctx.fill(); }
     ctx.restore();
   },
 };
@@ -3634,7 +3638,8 @@ function drawWorld(ctx, W) {
     // a wandering piece (the tornado): during a flight the launch screen says where it is; elsewhere it just roams
     if (pc.data && pc.data.drift && st.dx == null) { st.dx = driftX(pc, 0, st.time || 0) - pc.x; st.lean = driftLean(pc, 0, st.time || 0); }
     const px = pc.x + (st.dx || 0);
-    const x0 = V.sx(px - 60), x1 = V.sx(px + pc.w + 60);
+    const m = pc.type === 'tornado' ? 110 : 40;   // the tornado's storm cap and lean reach well past its foot
+    const x0 = V.sx(px - m), x1 = V.sx(px + pc.w + m);
     if (x1 < -60 || x0 > 1980 || V.gy > 1300) continue;
     worldLocal(ctx, V, px, 0); ART.piece[pc.type](ctx, pc, V, st); ctx.restore();
   }
@@ -5094,6 +5099,7 @@ function onGag(g) {
   if (g.id === 'selfie') quip('selfie', { delay: 0.3 });
 }
 function endFlight() {
+  L.restAt = S.time;   // wandering pieces keep roaming on this clock once the flight clock stops
   if (L.replay) { L.replay = false; L.phase = 'idle'; L.pt = 0; const last = S.race.idx >= S.race.queue.length; setBig(last ? 'SEE RESULTS' : 'NEXT DUCK', true); return; }
   setPhase('result');
 }
@@ -5260,7 +5266,7 @@ function pieceStateFn(t) {
   }
   return pc => {
     const st = { time: S.time };
-    if (pc.data && pc.data.drift && L.tl) { const tw = t + (L.phase === 'result' || L.phase === 'idle' ? L.pt : 0); st.dx = driftX(pc, L.tl.seed, tw) - pc.x; st.lean = driftLean(pc, L.tl.seed, tw); }
+    if (pc.data && pc.data.drift && L.tl) { const tw = t + (L.phase === 'result' || L.phase === 'idle' ? S.time - (L.restAt || S.time) : 0); st.dx = driftX(pc, L.tl.seed, tw) - pc.x; st.lean = driftLean(pc, L.tl.seed, tw); }
     const e = evByPiece[pc.id];
     if (e && t >= e.t) {
       st.hit = t - e.t;

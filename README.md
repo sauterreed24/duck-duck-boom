@@ -121,9 +121,9 @@ Flights play close to real time. The launch always plays at exactly full speed, 
 Latest balance run (10,000 flights):
 
 ```text
-distance  min -459  p10 726  p25 1,070  median 1,451  p75 1,946  p90 2,655  p99 4,373  max 6,496 ft
+distance  min -459  p10 725  p25 1,070  median 1,452  p75 1,944  p90 2,656  p99 4,373  max 6,496 ft
 past 2,500 ft: 12.4%   past 5,000 ft: 2.6 per 1,000   backfire: 0.91%   misfire: 1.26%
-distance-changing events per flight: 1.92 avg   0: 16.6%  1: 31.1%  2: 22.1%  3: 13.4%  4: 7.4%  5: 9.5%
+distance-changing events per flight: 1.93 avg   0: 16.6%  1: 31.0%  2: 22.2%  3: 13.3%  4: 7.4%  5: 9.5%
 most decisive events: spicy pepper (the winner had it in 29% of races) and espresso drone (28%)
 busiest single obstacle on a day: catches 15% of that day's ducks (typical), 21% at worst
 pond: 6% of all flights end with a swim; at most 18% of one day's ducks
