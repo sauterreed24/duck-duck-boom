@@ -18,6 +18,8 @@ A daily cannon-launch duck game for team calls. Everyone who booked a meeting to
 | --- | --- | --- |
 | <img src="docs/screenshot-reveal.jpg" alt="Duck reveal cards" width="280"> | <img src="docs/screenshot-flight.jpg" alt="A duck riding the Pelican Express mid-flight" width="280"> | <img src="docs/screenshot-podium.jpg" alt="Results podium with the Golden Loaf" width="280"> |
 
+<p align="center"><img src="docs/screenshot-lilypad.jpg" alt="A duck bounces off a lily pad and out of the pond while the tornado roams the field" width="720"><br><em>Every day's field is different, and no single obstacle gets to stop the show: a lily pad bounces this duck back out of the pond while the tornado wanders past.</em></p>
+
 It is one self-contained file, `index.html`. There are no frameworks, CDNs, web fonts, images, audio files or network requests. Every visual is drawn with Canvas 2D and every sound is synthesized with the Web Audio API, so it runs offline in Chrome or Edge.
 
 ## Running it
@@ -76,14 +78,15 @@ Hotkeys are ignored while you're typing in a text field. Esc stays the browser's
 
 ### Pacing
 
-At 1x, each duck takes roughly 24 seconds: intro 1.5 s, ladder and gauges 2.5 s, countdown 3 s, the flight and a 2.5 s result. A flight with no events plays for about 11 s, a typical one about 12 s, and one packed with events 15–20 s (9 in 10 flights are done within 18 s; the rare monster flight tops out around 24 s). In turbo a typical flight takes about 8 s.
+At 1x, each duck takes roughly 24 seconds: intro 1.5 s, ladder and gauges 2.5 s, countdown 3 s, the flight and a 2.5 s result. A flight with no events plays for about 11 s, a typical one about 12 s, and one packed with events 15–20 s (9 in 10 flights are done within 19 s; the rare monster flight tops out around 25 s). In turbo a typical flight takes about 8 s.
 
 Flights play close to real time. The launch always plays at exactly full speed, and every event, the landing and the finish play at or very near it. Only quiet stretches run faster, and the speed always eases up and down, so the duck never appears to skip ahead. Close to the ground it barely speeds up; it speeds up most high in the sky, where the camera is zoomed far out. A long quiet slide or bounce-out is fitted into a few seconds, and the camera pulls back while it runs faster so the scenery never streaks past. Captions and speech bubbles always run in real time and stay up for at least 2 seconds. Shows with more than 15 ducks start in turbo.
 
 ## What's in it
 
 - **Ducks:** seeded per player per day (local date + name), so a reload gives the same duck. There are 5 base types (mallard, classic rubber duck, fluffy duckling, white farm duck, Carolina duck), 16 colors, 6 patterns, 16 hats, 17 accessories and 8 eye styles. Rarities are Common 60%, Uncommon 25%, Rare 10%, Epic 4% and Legendary 1%. The six legendaries are Golden Duck, Disco Ball Duck, Robo-Duck, Ghost Duck, Pixel Duck and Definitely A Duck (a goose in a duck costume). Names mix templates with 96 handwritten one-offs and avoid names used on recent days. Every generated name, bio and caption goes through a blocklist, and any duck name containing a first name from the roster is rerolled. Looks never affect distance.
-- **Events:** 12 boosts, 12 obstacles (pond plop included), 7 wildcards and 9 gags. Each one is a data entry in `C.EVENTS` with its trigger, physics effect, art, sound and caption. Ground set pieces come from the day's course and trigger on a seeded chance per flight. Air events trigger by chance in their altitude band. Gags never change distance.
+- **Events:** 13 boosts, 12 obstacles (pond plop included), 7 wildcards and 9 gags. Each one is a data entry in `C.EVENTS` with its trigger, physics effect, art, sound and caption. Ground set pieces come from the day's course and trigger on a seeded chance per flight. Air events trigger by chance in their altitude band. Gags never change distance.
+- **No bottlenecks:** every day's course is test-flown 240 times before the show (the same test flights for everyone, seeded by the date). Anything that catches more than its share of the ducks is toned down until it does not: a dead stop such as the pond, the mud or the bread bench may catch about 1 duck in 11, a wildcard 1 in 8, a boost 1 in 7. A pond in a busy spot gets a little smaller and grows flowering lily pads, and some ducks that come down in it bounce off one and hop back out (**LILY PAD!**). A fast, flat arrival always skips across the water. The **tornado wanders** back and forth across about 400 ft, so every duck meets it somewhere else, and it is a real wildcard: about 3 ducks in 4 are flung onward, the rest back. Riders leave the moving walkway at their own pace instead of in a bunch.
 - **Cannon moments:** misfire with a bonus-powder comeback (about 1.3%), backfire to a negative distance (about 1%) and the fake-out fizzle (about 2%, cosmetic only). Other flight touches are the hat that flies off and sometimes beats its duck, a photo finish in slow motion when a duck lands within 25 ft of the leader (with the margin called out), **personal bests**, and a drumroll for a last duck who can still win, which builds over the final seconds of the flight and ends right on the landing cymbal.
 - **Daily conditions:** wind (calm, tailwind or headwind, up to 20 mph), sky (sunny, overcast, drizzle, fog, sunset or night) and a modifier of the day on about half of days: Low Gravity, Bouncy Day, Goose Migration, Trampoline Park, Ice Rink (the field turns to ice and some ponds freeze over), Big Head Mode, Throwback Mode or Turbo Cannon. Fridays add Fri-Yay party mode. Seasonal themes come from the date: pumpkins and bats in October, falling leaves in autumn, a turkey in a duck disguise during Thanksgiving week, snow and twinkle lights from December to February, flowers and rain in spring, and a beach in summer. The course changes daily too.
 - **Commentary:** Bill Featherstone narrates in a lower-third caption bar (about 200 lines), and the ducks talk back in speech bubbles (about 115 lines). Lines are drawn from shuffled bags so nothing repeats within a show, and Bill always talks about what's happening now instead of falling behind. Commentary roasts the duck, never the player. An optional announcer voice uses the Web Speech API and is off by default.
@@ -112,16 +115,18 @@ Flights play close to real time. The launch always plays at exactly full speed, 
 - `index.html?debug` opens a debug panel. It can set the date and race seed, fake N players, force any event, gag or cannon moment for the next flight, force a rarity, wind, sky, modifier, season or Friday, and run a sound check. It also shows an FPS meter and has balance and self-test buttons.
 - `index.html?gallery` shows 24 random ducks on one screen. Press Space for a new batch.
 - In the browser console:
-  - `DDB.balance(10000)` simulates N flights across a year of daily conditions. It prints the distance spread, how often each event fires, how many events each flight got, and how often the winner of a 10-duck race had each event.
+  - `DDB.balance(10000)` simulates N flights across 73 days spread through a year of daily conditions (it takes about 20 seconds, because every course is test-flown as it is built). It prints the distance spread, how often each event fires, how many events each flight got, and how often the winner of a 10-duck race had each event.
   - `DDB.selfTest()` runs a 40-player race twice with the same seed and checks that the results match exactly with no NaN values. It also checks that launch order and looks don't change distances, that rerolls and same-day ducks behave, that no flight ends in mid-air or at the time cap, and that every commentary line and name part passes the content blocklist.
 
 Latest balance run (10,000 flights):
 
 ```text
-distance  min -622  p10 721  p25 1,037  median 1,372  p75 1,839  p90 2,452  p99 4,156  max 6,861 ft
-past 2,500 ft: 9.2%   past 5,000 ft: 2.4 per 1,000   backfire: 0.91%   misfire: 1.26%
-distance-changing events per flight: 1.93 avg   0: 15.9%  1: 32.4%  2: 21.3%  3: 13.2%  4: 7.8%  5: 9.3%
-most decisive events: jet stream (the winner had it in 36% of races) and spicy pepper (33%)
+distance  min -459  p10 725  p25 1,070  median 1,452  p75 1,944  p90 2,656  p99 4,373  max 6,496 ft
+past 2,500 ft: 12.4%   past 5,000 ft: 2.6 per 1,000   backfire: 0.91%   misfire: 1.26%
+distance-changing events per flight: 1.93 avg   0: 16.6%  1: 31.0%  2: 22.2%  3: 13.3%  4: 7.4%  5: 9.5%
+most decisive events: spicy pepper (the winner had it in 29% of races) and espresso drone (28%)
+busiest single obstacle on a day: catches 15% of that day's ducks (typical), 21% at worst
+pond: 6% of all flights end with a swim; at most 18% of one day's ducks
 ```
 
 ## Code layout
