@@ -502,6 +502,7 @@ C.LINES = {
   personalBest: ['A new personal best for {player}!', 'That is {player}\'s best flight EVER!'],
   photoFinish: ["It's close... it's CLOSE...", 'Photo finish! Get the camera!', "Too close to call! Let's go to the replay booth!"],
   lastDuck: ['{duck} is our last duck... and can still take the lead!', 'It all comes down to {duck}!', 'Last duck of the day. Anything can happen!'],
+  lastShot: ['Last shot of the day! {duck} gets one more go!', 'One final bonus shot. It all comes down to {duck}!', 'The very last shot of the show belongs to {duck}!'],
   lastDuckLong: ['{duck} is our last duck. It would take a miracle. Miracles happen.', 'Last duck! The lead is big, but this is a cannon.'],
   hatOff: ['There goes the hat!', 'Hat overboard!', 'And the hat has a mind of its own!'],
   hatWins: ['Technically, the hat wins.', 'The hat flew farther than the duck. Think about that one.', 'Folks, the HAT beat the duck.'],
@@ -3214,12 +3215,13 @@ const SFX = (() => {
     scream(dur) { const t = now(); dur = clamp(dur || 1.5, 0.8, 3.2); tone('sawtooth', 520, 880, t, dur, 0.13, { filter: 'bandpass', ff: 1300, q: 1.4, vib: [8, 25], a: 0.08 }); },
     thud() { const t = now(); tone('sine', 120, 55, t, 0.18, 0.4); noise(t, 0.1, 'lowpass', 500, 200, 1, 0.3); },
     parachute() { const t = now(); noise(t, 0.35, 'lowpass', 700, 200, 1, 0.35, { a: 0.03 }); },
+    rankup(r) { const t = now(), f = 620 + Math.max(0, 9 - (r || 1)) * 60; tone('triangle', f, f * 1.3, t, 0.1, 0.11, { a: 0.004 }); },
     beep() { const t = now(); tone('sine', 1320, 1320, t, 0.08, 0.08); tone('sine', 1760, 1760, t + 0.12, 0.08, 0.08); },
     fireworks() { for (let i = 0; i < 4; i++) setTimeout(() => S.pop(), i * 380); },
     shimmer() { const t = now(); for (let i = 0; i < 8; i++) tone('sine', 1500 + i * 220, 1500 + i * 220, t + i * 0.05, 0.3, 0.07); },
     squirrel() { const t = now(); for (let i = 0; i < 5; i++) tone('square', 2200 + nr.next() * 600, 1800, t + i * 0.07, 0.04, 0.09, { filter: 'bandpass', ff: 2500 }); },
   };
-  const LONG = new Set(['fuse', 'drumroll', 'hold', 'plane', 'scream', 'rocket', 'wind', 'zap', 'ring']);
+  const LONG = new Set(['fuse', 'drumroll', 'hold', 'plane', 'scream', 'rocket', 'wind', 'zap', 'ring', 'slide']);
   function play(name, ...args) {
     if (!ac || muted || vol <= 0 || held) return;   // nothing queues up behind a pause
     D = LONG.has(name) ? fbus : bus;
@@ -3269,6 +3271,7 @@ const SKY = {
 };
 function groundPalette(cond) {
   if (cond.flags.snow) return { a: '#eef3f8', b: '#dfe8f1', edge: '#c9d6e3', dirt: '#b7c6d6' };
+  if (cond.mod === 'ice') return { a: '#d3ecf8', b: '#c2e3f4', edge: '#93c6e4', dirt: '#a9c9dc' };   // Ice Rink day: the field is a rink
   if (cond.flags.beach) return { a: '#f3d59b', b: '#eccb88', edge: '#d9b36b', dirt: '#c99f5a' };
   if (cond.flags.autumn) return { a: '#86bd4c', b: '#7bb244', edge: '#5f9636', dirt: '#8b6a3e' };
   return { a: '#6cc04a', b: '#62b442', edge: '#4c9a35', dirt: '#8b6a3e' };
@@ -3934,6 +3937,7 @@ const Roster = {
   show() {
     this.el = document.getElementById('roster');
     this.el.classList.remove('hidden');
+    this.undo = null; clearTimeout(this.undoTimer);   // an Undo offer doesn't outlive a visit to the roster
     this.render();
   },
   hide() { if (this.el) this.el.classList.add('hidden'); },
@@ -4044,8 +4048,8 @@ const Roster = {
     const oldDay = stale ? oldTicks.map(p => p.td || lastDay).sort()[oldTicks.length - 1] : null;
     const over = checked > 40 ? S.roster.filter(p => p.checked).sort((a, b) => a.team - b.team || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(40).map(p => p.name) : [];
     this.el.innerHTML =
-      '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick everyone who booked a meeting · click a name to fix it · coloured dots move teams · up to 40 ducks</div></div>' +
-      '<div style="text-align:right"><div class="bar" style="justify-content:flex-end;margin-bottom:6px"><button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (over.length ? 'Only 40 fit. Sitting out: ' + esc(over.join(', ')) : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
+      '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick who booked · click a name to fix it · dots move teams · up to 40 ducks</div></div>' +
+      '<div style="text-align:right;flex:none"><div class="bar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap">' + (this.undo ? '<button class="btn small" id="rundo" title="Put this person back on the roster">↶ Undo: put ' + esc(this.undo.p.name) + ' back</button>' : '') + '<button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (over.length ? 'Only 40 fit. Sitting out: ' + esc(over.join(', ')) : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
       (stale ? '<div class="stale">' + (oldTicks.length === checked ? 'These ticks are' : oldTicks.length + ' of the ticks are') + ' from ' + esc(prettyDate(oldDay)) + '. New day? <button class="btn small" id="rfresh">' + (oldTicks.length === checked ? 'Untick everyone' : 'Untick those ' + oldTicks.length) + '</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
@@ -4068,7 +4072,16 @@ const Roster = {
     // each row has one chip per other team, so the host picks the destination directly (no cycling, no shifting rows)
     this.el.querySelectorAll('[data-move]').forEach(b => b.onclick = () => { if (performance.now() - (this._mvAt || 0) < 450) return; this._mvAt = performance.now(); const p = S.roster.find(x => x.id === b.dataset.move); if (p) { p.team = +b.dataset.to; Toast.show(p.name + ' → ' + T[p.team].name); } save(); });
     this.el.querySelectorAll('[data-ammo]').forEach(sel => sel.onchange = () => { const p = S.roster.find(x => x.id === sel.dataset.ammo); if (p) p.ammo = +sel.value; saveRoster(); });
-    this.el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { const p = S.roster.find(x => x.id === b.dataset.del); S.roster = S.roster.filter(x => x.id !== b.dataset.del); save(); if (p) Toast.show('Removed ' + p.name); });
+    this.el.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const idx = S.roster.findIndex(x => x.id === b.dataset.del), p = S.roster[idx];
+      if (!p) return;
+      S.roster.splice(idx, 1);
+      // a slip of the mouse is easy to take back for the next 10 seconds
+      const u = this.undo = { p, idx };
+      clearTimeout(this.undoTimer); this.undoTimer = setTimeout(() => { if (this.undo === u) { this.undo = null; if (S.screen === 'roster') this.render(); } }, 10000);
+      save(); Toast.show('Removed ' + p.name);
+    });
+    const ru = $('#rundo'); if (ru) ru.onclick = () => { const u = this.undo; if (!u) return; this.undo = null; clearTimeout(this.undoTimer); S.roster.splice(Math.min(u.idx, S.roster.length), 0, u.p); save(); Toast.show(u.p.name + ' is back'); };
     this.el.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.all) this.tick(p); }); save(true); });
     this.el.querySelectorAll('[data-none]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.none) p.checked = false; }); save(true); });
     const addOne = () => { const nm = $('#addname').value; const p = this.add(nm, +$('#addteam').value); if (p) { $('#addname').value = ''; save(true); Toast.show('Added ' + p.name); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
@@ -4204,7 +4217,9 @@ function addLatePlayer(name, team) {
   if (!R.streak && F.streak && F.streak.n >= 2 && F.streak.key === pl.key) R.streak = { key: F.streak.key, n: F.streak.n };
   // launches last among the main round (before any bonus shots)
   R.queue.splice(insertAt(), 0, { p: R.players.length - 1, s: 0 });
-  if (!S.roster.some(p => personKey(p.name) === personKey(nm))) { S.roster.push({ id: 'p' + hex8(hash(nm, Date.now())), name: nm, team, checked: true, ammo: 0, td: localDayKey() }); saveRoster(); }
+  const onRoster = S.roster.find(p => personKey(p.name) === personKey(nm));
+  if (!onRoster) { S.roster.push({ id: 'p' + hex8(hash(nm, Date.now())), name: nm, team, checked: true, ammo: 0, td: localDayKey() }); saveRoster(); }
+  else if (!onRoster.checked) { onRoster.checked = true; onRoster.td = localDayKey(); saveRoster(true); }   // they booked after all: tick them too
   rememberNames(R.day, [pl.duck.name]);
   if (S.screen === 'reveal') { RV.flipped.push(true); RV.flipAt.push(0); }
   saveRace();
@@ -4459,7 +4474,8 @@ function setPhase(p) {
     if (d.rarity === 'legendary' || d.rarity === 'epic') SFX.play('sting', d.rarity);
   }
   if (p === 'ladder') {
-    if (isLastShot() && R.queue.length > 1 && !L.q.bonus) {
+    if (isLastShot() && R.queue.length > 1 && L.q.bonus) say('lastShot', { duck: d.name }, { prio: 1, delay: 0.3 });
+    else if (isLastShot() && R.queue.length > 1) {
       const lead = leaderEntry();
       L.drum = true;
       say(lead && lead.dist > 2600 ? 'lastDuckLong' : 'lastDuck', { duck: d.name }, { prio: 1, delay: 0.3 });
@@ -4703,6 +4719,16 @@ function startFlight(replay) {
   L.replay = !!replay;
   L.landed = false; L.shownLeader = false; L.prevY = tl.y[0];
   L.leaderX = lead && lead.pl.key !== L.pl.key ? lead.dist : null;
+  // something to chase: the leader, or for the first duck the last show's winning distance or the pond record
+  const R0 = S.race;
+  L.target = L.leaderX != null ? { x: L.leaderX, label: 'LEADER', past: 'AHEAD OF THE LEADER' }
+    : lead ? null
+      : R0.lastWin != null ? { x: R0.lastWin, label: "LAST SHOW'S WINNER", past: "PAST LAST SHOW'S WINNER" }
+        : R0.record != null ? { x: R0.record, label: 'POND RECORD', past: 'PAST THE POND RECORD' } : null;
+  // the live leaderboard: this duck's row climbs as it passes the others (not on a replay or a bonus shot)
+  L.liveX = null;
+  L.pb.rivals = !replay && !R0.results[L.pl.key] ? standings().map(e => e.dist) : null;
+  L.pb.liveRank = L.pb.rivals ? L.pb.rivals.length + 1 : 0; L.pb.blipAt = 0;
   // teleports get a soft swirl cut instead of a whip pan
   for (const e of tl.events) {
     if (e.id === 'wormhole' && Math.abs(e.data.dx) > 120) L.pb.cutAt.push({ t: e.t + 0.55, color: '#4b3bb0' });
@@ -4712,7 +4738,7 @@ function startFlight(replay) {
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   boomFX(tl.special === 'misfire');
   // the final-duck drumroll is decided at launch, so skips and late players can't make it wrong
-  if (!replay) L.drum = isLastShot() && S.race.queue.length > 1 && !L.q.bonus;
+  if (!replay) L.drum = isLastShot() && S.race.queue.length > 1;
 }
 function boomFX(misfire) {
   const m = cannonMuzzle(L.barrel);
@@ -4816,6 +4842,18 @@ function updateFlight(dt) {
   L.prevY = s.y;
   // pass the leader's flag
   if (L.leaderX != null && !L.shownLeader && s.x > L.leaderX && s.vis && t > tl.launchT + 0.5) { L.shownLeader = true; say('passLeader', { duck: L.pl.duck.name }, { prio: 1 }); SFX.play('ooh'); }
+  // the live leaderboard follows the duck; a soft blip marks every rival it passes
+  if (pb.rivals && t >= tl.launchT && s.vis) {
+    L.liveX = s.x;
+    const rank = 1 + pb.rivals.filter(d => d > s.x).length;
+    if (rank < pb.liveRank && pb.T - pb.blipAt > 0.25 && t > tl.launchT + 0.5) { pb.blipAt = pb.T; SFX.play('rankup', rank); }
+    pb.liveRank = rank;
+  }
+  // a falling whistle that ends on the first touchdown, when the duck drops in from high up and nothing else is going on
+  if (!S.turbo && !L.landed && !pb.fired.has('whistle') && pb.peak >= 200 && tl.apexT > 0 && t > tl.apexT && t < tl.landT && simAfter(pb, 1.25) >= tl.landT) {
+    pb.fired.add('whistle');
+    if (s.vis && !tl.events.some(e => e.t > t - 0.5 && e.t < tl.landT + 0.3)) SFX.play('slide', 1.25);
+  }
   // ---- Bill and the duck fill the quiet moments. A filler only speaks when Bill is free and nothing is about to
   // happen (checked in real seconds), it never waits in line, and turbo and replays skip them. ----
   if (s.vis) pb.peak = Math.max(pb.peak, s.y - gy);
@@ -5428,7 +5466,7 @@ function drawLaunchHUD(ctx, V, t) {
     // the altimeter slides in once the angle/power panel has gone, so the two never overlap
     if (ph === 'flight' && gaugeVis <= 0) { const ak = clamp((t - L.tl.launchT - 2.0) / 0.3, 0, 1); ctx.save(); ctx.globalAlpha = ak; ctx.translate((1 - ak) * -60, 0); drawAltimeter(ctx, Math.max(0, s.y - SIM.groundY(s.x)), L.pb.peak || 0); ctx.restore(); }
     // the gap to the leader, live: something to root for while the duck is on its way
-    if (ph === 'flight' && L.leaderX != null && !L.pb.done && t > L.tl.launchT + 2 && L.tl.special !== 'backfire') drawToBeat(ctx, L.leaderX, s.x);
+    if (ph === 'flight' && L.target && !L.pb.done && t > L.tl.launchT + 2 && L.tl.special !== 'backfire') drawToBeat(ctx, L.target, s.x);
   }
   // intro card
   if (ph === 'intro' || (ph === 'ladder' && L.dock < 1)) {
@@ -5558,9 +5596,9 @@ function drawOdometer(ctx, v) {
   });
   txt(ctx, 'ft', cx + 36, y + 10 + ch / 2 + 2, { px: 44, color: '#ffd23f', sw: 0 });
 }
-function drawToBeat(ctx, lead, x) {
-  const gap = lead - x, ahead = gap <= 0;
-  const label = ahead ? '+' + fmtFt(Math.max(1, -gap)) + ' AHEAD OF THE LEADER' : 'LEADER ' + fmtFt(lead) + '  ·  ' + fmtFt(gap) + ' to go';
+function drawToBeat(ctx, tg, x) {
+  const gap = tg.x - x, ahead = gap <= 0;
+  const label = ahead ? '+' + fmtFt(Math.max(1, -gap)) + ' ' + tg.past : tg.label + ' ' + fmtFt(tg.x) + '  ·  ' + fmtFt(gap) + ' to go';
   ctx.font = font(26);
   const w = ctx.measureText(label).width + 36;
   rr(ctx, 960 - w / 2, 126, w, 40, 14); fillStroke(ctx, ahead ? '#9be58b' : '#fff8e6', 4);
@@ -5609,7 +5647,12 @@ const SB = { seen: {} };
 function drawSidebar(ctx) {
   const R = S.race;
   if (!R) return;
-  const st = standings();
+  const stReal = standings();
+  // while a duck is in the air its row climbs the board live, by the distance it has covered so far
+  const live = L.phase === 'flight' && !L.replay && L.pl && L.pb && L.pb.rivals && L.liveX != null;
+  const st = live ? stReal.concat([{ pl: L.pl, r: null, dist: L.liveX, live: true }]).sort((a, b) => b.dist - a.dist) : stReal;
+  // settled rows keep the label they had before the live row joined (no flicker as it passes them)
+  const labOf = new Map(stReal.map((e, i) => [e.pl.key, fmtDist(stReal, i)]));
   const x = 1500, y = 14, w = 404;
   const rows = st.slice(0, 8);
   const curKey = L.pl ? L.pl.key : null;
@@ -5618,13 +5661,13 @@ function drawSidebar(ctx) {
   const curRank = curKey ? st.findIndex(e => e.pl.key === curKey) : -1;
   const curLanded = curRank >= 0 && (L.phase === 'result' || L.phase === 'idle');
   const showCur = L.pl && !curIn && (L.phase !== 'idle' || curLanded) && !(L.phase === 'idle' && !curLanded);
-  const more = Math.max(0, st.length - rows.length);
+  const more = Math.max(0, stReal.length - rows.filter(e => !e.live).length);
   const left = remainingCount() - (L.phase === 'idle' || L.phase === 'result' ? 0 : 1);
   const rh = 76;
   const h = 70 + rows.length * rh + (showCur ? rh + 34 : 0) + 56;
   rr(ctx, x, y, w, h, 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
-  txt(ctx, st.length + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
+  txt(ctx, stReal.length + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
   let yy = y + 66;
   SB.seen = SB.seen || {};
   const row = (e, rank, hl) => {
@@ -5643,11 +5686,11 @@ function drawSidebar(ctx) {
     teamShape(ctx, teamOf(pl).shape, x + 120, yy + 22, 8); ctx.fillStyle = teamOf(pl).color; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke();
     txt(ctx, pl.duck.name, x + 136, yy + 22, { px: 28, color: OUT, sw: 0, align: 'left', maxW: w - 150 });
     txt(ctx, pl.name, x + 112, yy + 54, { px: 26, color: '#6b6577', sw: 0, align: 'left', maxW: w - 250, weight: 800 });
-    txt(ctx, e.r ? (e.lab || fmtFt(e.dist)) : '…', x + w - 18, yy + 54, { px: 28, color: OUT, sw: 0, align: 'right' });
+    txt(ctx, e.live ? fmtFt(e.dist) : e.r ? (e.lab || fmtFt(e.dist)) : '…', x + w - 18, yy + 54, { px: 28, color: e.live ? '#c22f1f' : OUT, sw: 0, align: 'right' });
     yy = saveY + rh;
   };
-  rows.forEach((e, i) => row(Object.assign({ lab: fmtDist(st, i) }, e), String(i + 1), e.pl.key === curKey && (L.phase === 'result' || L.phase === 'idle')));
-  if (showCur) { yy += 6; txt(ctx, curLanded ? 'JUST LANDED' : 'NOW', x + 22, yy + 10, { px: 24, color: '#e8412c', sw: 0, align: 'left' }); yy += 24; if (curLanded) row(Object.assign({ lab: fmtDist(st, curRank) }, st[curRank]), String(curRank + 1), true); else row({ pl: L.pl, r: null }, '▶', true); }
+  rows.forEach((e, i) => row(Object.assign({ lab: e.live ? null : labOf.get(e.pl.key) }, e), String(i + 1), e.pl.key === curKey && (e.live || L.phase === 'result' || L.phase === 'idle')));
+  if (showCur) { yy += 6; txt(ctx, curLanded ? 'JUST LANDED' : 'NOW', x + 22, yy + 10, { px: 24, color: '#e8412c', sw: 0, align: 'left' }); yy += 24; if (curLanded || live) row(Object.assign({ lab: live ? null : labOf.get(st[curRank].pl.key) }, st[curRank]), String(curRank + 1), true); else row({ pl: L.pl, r: null }, '▶', true); }
   const tail = (more ? '+' + more + ' more' : '') + (more && left > 0 ? ' · ' : '') + (left > 0 ? left + ' to go' : '');
   if (tail) txt(ctx, tail, x + w / 2, yy + 26, { px: 28, color: '#6b6577', sw: 0 });
 }
@@ -5767,6 +5810,8 @@ function startReveal() {
   RV.flipAt = []; let tt = 0.5;
   R.players.forEach((pl, i) => { RV.flipAt.push(tt); tt += pl.duck.rarity === 'legendary' ? 1.7 : pl.duck.rarity === 'epic' ? 1.1 : 0.32; });
   RV.done = !!R.revealDone; RV.shuf = R.shuffled ? 99 : -1; RV.fc = R.shuffled ? 99 : -1;
+  // resumed after the shuffle but before Bill named his pick: settle it now so the forecast and the results agree
+  if (R.shuffled && R.pick === undefined) { R.pick = billPickKey(R) || null; saveRace(); }
   if (RV.done) RV.flipped = RV.flipped.map(() => true);
   Caps.reset();
   setBig(RV.done ? (R.shuffled ? "LET'S LAUNCH!" : 'LOCK IN & SHUFFLE') : 'REVEALING…', RV.done);
