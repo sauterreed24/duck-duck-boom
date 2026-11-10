@@ -543,6 +543,8 @@ C.LINES = {
   ev_onhold: ['{duck} is ON HOLD.', 'Your call is important to us. Please continue to wait.'],
   ev_gatekeeper: ['The Gatekeeper wants to know what this is regarding.', 'Full stop at the front desk!'],
   ev_ufo: ['Is that... a UFO?!', '{duck} has been abducted! Bring that duck back!'],
+  ev_tornado_fwd: ['And it throws {duck} clean down the field!', 'What a slingshot! Thank you, weather!', '{duck} is out the top and still going!', 'The tornado giveth!'],
+  ev_tornado_back: ['Oh no. Wrong way, {duck}!', 'It sent {duck} back where they came from!', 'The tornado taketh away.'],
   ev_ufo_ahead: ['And they dropped {duck} WAY down the field!', 'Alien taxi service! Thank you!'],
   ev_ufo_behind: ['They put {duck} back... a little behind.', 'The aliens took a wrong turn.'],
   ev_ufo_antennae: ['{duck} is back, and... wearing antennae?', 'Same spot. New antennae. Okay!'],
@@ -1071,12 +1073,28 @@ const PIECE_DEFS = {
   desk: { ev: 'gatekeeper', w: [46, 50], h: 30, chance: 0.6, weight: 4 },
   bumpers: { ev: 'pinball', w: [130, 150], h: 70, chance: 0.75, weight: 4 },
 };
+// Built courses, one per day and set of conditions: {course, job}. job is the unfinished test-flying, if any.
 const COURSES = new Map();
-function generateCourse(dayKey, cond) {
+// lazy: for screens that only draw the field (title, roster). They get the course as it stands, marked rough, and the
+// test flights are finished in small slices by courseWork(). Anything that flies ducks asks without lazy and gets the
+// finished course (the job is completed on the spot if it has to be). The result is the same either way.
+function generateCourse(dayKey, cond, lazy) {
   const key = dayKey + JSON.stringify([cond.wind, cond.sky, cond.mod, cond.season, cond.friday]);
-  if (!COURSES.has(key)) { if (COURSES.size > 500) COURSES.clear(); COURSES.set(key, buildCourse(dayKey, cond)); }
-  const c = COURSES.get(key);
-  return { dayKey: c.dayKey, pieces: c.pieces.map(p => Object.assign({}, p, { data: Object.assign({}, p.data) })) };
+  let ent = COURSES.get(key);
+  if (!ent) { if (COURSES.size > 500) COURSES.clear(); const course = buildCourse(dayKey, cond); ent = { course, job: balanceSteps(course, cond) }; COURSES.set(key, ent); }
+  if (ent.job && !lazy) { while (!ent.job.next().done); ent.job = null; }
+  const out = { dayKey: ent.course.dayKey, pieces: ent.course.pieces.map(p => Object.assign({}, p, { data: Object.assign({}, p.data) })) };
+  if (ent.job) out.rough = true;
+  return out;
+}
+// Carry on any unfinished course test flights for about ms milliseconds. True while there is still work left.
+function courseWork(ms) {
+  const t0 = performance.now();
+  for (const ent of COURSES.values()) {
+    while (ent.job && performance.now() - t0 < ms) if (ent.job.next().done) ent.job = null;
+    if (ent.job) return true;
+  }
+  return false;
 }
 function buildCourse(dayKey, cond) {
   const rng = new Rng(hash('course', dayKey));
@@ -1137,9 +1155,7 @@ function buildCourse(dayKey, cond) {
   // the tornado wanders back and forth, and every flight meets it somewhere else: it is never a wall in one spot
   if (rng.chance(0.6)) add('tornado', rng.range(900, 2600), { ev: 'tornado', w: 70, h: 300, chance: 0.5, data: { drift: 200, rate: 0.3 } });
   pieces.sort((a, b) => a.x - b.x);
-  const course = { dayKey, pieces };
-  balanceCourse(course, cond);
-  return course;
+  return { dayKey, pieces };
 }
 /* No single obstacle may be the day's bottleneck. Every course is test-flown before the show (the same test flights
    for everyone, seeded by the day): anything that catches more than its share of the ducks is toned down until it does
@@ -1147,12 +1163,14 @@ function buildCourse(dayKey, cond) {
    pieces of one kind together at most a third as much again. A pond that stops too many gets a little smaller and grows
    lily pads: some of the ducks that come down in it bounce off one and hop back out. */
 const COURSE_CAP = { obstacle: 0.09, bench: 0.075, wildcard: 0.125, boost: 0.14, walkway: 0.125, stormcloud: 0.125 };
-function balanceCourse(course, cond) {
+function balanceCourse(course, cond) { const job = balanceSteps(course, cond); while (!job.next().done); }
+function* balanceSteps(course, cond) {   // a generator, so the work can be done in slices: it yields every few flights
   const capOf = pc => COURSE_CAP[pc.type] || COURSE_CAP[pc.type === 'pond' ? 'obstacle' : C.EVENTS[pc.ev].kind] || 0.125;
   // a rough cut first (the big offenders), then a finer look at the course as it now stands
   for (let pass = 0; pass < 2; pass++) {
     const got = {}, N = pass ? 160 : 80;
     for (let i = 0; i < N; i++) {
+      if (i % 4 === 3) yield;
       const tl = SIM.simulate(hash('testfly', course.dayKey, pass, i), cond, course, null, { record: false, probe: true });
       // a piece the duck reached counts by its odds of being live, whether or not it was this time (far less noise
       // than counting hits). A pond counts every duck that came down in it to stay (swam, or was bounced out by a
@@ -2550,6 +2568,9 @@ ART.piece = {
     const L = wlw(V), w = pc.w, sq = st.hit ? Math.sin(clamp(st.hit, 0, 1) * Math.PI) * 4 : 0;
     for (const lx of [6, w - 6]) { ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx + (lx < w / 2 ? -3 : 3), -8); ctx.lineWidth = L * 1.2; ctx.strokeStyle = OUT; ctx.stroke(); }
     ctx.beginPath(); ctx.moveTo(0, -8); ctx.quadraticCurveTo(w / 2, -8 + sq * 2, w, -8); ctx.lineTo(w, -11); ctx.quadraticCurveTo(w / 2, -11 + sq * 2, 0, -11); ctx.closePath(); fillStroke(ctx, '#3f8fd9', L);
+    ctx.beginPath(); ctx.moveTo(6, -9.6); ctx.quadraticCurveTo(w / 2, -9.6 + sq * 2, w - 6, -9.6); ctx.lineWidth = L * 0.45; ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.stroke();   // stripe on the mat
+    ctx.lineWidth = L * 0.45; ctx.strokeStyle = '#5d6876';
+    for (let k = 1; k <= 3; k++) { const x = w * k / 4, top = -8 + sq * 2 * (1 - Math.abs(k - 2) * 0.45); ctx.beginPath(); ctx.moveTo(x, top); for (let j = 1; j <= 4; j++) ctx.lineTo(x + (j % 2 ? 1.6 : -1.6), top + (0 - top) * j / 4.5); ctx.lineTo(x, 0); ctx.stroke(); }   // springs
     rr(ctx, -2, -12, 6, 5, 2); fillStroke(ctx, '#e8412c', L * 0.8); rr(ctx, w - 4, -12, 6, 5, 2); fillStroke(ctx, '#e8412c', L * 0.8);
   },
   castle(ctx, pc, V, st) {
@@ -2595,6 +2616,10 @@ ART.piece = {
     ctx.lineWidth = L * 2; ctx.strokeStyle = OUT; for (const b of blobs) { circ(ctx, b[0], b[1], b[2]); ctx.stroke(); }
     ctx.fillStyle = leaf[0]; for (const b of blobs) { circ(ctx, b[0], b[1], b[2]); ctx.fill(); }
     ctx.fillStyle = leaf[1]; circ(ctx, w / 2 + 4, -h * 0.62, w * 0.3); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.16)'; circ(ctx, w * 0.36, -h * 0.84, w * 0.2); ctx.fill(); circ(ctx, w * 0.2, -h * 0.66, w * 0.13); ctx.fill();   // sunlit side
+    ctx.lineWidth = L * 0.5; ctx.strokeStyle = 'rgba(31,26,46,0.28)'; ctx.lineCap = 'round';
+    for (const [lx, ly] of [[0.62, 0.86], [0.8, 0.66], [0.3, 0.52], [0.52, 0.7]]) { ctx.beginPath(); ctx.arc(w * lx, -h * ly, w * 0.07, 0.2, 2.2); ctx.stroke(); }   // leaf marks
+    if (pc.data.fruit === 'green') for (const [ax, ay] of [[0.3, 0.74], [0.68, 0.78], [0.55, 0.56]]) { circ(ctx, w * ax, -h * ay, 2.6); fillStroke(ctx, '#e8412c', L * 0.5); ctx.fillStyle = 'rgba(255,255,255,0.7)'; circ(ctx, w * ax - 0.8, -h * ay - 0.9, 0.7); ctx.fill(); }
     if (pc.data.fruit === 'snow') { ctx.fillStyle = '#fff'; ell(ctx, w / 2, -h * 0.98, w * 0.24, 5); ctx.fill(); ell(ctx, w * 0.24, -h * 0.75, w * 0.16, 4); ctx.fill(); }
     ctx.restore();
   },
@@ -2818,8 +2843,8 @@ ART.piece = {
     for (let i = 0; i < 5; i++) { const px = cx(1) + (i - 2) * w * 0.42, py = -h - 4 + Math.sin(t * 0.9 + i * 1.7) * 3 - (i % 2) * 7; circ(ctx, px, py, 20 + (i % 3) * 4 - L * 0.5); ctx.fillStyle = i % 2 ? '#6d7389' : '#7c8399'; ctx.fill(); }
     debris(false);
     // funnel: one solid twisting shape with a dark outline, then bands that climb it
-    const side = sg => { for (let i = 0; i <= 24; i++) { const u = sg > 0 ? i / 24 : 1 - i / 24; ctx.lineTo(cx(u) + sg * rw(u), -u * h); } };
-    ctx.beginPath(); ctx.moveTo(cx(0) - rw(0), 0); side(-1); side(1); ctx.closePath();
+    const side = sg => { for (let i = 0; i <= 24; i++) { const u = sg < 0 ? i / 24 : 1 - i / 24; ctx.lineTo(cx(u) + sg * rw(u), -u * h); } };
+    ctx.beginPath(); ctx.moveTo(cx(0) - rw(0), 0); side(-1); side(1); ctx.closePath();   // up the left edge, down the right
     const g = ctx.createLinearGradient(0, -h, 0, 0); g.addColorStop(0, '#7d8499'); g.addColorStop(1, '#b4bacb');
     ctx.lineJoin = 'round'; fillStroke(ctx, g, L);
     ell(ctx, cx(1), -h, rw(1), ry(1)); fillStroke(ctx, '#6d7389', L);
@@ -3722,12 +3747,26 @@ const S = {
   fps: 60, lastFrame: 0,
 };
 function teams() { return S.settings.teams; }
-function refreshWorld() {
+// lazy: the caller only draws the field (title, roster). A new day's course is then test-flown in small slices while
+// the screen is already up, instead of holding up the first frame.
+function refreshWorld(lazy) {
   const day = (S.race && S.race.day) || S.dbg.day || S.day;
   const ov = (S.race && S.race.ov) || S.dbg.ov;
   S.cond = dailyConditions(day, ov);
-  S.course = generateCourse(day, S.cond);
+  S.course = generateCourse(day, S.cond, lazy);
   Weather.setup(S.cond);
+  if (S.course.rough) pumpCourse();
+}
+let coursePump = false;
+function pumpCourse() {
+  if (coursePump) return;
+  coursePump = true;
+  const slice = () => {
+    if (courseWork(5)) { setTimeout(slice, 0); return; }
+    coursePump = false;
+    if (S.course && S.course.rough) S.course = generateCourse(S.course.dayKey, S.cond);   // swap in the finished course
+  };
+  setTimeout(slice, 0);
 }
 
 /* ---------- toast ---------- */
@@ -4627,7 +4666,8 @@ function setPhase(p) {
     const opts = { force: S.dbg.force || null, special: S.dbg.special || null, extraPieces: extra && extra.length ? extra : null };
     // a debug-forced piece only exists for its own flight
     S.course = { dayKey: S.course.dayKey, pieces: S.course.pieces.filter(pc => !pc.forced).concat(opts.extraPieces || []) };
-    L.tl = SIM.simulate(seed, S.cond, S.course, Object.assign({}, d, { hat: d.hat || (S.cond.friday ? 'party' : null) }), opts);
+    // (the forced piece is in S.course now, so it is not handed to the sim a second time)
+    L.tl = SIM.simulate(seed, S.cond, S.course, Object.assign({}, d, { hat: d.hat || (S.cond.friday ? 'party' : null) }), Object.assign({}, opts, { extraPieces: null }));
     S.dbg.force = ''; S.dbg.special = '';
     if (typeof DebugPanel !== 'undefined') DebugPanel.sync();
     L.fuseOut = !!L.tl.fakeout;
@@ -4931,6 +4971,8 @@ function updateFlight(dt) {
     if (!pb.fired.has('a' + i) && t >= e.t - (def.antic || 0) - 0.05 && prev < e.t) { pb.fired.add('a' + i); onAntic(e); }
     if (!pb.fired.has('i' + i) && t >= e.t) { pb.fired.add('i' + i); onImpact(e); if (def.dist) freeze(); }
     if (e.id === 'ufo' && !pb.fired.has('u' + i) && t >= e.t + 2.2) { pb.fired.add('u' + i); say('ev_ufo_' + e.data.outcome, { duck: L.pl.duck.name }, { prio: 1 }); }
+    // the tornado lets go: say which way
+    if (e.id === 'tornado' && !pb.fired.has('tw' + i) && t >= e.tEnd) { pb.fired.add('tw' + i); const back = Math.cos(e.data.ang) < 0; Caps.big(back ? 'WRONG WAY!' : 'FLUNG ONWARD!', { px: 84, color: back ? '#ffb8a8' : '#ffd23f', y: 420 }); say(back ? 'ev_tornado_back' : 'ev_tornado_fwd', { duck: L.pl.duck.name }, { prio: 1 }); SFX.play('whoosh', 0.7); }
     if (e.id === 'crate' && !pb.fired.has('c' + i) && t >= e.t + 1.5) { pb.fired.add('c' + i); const pz = C.CRATE_PRIZES.find(p => p.id === e.data.prize); Caps.big(pz.label + '!', { px: 84, color: '#ffffff', y: 420 }); say('ev_crate_' + e.data.prize, { duck: L.pl.duck.name }, { prio: 1 }); }
     if (e.id === 'space' && !pb.fired.has('s1' + i) && t >= e.t + 1.8) { pb.fired.add('s1' + i); SFX.play('beep'); Caps.say('Is that a satellite waving?', { prio: 1 }); }
     if (e.id === 'space' && !pb.fired.has('s2' + i) && t >= e.t + 3.6) { pb.fired.add('s2' + i); SFX.play('parachute'); Caps.say('Parachute is open! ' + L.pl.duck.name + ' is coming home!', { prio: 1 }); }
@@ -5833,7 +5875,7 @@ function drawSidebar(ctx) {
 function checkDayRollover() {
   if (S.dbg.day) return;
   const k = localDayKey();
-  if (k !== S.day) { S.day = k; titleDuck = null; DEMO.cyc = -1; if (!S.race) refreshWorld(); }
+  if (k !== S.day) { S.day = k; titleDuck = null; DEMO.cyc = -1; if (!S.race) refreshWorld(true); }
 }
 function todayKey() { return S.dbg.day || localDayKey(); }
 function go(screen) {
@@ -5841,8 +5883,8 @@ function go(screen) {
   Big.changedAt = S.rt;
   if (screen !== 'roster') Roster.hide();
   // leaving for the title cancels any screen wipe still waiting (e.g. one frozen by a pause)
-  if (screen === 'title') { Iris.t = -1; Iris.mid = null; RS.back = false; S.race = null; checkDayRollover(); refreshWorld(); const c = savedShow(); setBig(c && c.day === todayKey() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); stopShowAudio(); }
-  if (screen === 'roster') { checkDayRollover(); refreshWorld(); Roster.show(); }
+  if (screen === 'title') { Iris.t = -1; Iris.mid = null; RS.back = false; S.race = null; checkDayRollover(); refreshWorld(true); const c = savedShow(); setBig(c && c.day === todayKey() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); stopShowAudio(); }
+  if (screen === 'roster') { checkDayRollover(); refreshWorld(true); Roster.show(); }
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
   if (screen === 'results') { if (RS.back) { RS.back = false; setBig('DONE', true); } else startResults(); }
@@ -6539,7 +6581,7 @@ window.DDB = DDB;
 function boot() {
   resize();
   SFX.setVolume(S.settings.volume);
-  refreshWorld();
+  refreshWorld(true);
   if (S.debugOn) DebugPanel.build();
   const c = savedShow();
   if (S.galleryOn) go('gallery');
