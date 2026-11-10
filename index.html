@@ -412,25 +412,26 @@ C.COMPARISONS = [
 C.EVENTS = {
   trampoline: { name: 'Trampoline', kind: 'boost', trig: 'piece', fx: 'trampoline', art: 'trampoline', sfx: 'boing', cap: 'BOING!', antic: 0.5, dist: true, hl: '{duck} found a trampoline at {x} and went BOING' },
   castle: { name: 'Bounce Castle', kind: 'boost', trig: 'piece', fx: 'castle', art: 'castle', sfx: 'boing', cap: 'BOUNCE CASTLE!', antic: 0.5, dist: true, hl: '{duck} ricocheted through the bounce castle at {x}' },
-  pepper: { name: 'Spicy Pepper', kind: 'boost', trig: 'air', band: [40, 900], rate: 0.017, fx: 'pepper', art: 'pepper', sfx: 'rocket', cap: 'SPICY!', antic: 0.9, dist: true, hl: '{duck} ate a spicy pepper mid-air and went full rocket' },
+  pepper: { name: 'Spicy Pepper', kind: 'boost', trig: 'air', band: [40, 900], rate: 0.0125, fx: 'pepper', art: 'pepper', sfx: 'rocket', cap: 'SPICY!', antic: 0.9, dist: true, hl: '{duck} ate a spicy pepper mid-air and went full rocket' },
   drone: { name: 'Espresso Drone', kind: 'boost', trig: 'air', band: [40, 260], rate: 0.024, fx: 'drone', art: 'drone', sfx: 'buzz', cap: 'ESPRESSO DELIVERY!', antic: 0.8, dist: true, hl: '{duck} took an espresso from a drone at {x} and got very jittery' },
   bell: { name: 'Sales Bell', kind: 'boost', trig: 'piece', fx: 'bell', art: 'bell', sfx: 'ding', cap: 'DING! MEETING BOOKED!', antic: 0.5, dist: true, hl: '{duck} rang the sales bell at {x}: meeting booked' },
   jetstream: { name: 'Jet Stream', kind: 'boost', trig: 'piece', fx: 'jetstream', art: 'jetstream', sfx: 'whoosh', cap: 'JET STREAM!', antic: 0.3, dist: true, hl: '{duck} surfed the jet stream at {x}' },
   pelican: { name: 'Pelican Express', kind: 'boost', trig: 'air', band: [25, 170], rate: 0.034, desc: true, fx: 'pelican', art: 'pelican', sfx: 'pelican', cap: 'PELICAN EXPRESS!', antic: 0.9, dist: true, hl: '{duck} caught the Pelican Express at {x}' },
-  migration: { name: 'Migration Express', kind: 'boost', trig: 'air', band: [110, 900], rate: 0.03, season: 'autumn', fx: 'migration', art: 'migration', sfx: 'honk', cap: 'MIGRATION EXPRESS!', antic: 0.9, dist: true, hl: '{duck} joined a V of ducks heading south at {x}' },
+  migration: { name: 'Migration Express', kind: 'boost', trig: 'air', band: [110, 900], rate: 0.021, season: 'autumn', fx: 'migration', art: 'migration', sfx: 'honk', cap: 'MIGRATION EXPRESS!', antic: 0.9, dist: true, hl: '{duck} joined a V of ducks heading south at {x}' },
   glider: { name: 'Hang Glider', kind: 'boost', trig: 'air', band: [60, 280], rate: 0.026, desc: true, fx: 'glider', art: 'glider', sfx: 'whoosh', cap: 'HANG GLIDER!', antic: 0.8, dist: true, hl: '{duck} grabbed a hang glider at {x} for a long, lazy glide' },
   skip: { name: 'Water Skip', kind: 'boost', trig: 'piece', fx: 'skip', art: 'pond', sfx: 'skip', cap: 'SKIP! SKIP! SKIP!', antic: 0.3, dist: true, hl: '{duck} skipped across the pond {times}' },
   plop: { name: 'Pond Plop', kind: 'obstacle', trig: 'piece', fx: 'plop', art: 'pond', sfx: 'splash', cap: 'SPLASH!', antic: 0.3, dist: true, hl: '{duck} landed in the pond at {x} and decided to just swim' },
+  lilypad: { name: 'Lily Pad', kind: 'boost', trig: 'piece', fx: 'lilypad', art: 'pond', sfx: 'boing', cap: 'LILY PAD!', antic: 0.3, dist: true, hl: '{duck} bounced off a lily pad at {x} and hopped out of the pond' },
   banana: { name: 'Banana Peel', kind: 'boost', trig: 'piece', fx: 'banana', art: 'banana', sfx: 'slip', cap: 'SLIPPED!', antic: 0.3, dist: true, hl: '{duck} slipped on a banana peel at {x} and slid for days' },
   walkway: { name: 'Moving Walkway', kind: 'boost', trig: 'piece', fx: 'walkway', art: 'walkway', sfx: 'walkway', cap: 'MOVING WALKWAY!', antic: 0.3, dist: true, hl: '{duck} rode the moving walkway at {x}' },
-  geese: { name: 'Goose Squadron', kind: 'obstacle', trig: 'air', band: [70, 340], rate: 0.026, fx: 'geese', art: 'geese', sfx: 'honk', cap: 'HONKED!', antic: 1.0, dist: true, hl: '{duck} got HONKED by a goose squadron at {x}' },
+  geese: { name: 'Goose Squadron', kind: 'obstacle', trig: 'air', band: [70, 340], rate: 0.02, fx: 'geese', art: 'geese', sfx: 'honk', cap: 'HONKED!', antic: 1.0, dist: true, hl: '{duck} got HONKED by a goose squadron at {x}' },
   billboard: { name: 'Billboard', kind: 'obstacle', trig: 'piece', fx: 'billboard', art: 'billboard', sfx: 'bonk', cap: 'BONK!', antic: 0.5, dist: true, hl: '{duck} bonked into a billboard at {x}' },
   tree: { name: 'Tree', kind: 'obstacle', trig: 'piece', fx: 'tree', art: 'tree', sfx: 'rustle', cap: 'STUCK!', antic: 0.5, dist: true, hl: '{duck} got stuck in a tree at {x} until a squirrel helped out' },
   clothesline: { name: 'Clothesline', kind: 'obstacle', trig: 'piece', fx: 'clothesline', art: 'clothesline', sfx: 'twang', cap: 'TANGLED!', antic: 0.5, dist: true, hl: '{duck} got tangled in a clothesline at {x} and kept the sock' },
   mud: { name: 'Mud Pit', kind: 'obstacle', trig: 'piece', fx: 'mud', art: 'mud', sfx: 'splat', cap: 'SPLORT!', antic: 0.3, dist: true, hl: '{duck} went SPLORT into the mud at {x}' },
   hammock: { name: 'Hammock', kind: 'obstacle', trig: 'piece', fx: 'hammock', art: 'hammock', sfx: 'snore', cap: 'Zzz...', antic: 0.4, dist: true, hl: '{duck} napped in a hammock at {x}' },
   bread: { name: 'Bread Bench', kind: 'obstacle', trig: 'piece', fx: 'bread', art: 'bench', sfx: 'munch', cap: 'BREAD!', antic: 0.6, dist: true, hl: '{duck} chose bread over glory at {x}' },
-  ooo: { name: 'Out-of-Office Reply', kind: 'obstacle', trig: 'air', band: [40, 280], rate: 0.018, fx: 'ooo', art: 'envelope', sfx: 'bounceback', cap: 'OUT OF OFFICE', antic: 0.8, dist: true, hl: '{duck} bounced off an out-of-office reply at {x}' },
+  ooo: { name: 'Out-of-Office Reply', kind: 'obstacle', trig: 'air', band: [40, 280], rate: 0.015, fx: 'ooo', art: 'envelope', sfx: 'bounceback', cap: 'OUT OF OFFICE', antic: 0.8, dist: true, hl: '{duck} bounced off an out-of-office reply at {x}' },
   replyall: { name: 'Reply-All Storm', kind: 'obstacle', trig: 'piece', fx: 'replyall', art: 'stormcloud', sfx: 'envelopes', cap: 'REPLY-ALL STORM!', antic: 0.4, dist: true, hl: '{duck} flew into a reply-all storm at {x}' },
   onhold: { name: 'On Hold', kind: 'obstacle', trig: 'piece', fx: 'onhold', art: 'booth', sfx: 'ring', cap: 'ON HOLD', antic: 0.5, dist: true, hl: '{duck} was put on hold at {x}' },
   gatekeeper: { name: 'The Gatekeeper', kind: 'obstacle', trig: 'piece', fx: 'gatekeeper', art: 'desk', sfx: 'deskbell', cap: 'And what is this regarding?', antic: 0.5, dist: true, hl: '{duck} was stopped cold by The Gatekeeper at {x}' },
@@ -453,8 +454,8 @@ C.EVENTS = {
   scream: { name: 'AAAAAA', kind: 'gag', art: 'scream', sfx: 'scream', cap: '', antic: 0, hl: '{duck} screamed the whole way up' },
 };
 C.CRATE_PRIZES = [
-  { id: 'tinyhat', label: 'TINY HAT', w: 30 },
-  { id: 'rocket', label: 'ROCKET', w: 28 },
+  { id: 'tinyhat', label: 'TINY HAT', w: 32 },
+  { id: 'rocket', label: 'ROCKET', w: 24 },
   { id: 'balloons', label: 'BALLOONS', w: 22 },
   { id: 'reverse', label: 'GO BACK', w: 20 },
 ];
@@ -527,6 +528,7 @@ C.LINES = {
   ev_glider: ['Where did {duck} get a hang glider?!', 'A long, lazy glide. Very relaxing.'],
   ev_skip: ['{duck} is skipping like a stone!', 'Look at that form on the water!'],
   ev_plop: ['{duck} is in the pond now. Honestly? Fair.', '{duck} has decided to go for a swim instead.', 'Splash! {duck} has found the pond.', 'The pond claims another one!', '{duck} is doing laps now. Lovely stroke.', 'Swim break for {duck}!'],
+  ev_lilypad: ['Lily pad! {duck} bounces right back out!', 'Boing! Saved by a lily pad!', 'The pond says: not today, {duck}!', '{duck} hops off a lily pad like a frog!'],
   ev_banana: ['Banana peel! {duck} is sliding for days!', 'Classic. Absolutely classic.', 'Who left that banana there?!', '{duck} is ice skating on a banana!'],
   ev_walkway: ['{duck} is on the moving walkway!', 'Please stand to the right, {duck}.', 'Moving walkway! {duck} is commuting!', 'Look at {duck} just cruising!', 'Mind the gap, {duck}!'],
   ev_geese: ['{duck} just got HONKED!', 'The geese have no respect for the sport!', 'HONK HONK! The geese are furious!', 'A goose ambush!', 'Those geese do NOT like visitors!'],
@@ -584,6 +586,7 @@ C.DUCK_LINES = {
   ufo: ['Take me to your pond!', 'Do you have bread up here?'],
   space: ['Space is so quiet!', 'I can see ALL the ponds!'],
   banana: ['Whoaaa!', 'Who leaves a banana here?!'],
+  lilypad: ['Ribbit!', 'Thanks, lily pad!', 'Not swimming today!'],
   glider: ['This is nice.', 'Wheee, very relaxing.'],
   pelican: ['Thanks for the lift!', 'Is this the express?'],
   drone: ['Coffee! COFFEE!', 'I can see TOMORROW!'],
@@ -1068,7 +1071,14 @@ const PIECE_DEFS = {
   desk: { ev: 'gatekeeper', w: [46, 50], h: 30, chance: 0.6, weight: 4 },
   bumpers: { ev: 'pinball', w: [130, 150], h: 70, chance: 0.75, weight: 4 },
 };
+const COURSES = new Map();
 function generateCourse(dayKey, cond) {
+  const key = dayKey + JSON.stringify([cond.wind, cond.sky, cond.mod, cond.season, cond.friday]);
+  if (!COURSES.has(key)) { if (COURSES.size > 500) COURSES.clear(); COURSES.set(key, buildCourse(dayKey, cond)); }
+  const c = COURSES.get(key);
+  return { dayKey: c.dayKey, pieces: c.pieces.map(p => Object.assign({}, p, { data: Object.assign({}, p.data) })) };
+}
+function buildCourse(dayKey, cond) {
   const rng = new Rng(hash('course', dayKey));
   const pieces = [];
   let uid = 0;
@@ -1097,7 +1107,7 @@ function generateCourse(dayKey, cond) {
     for (let k = 0; k < 8 && !free(x, x + f.w); k++) x += 120;
     occupied.push([x, x + f.w]);
     if (f.type === 'pond') { const p = add('pond', x, { ev: 'skip', w: Math.round(f.w), h: 0, chance: 0.55 }); if (cond && cond.mod === 'ice' && (hash(dayKey, 'frozen', p.id) & 1)) p.data.frozen = true; }
-    else if (f.type === 'walkway') add('walkway', x, { ev: 'walkway', w: Math.round(f.w), h: 5, chance: 0.9 });
+    else if (f.type === 'walkway') add('walkway', x, { ev: 'walkway', w: Math.round(f.w), h: 5, chance: 0.8 });
     else if (f.type === 'bench') add('bench', x, { ev: 'bread', w: 46, h: 16, chance: 0.3 });
     else if (f.type === 'minicannon') add('minicannon', x, { ev: 'cannonception', w: 46, h: 26, chance: 0.2 });
     else if (f.type === 'cows') add('cows', x, { ev: 'cows', w: 220, h: 14, chance: 0.6, gag: true, data: { n: rng.int(4, 6) } });
@@ -1115,7 +1125,7 @@ function generateCourse(dayKey, cond) {
       if (t === 'tree') p.data.fruit = cond.flags.autumn ? 'autumn' : cond.flags.snow ? 'snow' : 'green';
       last = t;
     }
-    x += w + (dense ? rng.range(40, 140) : rng.range(140, 320));
+    x += w + (dense ? rng.range(30, 110) : rng.range(120, 280));
   }
   // air pieces
   if (rng.chance(0.7)) add('jetstream', rng.range(250, 900), { w: Math.round(rng.range(520, 900)), y: Math.round(rng.range(170, 250)), h: 64, chance: 0.45 });
@@ -1124,14 +1134,60 @@ function generateCourse(dayKey, cond) {
   add('wormhole', rng.range(600, 2500), { ev: 'wormhole', w: 0, y: Math.round(rng.range(90, 250)), h: 0, chance: 0.65 });
   const crates = rng.int(2, 3);
   for (let i = 0; i < crates; i++) add('crate', rng.range(320 + i * 800, 1100 + i * 800), { ev: 'crate', w: 0, y: Math.round(rng.range(70, 170)), h: 0, chance: 0.7 });
-  if (rng.chance(0.6)) add('tornado', rng.range(900, 2600), { ev: 'tornado', w: 70, h: 300, chance: 0.55 });
+  // the tornado wanders back and forth, and every flight meets it somewhere else: it is never a wall in one spot
+  if (rng.chance(0.6)) add('tornado', rng.range(900, 2600), { ev: 'tornado', w: 70, h: 300, chance: 0.5, data: { drift: 200, rate: 0.3 } });
   pieces.sort((a, b) => a.x - b.x);
-  return { dayKey, pieces };
+  const course = { dayKey, pieces };
+  balanceCourse(course, cond);
+  return course;
 }
+/* No single obstacle may be the day's bottleneck. Every course is test-flown before the show (the same test flights
+   for everyone, seeded by the day): anything that catches more than its share of the ducks is toned down until it does
+   not. Dead stops (pond, mud, bench...) may catch about 1 duck in 11, wildcards 1 in 8, boosts 1 in 7, and all the
+   pieces of one kind together at most a third as much again. A pond that stops too many gets a little smaller and grows
+   lily pads: some of the ducks that come down in it bounce off one and hop back out. */
+const COURSE_CAP = { obstacle: 0.09, bench: 0.075, wildcard: 0.125, boost: 0.14, walkway: 0.125, stormcloud: 0.125 };
+function balanceCourse(course, cond) {
+  const capOf = pc => COURSE_CAP[pc.type] || COURSE_CAP[pc.type === 'pond' ? 'obstacle' : C.EVENTS[pc.ev].kind] || 0.125;
+  // a rough cut first (the big offenders), then a finer look at the course as it now stands
+  for (let pass = 0; pass < 2; pass++) {
+    const got = {}, N = pass ? 160 : 80;
+    for (let i = 0; i < N; i++) {
+      const tl = SIM.simulate(hash('testfly', course.dayKey, pass, i), cond, course, null, { record: false, probe: true });
+      // a piece the duck reached counts by its odds of being live, whether or not it was this time (far less noise
+      // than counting hits). A pond counts every duck that came down in it to stay (swam, or was bounced out by a
+      // lily pad) by its odds of staying. Skipping across a pond is not a stop.
+      const seen = {};
+      for (const e of tl.events) { const id = e.data && e.data.piece; if (id && e.id !== 'skip') seen[id] = 1; }
+      tl.reach.forEach(id => { seen[id] = 1; });
+      for (const pc of course.pieces) if (seen[pc.id]) got[pc.id] = (got[pc.id] || 0) + (pc.type === 'pond' ? pc.tame || 1 : SIM.rollOdds(pc, tl.chaos));
+    }
+    const share = {}, kind = {};
+    for (const pc of course.pieces) { share[pc.id] = (got[pc.id] || 0) / N; kind[pc.ev] = (kind[pc.ev] || 0) + share[pc.id]; }
+    for (const pc of course.pieces) {
+      const cap = capOf(pc), s = share[pc.id];
+      const themed = cond.mod === 'trampark' && pc.type === 'trampoline';   // Trampoline Park is meant to be full of them
+      let k = Math.min(s > cap * (pass ? 1.05 : 1.15) ? cap / s : 1, !themed && kind[pc.ev] > cap * 1.4 ? cap * 1.35 / kind[pc.ev] : 1);
+      if (k < 1) {
+        k = Math.max(0.3, k);
+        // a busy pond gets a little smaller and grows lily pads (half the cut each way), so it stays a proper pond
+        if (pc.type === 'pond') { const w = Math.max(90, Math.round(pc.w * Math.sqrt(k))); k /= w / pc.w; pc.x = Math.round(pc.x + (pc.w - w) / 2); pc.w = w; }
+        pc.tame = (pc.tame || 1) * Math.min(1, k);   // applied after the sim's own clamp, so it scales the catch rate exactly
+      }
+    }
+  }
+}
+// Where a wandering piece is at flight time t. The flight seed picks where its sway starts.
+function driftPhase(pc, seed) { return (hash('drift', seed >>> 0, pc.id) % 6283) / 1000; }
+function driftX(pc, seed, t, phase) {
+  const d = pc.data;
+  return d && d.drift ? pc.x + Math.sin(t * d.rate + (phase == null ? driftPhase(pc, seed) : phase)) * d.drift : pc.x;
+}
+function driftLean(pc, seed, t) { const d = pc.data; return d && d.drift ? Math.cos(t * d.rate + driftPhase(pc, seed)) : 0; }   // which way it is heading, -1..1
 // For the debug panel: drop a piece of the requested event right where a flight will meet it.
 function pieceTypeForEvent(ev) {
   for (const k of Object.keys(PIECE_DEFS)) if (PIECE_DEFS[k].ev === ev) return k;
-  return { skip: 'pond', plop: 'pond', walkway: 'walkway', bread: 'bench', cannonception: 'minicannon', jetstream: 'jetstream', replyall: 'stormcloud', wormhole: 'wormhole', crate: 'crate', tornado: 'tornado', cows: 'cows' }[ev] || null;
+  return { skip: 'pond', plop: 'pond', lilypad: 'pond', walkway: 'walkway', bread: 'bench', cannonception: 'minicannon', jetstream: 'jetstream', replyall: 'stormcloud', wormhole: 'wormhole', crate: 'crate', tornado: 'tornado', cows: 'cows' }[ev] || null;
 }
 
 
@@ -1143,7 +1199,7 @@ function pieceTypeForEvent(ev) {
 const SIM = (() => {
   const HZ = 120, DT = 1 / HZ, REC = 2, FPS = HZ / REC;
   const MAX_T = 70;
-  const TUNE = { v0: 215, drag: 0.00021, g: 32, rest: 0.34, mu: 0.42, airMul: 1.22, pieceMul: 1.0 };
+  const TUNE = { v0: 215, drag: 0.00021, g: 32, rest: 0.34, mu: 0.42, airMul: 1.3, pieceMul: 1.3 };
   const PIV = { x: -22, y: 39, len: 34 };
   const MODE = { air: 0, ground: 1, script: 2, done: 3 };
   const POSE = { fly: 0, scared: 1, dizzy: 2, sleep: 3, eat: 4, smug: 5, stuck: 6, carried: 7, glide: 8, spin: 9, space: 10, chute: 11, slide: 12, stand: 13, swim: 14, rocket: 15, plop: 16, hover: 17 };
@@ -1163,7 +1219,10 @@ const SIM = (() => {
     if (cond.mod === 'geese') p.goose = 3;
     return p;
   }
+  // the odds that a piece is 'live' for one flight: its own chance, the flight's chaos, and the course balancer's tame
+  function rollOdds(pc, chaos) { return Math.min(0.97, pc.chance * TUNE.pieceMul * (0.3 + 0.75 * chaos)) * (pc.tame || 1); }
   const AIR_EVENTS = Object.keys(C.EVENTS).filter(k => C.EVENTS[k].trig === 'air');
+  const AIR = AIR_EVENTS.map(id => ({ id, ev: C.EVENTS[id] }));   // looked up once: this loop runs every step
 
   /* ---------- geometry for piece contact ---------- */
   function inPiece(pc, x, y, vy, mode) {
@@ -1177,12 +1236,12 @@ const SIM = (() => {
       case 'minicannon': return x >= pc.x && x <= pc.x + pc.w && y < pc.h + 12;
       case 'castle': return x >= pc.x && x <= pc.x + pc.w && y < pc.h;
       case 'bumpers': return x >= pc.x && x <= pc.x + pc.w && y < pc.h;
-      case 'tornado': return mode === 0 && x >= pc.x && x <= pc.x + pc.w && y < pc.h;
+      case 'tornado': return mode === 0 && x >= pc.x && x <= pc.x + pc.w && y < pc.h * 0.8;
       case 'jetstream': return mode === 0 && x >= pc.x && x <= pc.x + pc.w * 0.8 && y > pc.y - pc.h / 2 && y < pc.y + pc.h / 2;
       case 'stormcloud': return mode === 0 && x >= pc.x && x <= pc.x + pc.w && y > pc.y - 110 && y < pc.y + 10;
       case 'wormhole': return mode === 0 && (x - pc.x) * (x - pc.x) + (y - pc.y) * (y - pc.y) < 46 * 46;
       case 'crate': return mode === 0 && (x - pc.x) * (x - pc.x) + (y - pc.y) * (y - pc.y) < 40 * 40;
-      case 'bench': return mode === 0 && vy < 0 && x >= pc.x - 230 && x <= pc.x + 10 && y < 150 && y > 12;
+      case 'bench': return mode === 0 && vy < 0 && x >= pc.x - 170 && x <= pc.x + 10 && y < 120 && y > 12;
       case 'trampoline': return (mode === 0 && vy < 0 || mode === 1) && x >= pc.x && x <= pc.x + pc.w && y <= pc.h + 1;
       case 'banana': case 'walkway': case 'mud': return (mode === 1 || (mode === 0 && vy < 0)) && x >= pc.x && x <= pc.x + pc.w && y <= pc.h + 1;
       case 'pond': return (mode === 1 || (mode === 0 && vy < 0)) && x >= pc.x && x <= pc.x + pc.w && y <= 1;
@@ -1208,13 +1267,15 @@ const SIM = (() => {
     const only = opts.noEvents ? '__none__' : opts.force && C.EVENTS[opts.force] && C.EVENTS[opts.force].dist ? opts.force : null;
     if (only && !opts.special) special = null;
     // per-flight chaos: some flights are calm, some are a circus
-    const chaos = 0.06 + 1.6 * Math.pow(rng.next(), 1.5);
+    const chaos = 0.14 + 1.55 * Math.pow(rng.next(), 1.5);
     const prng = new Rng(hash(seed, 'pieces'));
     const pieceRoll = pieces.map(pc => {
-      const roll = prng.next() < Math.min(0.97, pc.chance * TUNE.pieceMul * (0.3 + 0.75 * chaos));
+      const roll = prng.next() < rollOdds(pc, chaos);
       if (!only) return roll;
-      return opts.force === pc.ev || (pc.type === 'pond' && (only === 'skip' || only === 'plop'));
+      return opts.force === pc.ev || (pc.type === 'pond' && (only === 'skip' || only === 'plop' || only === 'lilypad'));
     });
+    const reach = opts.probe ? new Set() : null;   // course test flights: pieces reached, rolled or not
+    const isGround = pieces.map(pc => !!GROUND_TYPES[pc.type]), notTall = pieces.map((pc, i) => !pieceRoll[i] || !!pc.gag || isGround[i]);
     const spin0 = rng.range(-3, 3);
     // cosmetic streams (never touch rng above)
     const crng = new Rng(hash(seed, 'cosmetic'));
@@ -1266,6 +1327,8 @@ const SIM = (() => {
       startScript('wobble', dur, { d, pose: pose == null ? POSE.stand : pose, x0: s.x });
     }
     function finish() { s.mode = MODE.done; s.vx = 0; s.vy = 0; }
+    const driftPh = new Map();   // wandering pieces: the phase is worked out once per flight
+    const pieceX = pc => { if (!pc.data || !pc.data.drift) return pc.x; let ph = driftPh.get(pc); if (ph == null) driftPh.set(pc, ph = driftPhase(pc, seed)); return driftX(pc, seed, s.t, ph); };
 
     /* ----- effects: one per event id (piece contacts + air hazards) ----- */
     const FX = {
@@ -1278,21 +1341,32 @@ const SIM = (() => {
       onhold(pc) { emit('onhold', { piece: pc.id }, 3.2); startScript('hold', 3.2, { x0: pc.x + pc.w / 2, y0: 12, maxX: pc.x + pc.w - 2 }); s.pose = POSE.stand; },
       gatekeeper(pc) { emit('gatekeeper', { piece: pc.id }, 1.7); startScript('pause', 1.7, { x0: Math.min(s.x, pc.x - 4), y0: groundY(pc.x) }); s.pose = POSE.stand; },
       hammock(pc) { emit('hammock', { piece: pc.id }, 2.1); startScript('nap', 2.1, { x0: s.x, y0: s.y, tx: clamp(s.x, pc.x + 14, pc.x + pc.w - 14), ty: pc.h * 0.55, maxX: pc.x + pc.w - 2 }); s.pose = POSE.sleep; },
-      bread(pc) { emit('bread', { piece: pc.id }, 2.3); startScript('dive', 2.3, { x0: s.x, y0: s.y, tx: pc.x - 8, ty: 0 }); s.pose = POSE.eat; },
+      bread(pc) { emit('bread', { piece: pc.id }, 2.3); startScript('dive', 2.3, { x0: s.x, y0: s.y, tx: Math.max(Math.min(s.x, pc.x - 8), pc.x - rng.range(6, 34)), ty: 0 }); s.pose = POSE.eat; },
       mud(pc) { emit('mud', { piece: pc.id }); s.extra.mudT = s.t; s.y = 0; deadStop(POSE.stand, { maxX: pc.x + pc.w - 4 }); },
       cannonception(pc) { emit('cannonception', { piece: pc.id }, 1.4); startScript('reload', 1.4, { x0: pc.x + pc.w * 0.6, y0: 18, vx: rng.range(150, 178), vy: rng.range(140, 165) }); s.vis = 0; },
       banana(pc) { emit('banana', { piece: pc.id }); s.slick = true; s.slickT = s.t; s.vx = Math.max(s.vx, 0) + rng.range(22, 34); s.spin = 9; s.y = 0; s.mode = MODE.ground; s.pose = POSE.slide; },
-      walkway(pc) { emit('walkway', { piece: pc.id, end: pc.x + pc.w }, Math.max(0.5, (pc.x + pc.w - s.x) / 38)); s.y = groundY(s.x); startScript('walkway', 30, { end: pc.x + pc.w, speed: 38 }); s.pose = POSE.stand; },
+      walkway(pc) { emit('walkway', { piece: pc.id, end: pc.x + pc.w }, Math.max(0.5, (pc.x + pc.w - s.x) / 38)); s.y = groundY(s.x); startScript('walkway', 30, { end: pc.x + pc.w, speed: 38 + clamp(Math.max(0, s.vx) * 0.3, 0, 46) }); s.pose = POSE.stand; },
       pond(pc, rolled) {
-        const forcePlop = opts.force === 'plop';
+        const forcePlop = opts.force === 'plop' || (opts.force === 'lilypad' && !s.used.has('lilypad'));
         const fast = opts.force === 'skip' ? s.vx > 8 : s.vx > 40 && (s.mode === MODE.ground || -s.vy < s.vx * 1.4);
-        if (!forcePlop && rolled && fast && s.skipN < 6) {
+        // a fast, flat arrival always skips (the pond is a lane to cross, not a wall); a slower flat one needs the
+        // pond's roll. Either way a first skip is an event like any other: it respects the 5-event cap and cooldown.
+        const maySkip = s.skipEv != null || canFire();
+        if (!forcePlop && (rolled || (maySkip && (s.mode === MODE.ground || s.vx > 75))) && fast && s.skipN < 6) {
           if (!s.skipEv) s.skipEv = emit('skip', { piece: pc.id, n: 0, ts: [] });
           s.skipN++; s.skipEv.data.n = s.skipN; s.skipEv.tEnd = s.t; s.skipEv.data.ts.push(+s.t.toFixed(3));
           s.y = 0.5; s.vy = Math.abs(s.vy) * 0.5 + 16; s.vx *= 0.9; s.mode = MODE.air; s.pose = POSE.scared;
           return true;
         }
         if (s.skipEv && s.skipN > 0 && !forcePlop && s.mode === MODE.air && s.vx > 18 && s.skipN < 9) { s.y = 0.5; s.vy = 10; s.vx *= 0.85; s.skipN++; s.skipEv.data.n = s.skipN; s.skipEv.tEnd = s.t; s.skipEv.data.ts.push(+s.t.toFixed(3)); return true; }
+        // a busy pond (the course balancer tames it): some would-be swimmers land on a lily pad and hop back out,
+        // so the pond is never where half the field ends up. One hop per flight.
+        const lily = opts.force === 'lilypad' || (pc.tame < 1 && !forcePlop && !only && rng.next() > pc.tame);
+        if (lily && !s.used.has('lilypad') && canFire()) {
+          emit('lilypad', { piece: pc.id });
+          s.y = 0.5; s.vy = rng.range(44, 60); s.vx = Math.max(s.vx, 0) * 0.5 + rng.range(28, 52); s.mode = MODE.air; s.pose = POSE.scared; s.spin = rng.range(-4, 4);
+          return true;
+        }
         if (s.nDist < 5 && !s.used.has('plop')) emit('plop', { piece: pc.id });
         s.y = 0; deadStop(POSE.swim, { maxX: pc.x + pc.w - 6 }); return true;
       },
@@ -1305,12 +1379,13 @@ const SIM = (() => {
         s.pose = POSE.dizzy;
       },
       tornado(pc) {
-        const ang = rng.range(-35, 165) * DEG, sp = rng.range(70, 150);
+        const back = rng.next() < 0.24;
+        const ang = (back ? rng.range(110, 150) : rng.range(18, 72)) * DEG, sp = back ? rng.range(70, 120) : rng.range(95, 185);
         emit('tornado', { piece: pc.id, ang }, 1.7);
-        startScript('tornado', 1.7, { cx: pc.x + pc.w / 2, y0: s.y, x0: s.x, vx: Math.cos(ang) * sp, vy: Math.abs(Math.sin(ang)) * sp + 20 });
+        startScript('tornado', 1.7, { pc, y0: s.y, x0: s.x, lift: rng.range(60, 130), vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp + 20 });
         s.pose = POSE.spin;
       },
-      jetstream(pc) { emit('jetstream', { piece: pc.id }, 1); s.forces.push({ kind: 'jet', pc, until: s.t + 2.8, ev: s.events[s.events.length - 1] }); s.pose = POSE.glide; },
+      jetstream(pc) { emit('jetstream', { piece: pc.id }, 1); s.forces.push({ kind: 'jet', pc, until: s.t + 2.4, ev: s.events[s.events.length - 1] }); s.pose = POSE.glide; },
       replyall(pc) { emit('replyall', { piece: pc.id }); s.vy = Math.min(s.vy, 0) - rng.range(45, 65); s.vx *= 0.74; s.pose = POSE.dizzy; },
       wormhole(pc) {
         const dx = rng.next() < 0.68 ? rng.range(120, 500) : -rng.range(80, 300);
@@ -1325,12 +1400,12 @@ const SIM = (() => {
         s.pose = POSE.hover;
       },
       // air hazards
-      pepper() { emit('pepper', {}, 1.5); const a = Math.atan2(Math.max(s.vy, 0) + 30, Math.max(s.vx, 40)); s.forces.push({ kind: 'rocket', until: s.t + 1.5, ax: Math.cos(a) * 74, ay: Math.sin(a) * 74 }); s.pose = POSE.rocket; },
-      drone() { emit('drone', {}, 1.2); s.vx = Math.max(s.vx, 0) + rng.range(80, 115); s.vy += rng.range(18, 34); s.pose = POSE.scared; },
+      pepper() { emit('pepper', {}, 1.5); const a = Math.atan2(Math.max(s.vy, 0) + 30, Math.max(s.vx, 40)); s.forces.push({ kind: 'rocket', until: s.t + 1.5, ax: Math.cos(a) * 68, ay: Math.sin(a) * 68 }); s.pose = POSE.rocket; },
+      drone() { emit('drone', {}, 1.2); s.vx = Math.max(s.vx, 0) + rng.range(68, 100); s.vy += rng.range(18, 34); s.pose = POSE.scared; },
       pelican() { const d = rng.range(3.0, 4.5); emit('pelican', {}, d); startScript('carry', d, { speed: 82, alt: clamp(s.y + 70, 110, 200), rel: 62, pose: POSE.carried }); s.pose = POSE.carried; },
       migration() { const d = rng.range(3, 4.2); emit('migration', {}, d); startScript('carry', d, { speed: 86, alt: s.y, rel: 70, pose: POSE.carried }); s.pose = POSE.carried; },
       glider() { const d = rng.range(4.0, 6.0); emit('glider', {}, d); startScript('glide', d, {}); s.pose = POSE.glide; },
-      geese() { emit('geese', {}); s.vx *= 0.3; s.vy = -12; s.pose = POSE.dizzy; s.spin = rng.range(-6, 6); },
+      geese() { emit('geese', {}); s.vx *= 0.45; s.vy = Math.min(s.vy, 0) * 0.5 - 8; s.pose = POSE.dizzy; s.spin = rng.range(-6, 6); },
       ooo() { emit('ooo', {}); s.vx = -Math.min(70, Math.abs(s.vx) * rng.range(0.25, 0.4)) - 8; s.vy = rng.range(12, 24); s.pose = POSE.dizzy; },
       ufo() {
         const r = rng.next();
@@ -1415,7 +1490,7 @@ const SIM = (() => {
         }
         case 'walkway': {
           s.vx = approach(s.vx, sc.speed, 4, dt); s.x += s.vx * dt; s.y = groundY(s.x); s.pose = POSE.stand; s.rot = 0;
-          if (s.x >= sc.end) { const e = s.events.find(e => e.id === 'walkway' && e.data.end === sc.end); if (e) e.tEnd = s.t; s.sc = null; s.mode = MODE.ground; s.vx = sc.speed + Math.max(0, sc.vx0) * 0.25 + rng.range(0, 12); s.pose = POSE.slide; }
+          if (s.x >= sc.end) { const e = s.events.find(e => e.id === 'walkway' && e.data.end === sc.end); if (e) e.tEnd = s.t; s.sc = null; s.mode = MODE.ground; s.vx = sc.speed + rng.range(0, 26); s.pose = POSE.slide; }
           return;
         }
         case 'pinball': {
@@ -1427,8 +1502,8 @@ const SIM = (() => {
         }
         case 'tornado': {
           const ang = (s.t - sc.t0) * 14;
-          const tx = sc.cx + Math.sin(ang) * 18 * (1 - u * 0.3), blend = Math.min(1, (s.t - sc.t0) / 0.25);
-          s.x = lerp(sc.x0, tx, easeOut(blend)); s.y = sc.y0 + u * 70; s.rot += dt * 20; s.pose = POSE.spin;
+          const tx = pieceX(sc.pc) + sc.pc.w / 2 + Math.sin(ang) * 18 * (1 - u * 0.3), blend = Math.min(1, (s.t - sc.t0) / 0.25);
+          s.x = lerp(sc.x0, tx, easeOut(blend)); s.y = sc.y0 + easeOut(u) * sc.lift; s.rot += dt * 20; s.pose = POSE.spin;
           if (u >= 1) { s.vx = sc.vx; s.vy = sc.vy; endScript(); s.pose = POSE.dizzy; }
           return;
         }
@@ -1444,7 +1519,7 @@ const SIM = (() => {
           s.x = approach(s.x, sc.x0, 10, dt); s.y = approach(s.y, sc.y0, 10, dt); s.pose = POSE.hover; s.rot = approach(s.rot, 0, 6, dt);
           if (u >= 1) {
             const vx0 = Math.max(sc.vx, 20) * 0.9, vy0 = Math.max(sc.vy, 0);
-            if (sc.prize === 'rocket') { s.vx = vx0 + 125; s.vy = vy0 + 65; s.forces.push({ kind: 'rocket', until: s.t + 0.8, ax: 40, ay: 20 }); s.pose = POSE.rocket; }
+            if (sc.prize === 'rocket') { s.vx = vx0 + 105; s.vy = vy0 + 60; s.forces.push({ kind: 'rocket', until: s.t + 0.8, ax: 40, ay: 20 }); s.pose = POSE.rocket; }
             else if (sc.prize === 'balloons') { s.vx = Math.max(vx0, 30); s.vy = 30; s.forces.push({ kind: 'balloons', until: s.t + 2.4, ax: 6, ay: P.g * 1.05 }); }
             else if (sc.prize === 'reverse') { s.vx = -45; s.vy = 25; }
             else { s.vx = vx0; s.vy = vy0; s.extra.tinyHatT = s.t; }
@@ -1512,7 +1587,7 @@ const SIM = (() => {
           if (f.kind === 'jet') {
             const pc = f.pc;
             if (s.x > pc.x + pc.w || s.y < pc.y - pc.h || s.y > pc.y + pc.h || s.t > f.until) { f.ev.tEnd = s.t; s.forces.splice(i, 1); if (s.pose === POSE.glide) s.pose = POSE.fly; continue; }
-            ax += Math.max(0, 205 - s.vx) * 0.8; ay += P.g * 0.92 + (pc.y + 18 - s.y) * 0.6 - s.vy * 0.6;
+            ax += Math.max(0, 192 - s.vx) * 0.8; ay += P.g * 0.92 + (pc.y + 18 - s.y) * 0.6 - s.vy * 0.6;
           } else if (s.t > f.until) { s.forces.splice(i, 1); if (f.kind === 'rocket' && s.pose === POSE.rocket) s.pose = POSE.scared; }
           else { ax += f.ax; ay += f.ay; }
         }
@@ -1531,10 +1606,10 @@ const SIM = (() => {
         if (s.vy > 0) s.wasUp = true;
         // air hazards
         if (s.mode === MODE.air && canFire()) {
-          for (const id of AIR_EVENTS) {
+          for (let k = 0; k < AIR.length; k++) {
+            const id = AIR[k].id, ev = AIR[k].ev;
             if (s.used.has(id)) continue;
             if (only && id !== only) continue;
-            const ev = C.EVENTS[id];
             if (s.y < ev.band[0] || s.y > ev.band[1]) continue;
             if (ev.desc && s.vy > 0) continue;
             if (ev.season === 'autumn' && !cond.flags.autumn) continue;
@@ -1579,9 +1654,10 @@ const SIM = (() => {
         for (let i = Math.max(0, pi0 - 6); i < pieces.length; i++) {
           const pc = pieces[i];
           if (pc.x - 240 > s.x) break;
-          if (!pieceRoll[i] || pc.gag || s.used.has(pc.ev) || GROUND_TYPES[pc.type]) continue;
+          if (reach && !pieceRoll[i] && !pc.gag && !isGround[i] && !reach.has(pc.id) && !s.used.has(pc.ev) && canFire() && inPiece(pc, pc.type === 'tornado' ? s.x - (pieceX(pc) - pc.x) : s.x, s.y, s.vy, s.mode)) reach.add(pc.id);
+          if (notTall[i] || s.used.has(pc.ev)) continue;
           if (!canFire()) break;
-          if (inPiece(pc, s.x, s.y, s.vy, s.mode)) { FX[pc.ev](pc); break; }
+          if (inPiece(pc, pc.type === 'tornado' ? s.x - (pieceX(pc) - pc.x) : s.x, s.y, s.vy, s.mode)) { FX[pc.ev](pc); break; }
         }
       }
       if (s.mode !== MODE.done && s.y > groundY(s.x) + 2) s.air += dt;
@@ -1606,21 +1682,22 @@ const SIM = (() => {
       for (let i = Math.max(0, pi0 - 6); i < pieces.length; i++) {
         const pc = pieces[i];
         if (pc.x > x) break;
-        if (GROUND_TYPES[pc.type] && x >= pc.x && x <= pc.x + pc.w) return i;
+        if (isGround[i] && x >= pc.x && x <= pc.x + pc.w) return i;
       }
       return -1;
     }
     function canFireGround(i) {
       const pc = pieces[i];
       if (pc.type === 'pond') {
-        if (only && only !== 'skip' && only !== 'plop') return false;
+        if (only && only !== 'skip' && only !== 'plop' && only !== 'lilypad') return false;
         // the pond is water: you either skip or you plop (no free pass)
         if (s.used.has('plop')) return false;
         // Ice Rink: some ponds are frozen for the whole day (drawn as ice): ducks bounce and slide on them like the field
-        if (pc.data && pc.data.frozen && only !== 'skip' && only !== 'plop') return false;
+        if (pc.data && pc.data.frozen && only !== 'skip' && only !== 'plop' && only !== 'lilypad') return false;
         if (s.mode === MODE.ground && Math.abs(s.vx) < 6) return FX.pond(pc, false);   // slow sliders still get wet
         return FX.pond(pc, pieceRoll[i] && (s.skipEv != null || canFire()));
       }
+      if (reach && !pieceRoll[i] && !s.used.has(pc.ev) && canFire() && inPiece(pc, s.x, s.y, s.vy, s.mode)) reach.add(pc.id);
       if (!pieceRoll[i] || s.used.has(pc.ev) || !canFire()) return false;
       if (!inPiece(pc, s.x, s.y, s.vy, s.mode)) return false;
       FX[pc.ev](pc);
@@ -1637,6 +1714,7 @@ const SIM = (() => {
       events: s.events, gags: [], launchT: s.launchT, apexT: s.apexT, landT: s.landT < 0 ? s.t : s.landT, endT: s.t,
       final, maxAlt: s.maxAlt, airtime: s.air, nDist: s.nDist, extra: s.extra, hat: null,
     };
+    if (reach) { tl.reach = reach; tl.chaos = chaos; }
     if (record) {
       addCosmetics(tl, cond, course, duck, crng, opts);
     }
@@ -1760,7 +1838,7 @@ const SIM = (() => {
     return [p];
   }
 
-  return { simulate, groundY, PIV, MODE, POSE, TUNE, frameAt, forcedPieces, FPS };
+  return { simulate, groundY, PIV, MODE, POSE, TUNE, frameAt, forcedPieces, FPS, rollOdds };
 })();
 function sim(seed, conditions, course, duck, opts) { return SIM.simulate(seed, conditions, course, duck, opts); }
 function flightSeed(raceSeed, playerKey, shot) { return hash('flight', raceSeed >>> 0, playerKey, shot | 0); }
@@ -1771,9 +1849,12 @@ function runBalance(N, opts) {
   N = N || 10000; opts = opts || {};
   const t0 = (typeof performance !== 'undefined' ? performance : Date).now();
   const days = new Map();
+  // days spread evenly through a year: 73 of them (every 5th day: all weekdays and seasons) for a full run, fewer for
+  // a short one. Each course is test-flown when it is built, which takes a moment, so the tester does not build all 365.
+  const nDays = clamp(Math.round(N / 137), 12, 73), stepD = Math.floor(365 / nDays);
   const dayFor = i => {
     const base = new Date(2026, 0, 1);
-    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + (opts.day ? 0 : (hash('bday', i) % 365)));
+    const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + (opts.day ? 0 : (hash('bday', i) % nDays) * stepD));
     const key = opts.day || localDayKey(d);
     if (!days.has(key)) { const cond = dailyConditions(key, opts.ov); days.set(key, { cond, course: generateCourse(key, cond) }); }
     return days.get(key);
@@ -2590,11 +2671,17 @@ ART.piece = {
   pond(ctx, pc, V, st) {
     const L = wlw(V), w = pc.w;
     const ice = pc.data && pc.data.frozen;   // Ice Rink day: a frozen pond, so it reads as ice, not water
+    ell(ctx, w / 2, 2, w / 2 + 8, 9); ctx.fillStyle = 'rgba(31,26,46,0.13)'; ctx.fill();   // a soft bank around the water
     ell(ctx, w / 2, 1, w / 2 + 4, 7); fillStroke(ctx, ice ? '#d8f1ff' : '#3f9fe0', L);
     ctx.fillStyle = ice ? '#ffffff' : '#7cc8ff'; ell(ctx, w * 0.45, 0, w * 0.3, 2.2); ctx.fill();
+    if (!ice) { const t = st.time || 0; ctx.lineCap = 'round'; ctx.lineWidth = L * 0.45; for (let i = 0; i < 3; i++) { const gx = w * (0.3 + i * 0.22) + Math.sin(t * 0.7 + i * 2.1) * 7, a = 0.35 + 0.3 * Math.sin(t * 1.3 + i * 1.9); ctx.strokeStyle = 'rgba(255,255,255,' + Math.max(0, a) + ')'; ctx.beginPath(); ctx.moveTo(gx - 5, 3 + (i % 2)); ctx.lineTo(gx + 5, 3 + (i % 2)); ctx.stroke(); } }   // drifting glints
     if (ice) { ctx.lineWidth = L * 0.5; ctx.strokeStyle = '#9cc9e6'; ctx.beginPath(); ctx.moveTo(w * 0.15, 2); ctx.lineTo(w * 0.3, -1); ctx.moveTo(w * 0.62, 3); ctx.lineTo(w * 0.8, 0); ctx.stroke(); }
     // lily pads + reeds
-    if (!ice) for (const lx of [0.2, 0.7]) { ell(ctx, w * lx, 0, 6, 2); fillStroke(ctx, '#5cbf4a', L * 0.6); }
+    // a pond the course balancer has tamed grows extra pads (with a flower): these are the ones ducks bounce off
+    if (!ice) for (const lx of pc.tame < 1 ? [0.2, 0.44, 0.7, 0.88] : [0.2, 0.7]) {
+      ell(ctx, w * lx, 0, 6, 2); fillStroke(ctx, '#5cbf4a', L * 0.6);
+      if (pc.tame < 1 && (lx === 0.44 || lx === 0.88)) { for (let k = 0; k < 5; k++) { const a = -Math.PI * (0.1 + k * 0.2); ell(ctx, w * lx + Math.cos(a) * 2.2, -1.6 + Math.sin(a) * 1.6, 1.7, 1, a); fillStroke(ctx, '#ffb3d9', L * 0.35); } circ(ctx, w * lx, -1.5, 0.9); ctx.fillStyle = '#ffd23f'; ctx.fill(); }
+    }
     for (const rx of [-4, w + 3]) for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(rx + k * 2, 0); ctx.lineTo(rx + k * 2 - 1, -12 - k * 3); ctx.lineWidth = L * 0.6; ctx.strokeStyle = '#3f8f3a'; ctx.stroke(); }
     if (st.ripples) for (const r of st.ripples) { const k = r.k; ell(ctx, r.x - pc.x, 0, 6 + k * 30, 2 + k * 5); ctx.lineWidth = L * 0.5 * (1 - k); ctx.strokeStyle = 'rgba(255,255,255,' + (1 - k) + ')'; ctx.stroke(); }
   },
@@ -2701,14 +2788,45 @@ ART.piece = {
     ctx.restore();
   },
   tornado(ctx, pc, V, st) {
-    const L = wlw(V), w = pc.w, h = pc.h, t = st.time || 0;
+    // a leaning funnel under a storm cap, with dust at its foot and a few borrowed belongings in orbit
+    const L = wlw(V), w = pc.w, h = pc.h, t = st.time || 0, lean = (st.lean || 0) * 30;
+    const busy = st.hit != null && st.hit < 1.7, spin = busy ? 2 : 1, n = 14;
+    const cx = u => lean * u * u + Math.sin(t * 1.3 + u * 3) * 10 * u, rw = u => lerp(7, w * 0.92, Math.pow(u, 1.5)), ry = u => 5 + u * 7;
+    const debris = (front) => {
+      for (let i = 0; i < 7; i++) {
+        const u = 0.16 + ((i * 0.37) % 0.78), a = t * (2.6 + (i % 3) * 0.7) * spin + i * 2.3, dep = Math.sin(a);
+        if ((dep > 0) !== front) continue;
+        const x = cx(u) + Math.cos(a) * rw(u) * 1.22, y = -u * h + dep * ry(u) * 0.9, k = 0.85 + dep * 0.2;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a * 1.7 + i); ctx.scale(k, k); ctx.globalAlpha = front ? 1 : 0.75;
+        if (i % 4 === 0) { ell(ctx, 0, 0, 5.5, 2.6); fillStroke(ctx, '#6cc04a', L * 0.6); }                         // leaf
+        else if (i % 4 === 1) { rr(ctx, -6, -1.6, 12, 3.2, 1); fillStroke(ctx, '#b9814a', L * 0.6); }                 // plank
+        else if (i % 4 === 2) { rr(ctx, -4, -3, 8, 6, 1); fillStroke(ctx, '#fffdf4', L * 0.6); ctx.beginPath(); ctx.moveTo(-4, -3); ctx.lineTo(0, 0.5); ctx.lineTo(4, -3); ctx.lineWidth = L * 0.4; ctx.stroke(); }   // lost mail
+        else { ctx.beginPath(); ctx.moveTo(-2.5, -5); ctx.lineTo(2, -5); ctx.lineTo(2, 1.5); ctx.lineTo(5.5, 2.5); ctx.lineTo(5.5, 5); ctx.lineTo(-2.5, 5); ctx.closePath(); fillStroke(ctx, '#ff6fb5', L * 0.6); }   // a sock
+        ctx.restore();
+      }
+    };
     ctx.save(); ctx.translate(w / 2, 0);
-    const n = 12;
-    for (let i = n; i >= 0; i--) {
-      const u = i / n, y = -u * h, rw = lerp(6, w * 0.9, Math.pow(u, 1.4)), sway = Math.sin(t * 1.3 + u * 3) * 10 * u;
-      ell(ctx, sway, y, rw, 5 + u * 6); ctx.fillStyle = i % 2 ? 'rgba(170,176,196,0.92)' : 'rgba(140,148,170,0.92)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = wlw(V, 2); ctx.beginPath(); ctx.ellipse(sway, y, rw * 0.85, 4 + u * 4, 0, (t * 3 + i) % TAU, (t * 3 + i) % TAU + 1.6); ctx.stroke();
+    // storm cap
+    for (let i = 0; i < 5; i++) { const px = cx(1) + (i - 2) * w * 0.42, py = -h - 4 + Math.sin(t * 0.9 + i * 1.7) * 3 - (i % 2) * 7; circ(ctx, px, py, 20 + (i % 3) * 4); fillStroke(ctx, i % 2 ? '#6d7389' : '#7c8399', L); }
+    for (let i = 0; i < 5; i++) { const px = cx(1) + (i - 2) * w * 0.42, py = -h - 4 + Math.sin(t * 0.9 + i * 1.7) * 3 - (i % 2) * 7; circ(ctx, px, py, 20 + (i % 3) * 4 - L * 0.5); ctx.fillStyle = i % 2 ? '#6d7389' : '#7c8399'; ctx.fill(); }
+    debris(false);
+    // funnel: one solid twisting shape with a dark outline, then bands that climb it
+    const side = sg => { for (let i = 0; i <= 24; i++) { const u = sg > 0 ? i / 24 : 1 - i / 24; ctx.lineTo(cx(u) + sg * rw(u), -u * h); } };
+    ctx.beginPath(); ctx.moveTo(cx(0) - rw(0), 0); side(-1); side(1); ctx.closePath();
+    const g = ctx.createLinearGradient(0, -h, 0, 0); g.addColorStop(0, '#7d8499'); g.addColorStop(1, '#b4bacb');
+    ctx.lineJoin = 'round'; fillStroke(ctx, g, L);
+    ell(ctx, cx(1), -h, rw(1), ry(1)); fillStroke(ctx, '#6d7389', L);
+    for (let i = 0; i < n; i++) {
+      const u = ((i + t * 1.6 * spin) % n) / n, x = cx(u), y = -u * h, a = clamp(Math.min(u, 1 - u) * 6, 0, 1);
+      ctx.beginPath(); ctx.ellipse(x, y, rw(u), ry(u), 0, 0, Math.PI);
+      ctx.lineWidth = L * 0.8; ctx.strokeStyle = 'rgba(86,92,112,' + 0.75 * a + ')'; ctx.stroke();
+      const a0 = 0.5 + ((i * 1.7 + t * 2.4 * spin) % 2);
+      ctx.beginPath(); ctx.ellipse(x, y - ry(u) * 0.9, rw(u) * 0.8, ry(u), 0, a0, a0 + 0.7);
+      ctx.lineWidth = wlw(V, 2.5); ctx.strokeStyle = 'rgba(255,255,255,' + (busy ? 0.8 : 0.55) * a + ')'; ctx.stroke();
     }
+    debris(true);
+    // dust at the foot
+    for (let i = 0; i < 6; i++) { const a = t * 2.4 * spin + i * 1.05, r = 9 + 4 * Math.sin(t * 3.1 + i * 2); ell(ctx, Math.cos(a) * 24, -3 - Math.abs(Math.sin(a * 0.5 + i)) * 7, r, r * 0.6); ctx.fillStyle = 'rgba(226,214,188,0.7)'; ctx.fill(); }
     ctx.restore();
   },
 };
@@ -3509,9 +3627,13 @@ function drawWorld(ctx, W) {
   // ground + tall pieces
   for (const pc of W.course.pieces) {
     if (pc.type === 'jetstream' || pc.type === 'stormcloud' || pc.type === 'wormhole' || pc.type === 'crate') continue;
-    const x0 = V.sx(pc.x - 40), x1 = V.sx(pc.x + pc.w + 40);
+    const st = W.pieceState(pc);
+    // a wandering piece (the tornado): during a flight the launch screen says where it is; elsewhere it just roams
+    if (pc.data && pc.data.drift && st.dx == null) { st.dx = driftX(pc, 0, st.time || 0) - pc.x; st.lean = driftLean(pc, 0, st.time || 0); }
+    const px = pc.x + (st.dx || 0);
+    const x0 = V.sx(px - 60), x1 = V.sx(px + pc.w + 60);
     if (x1 < -60 || x0 > 1980 || V.gy > 1300) continue;
-    worldLocal(ctx, V, pc.x, 0); ART.piece[pc.type](ctx, pc, V, W.pieceState(pc)); ctx.restore();
+    worldLocal(ctx, V, px, 0); ART.piece[pc.type](ctx, pc, V, st); ctx.restore();
   }
 }
 function drawMarkers(ctx, V, cond) {
@@ -4360,7 +4482,7 @@ function awardDesc(a) { return Lines.fill(C.AWARDS[a.id].desc, { v: a.v, other: 
 function computeHighlights(R) {
   const st = standings();
   const cands = [];
-  const score = { space: 100, backfire: 95, cannonception: 90, ufo: 70, wormhole: 60, hatWin: 75, tornado: 55, hammock: 50, bread: 50, onhold: 48, gatekeeper: 46, pelican: 45, skip: 44, migration: 42, bell: 40, mud: 40, tree: 38, geese: 36, crate: 35, ooo: 34, replyall: 33, pinball: 33, billboard: 32, clothesline: 30, glider: 30, pepper: 28, drone: 26, trampoline: 25, castle: 25, banana: 24, walkway: 22, jetstream: 22, plop: 26, misfire: 60 };
+  const score = { space: 100, backfire: 95, cannonception: 90, ufo: 70, wormhole: 60, hatWin: 75, tornado: 55, hammock: 50, bread: 50, onhold: 48, gatekeeper: 46, pelican: 45, skip: 44, migration: 42, bell: 40, mud: 40, tree: 38, geese: 36, crate: 35, ooo: 34, replyall: 33, pinball: 33, billboard: 32, clothesline: 30, glider: 30, pepper: 28, drone: 26, trampoline: 25, castle: 25, banana: 24, lilypad: 31, walkway: 22, jetstream: 22, plop: 26, misfire: 60 };
   for (const e of st) {
     const duck = e.pl.duck.name;
     if (e.r.sp === 'backfire') cands.push({ s: 95, t: duck + ' launched backward and landed at ' + fmtFt(e.dist) + '.' });
@@ -4946,7 +5068,7 @@ function onImpact(e) {
   const s = sampleTL(L.tl, e.t);
   if (['geese', 'billboard', 'tree', 'ooo', 'replyall', 'clothesline'].includes(e.id)) { burst('feather', 8, { x: s.x, y: s.y, sp0: 10, sp1: 40, l0: 1, l1: 1.8, r0: 7, r1: 12, colors: [C.COLORS[d.color].c, '#fff'], extra: { ws: true, g: -10, drag: 1 } }); burst('star', 5, { x: s.x, y: s.y + 4, sp0: 8, sp1: 20, l0: 1.2, l1: 1.6, r0: 9, r1: 13, color: '#ffd23f', extra: { ws: true } }); }
   if (e.id === 'mud') burst('blob', 14, { x: s.x, y: 1, a0: -Math.PI / 2, spread: 1.1, sp0: 20, sp1: 60, l0: 0.6, l1: 1, r0: 5, r1: 9, color: '#6b4423', extra: { ws: true, g: -60 } });
-  if (e.id === 'plop' || e.id === 'skip') burst('blob', 14, { x: s.x, y: 1, a0: -Math.PI / 2, spread: 0.8, sp0: 20, sp1: 50, l0: 0.5, l1: 0.9, r0: 5, r1: 8, color: '#9fd8ff', extra: { ws: true, g: -60 } });
+  if (e.id === 'plop' || e.id === 'skip' || e.id === 'lilypad') burst('blob', 14, { x: s.x, y: 1, a0: -Math.PI / 2, spread: 0.8, sp0: 20, sp1: 50, l0: 0.5, l1: 0.9, r0: 5, r1: 8, color: '#9fd8ff', extra: { ws: true, g: -60 } });
   if (e.id === 'bell') burst('note', 4, { x: s.x, y: s.y + 10, sp0: 5, sp1: 15, l0: 1.2, l1: 1.6, extra: { ws: true } });
   if (e.id === 'hammock') for (let i = 0; i < 4; i++) Particles.add({ type: 'zzz', ws: true, x: s.x + 4, y: s.y + 8 + i * 2, vx: 4, vy: 6, life: 2.4, px: 30, age: -i * 0.5 });
   if (e.id === 'drone') burst('spark', 8, { x: s.x, y: s.y, sp0: 10, sp1: 30, color: '#ffd23f', extra: { ws: true } });
@@ -5135,6 +5257,7 @@ function pieceStateFn(t) {
   }
   return pc => {
     const st = { time: S.time };
+    if (pc.data && pc.data.drift && L.tl) { const tw = t + (L.phase === 'result' || L.phase === 'idle' ? L.pt : 0); st.dx = driftX(pc, L.tl.seed, tw) - pc.x; st.lean = driftLean(pc, L.tl.seed, tw); }
     const e = evByPiece[pc.id];
     if (e && t >= e.t) {
       st.hit = t - e.t;
