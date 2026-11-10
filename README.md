@@ -23,7 +23,7 @@ It is one self-contained file, `index.html`. There are no frameworks, CDNs, web 
 ## Running it
 
 - **Play from this page:** click **Play now** above. It opens the game at <https://sauterreed24.github.io/duck-duck-boom/>, served by GitHub Pages from the `main` branch. Nothing to install, and it updates itself about a minute after every change to `main`.
-- **Backup link:** the same latest `index.html` through raw.githack.com (a free service that serves files from public GitHub repos), in case Pages is ever unavailable.
+- **Backup link:** `index.html` through raw.githack.com (a free service that serves files from public GitHub repos), in case Pages is ever unavailable. It caches, so it can be a version or two behind the Play link.
 - **Offline:** download `index.html` and double-click it.
 
 Your roster, settings and Waddle of Fame are saved in the browser for whichever link you use. Each link keeps its own copy, so stick to one. To move your data, use **Settings → Export everything** on the old link and **Import…** on the new one.
