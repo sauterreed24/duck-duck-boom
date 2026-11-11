@@ -469,6 +469,21 @@ C.LINES = {
     "{player}'s duck, {duck}. Looks ready. Ish.", "Next in the barrel: {player}'s duck, {duck}!", "And now, {player}'s duck. {duck}, everybody!",
     "Strapping in for {player}: {duck}. Well. There are no straps.", "Please welcome {player}'s duck, {duck}, to Ol' Thunderbill!", "Here comes {player}'s duck, {duck}. Big day.",
   ],
+  // the day's conditions, said once or twice a show while a duck climbs the ladder
+  mod_lowgrav: ['Low gravity today, folks. What goes up takes its time coming down.', 'Remember: low gravity. Everybody floats a little.', 'Gravity is on a half day today.'],
+  mod_bouncy: ['Bouncy Day! The whole field is one big boing.', "It's Bouncy Day. Nothing lands just once.", 'Everything bounces today. Even the bad ideas.'],
+  mod_geese: ['The geese are migrating today. Heads down up there.', 'Goose Migration day. They do not yield.', 'So many geese today. None of them friendly.'],
+  mod_trampark: ["It's Trampoline Park day. Aim for the blue ones.", 'Trampolines everywhere today. Chaos, basically.', 'Trampoline Park! Somebody is going to bounce twice.'],
+  mod_ice: ['The field is an ice rink today. Nobody stops when they want to.', 'Ice Rink day. Landing is only the beginning.', 'Frozen solid out there. Slides for days.'],
+  mod_bighead: ['Big Head Mode today. Very important heads all round.', "It's Big Head Mode. The hats are struggling.", 'Big heads today. Same small wings.'],
+  mod_throwback: ['Throwback Mode today. Retro pixels, same quacks.', 'We are broadcasting in glorious low resolution today.', 'Throwback day. Blow on the cartridge first.'],
+  mod_turbocannon: ['Thunderbill packed extra powder today. Hold on to your feathers.', 'Turbo Cannon day. Fifteen percent more boom.', 'Extra powder in the barrel today. Stand back.'],
+  wind_tail_strong: ['A big tailwind today. Free distance for everyone.', 'That tailwind is doing half the work today.', 'Wind at their backs today. Lovely.'],
+  wind_head_strong: ['A stiff headwind today. Every foot is earned.', 'Flying into the wind today. Nothing comes easy.', 'That headwind is not helping anybody.'],
+  sky_fog: ['Foggy out there. We will find the ducks eventually.', "It's a pea-souper today. Listen for the quack."],
+  sky_night: ['A night launch today. The stars are out for it.', 'Launching under the stars tonight. Very romantic.'],
+  debutIntro: ['A first ever launch for {player}! Be gentle, Thunderbill.', 'Welcome to the cannon, {player}! First time in the barrel.', "{player}'s very first duck. Everybody remembers their first."],
+  firstWin: ['{duck} wins it, and that is a FIRST Golden Loaf for {player}!', 'A first ever Golden Loaf for {player}! {duck} did it!', "{player} finally has a Golden Loaf, thanks to {duck}!"],
   ladder: [
     '{duck} is climbing the ladder. Slowly. Very slowly.', 'One rung at a time, {duck}.', "{duck} is in the barrel. It's roomy in there.",
     "That's a brave little duck. Or a very relaxed one.", '{duck} just asked about a seatbelt. There is no seatbelt.', 'The crew duck gives a big wing up!',
@@ -813,7 +828,9 @@ function computeFame(races, todayKey) {
   const monthly = new Map();
   let monthBest = null;
   const legend = [];
+  const picks = { n: 0, hits: 0 };   // Bill's pick to win, and how often he was right
   for (const r of races) {
+    if (r.pick) { picks.n++; if (r.pick.rank === 1) picks.hits++; }
     const sorted = r.res.slice().sort((a, b) => b.dist - a.dist);
     sorted.forEach((e, i) => {
       const k = personKey(e.p);
@@ -855,6 +872,7 @@ function computeFame(races, todayKey) {
     monthly: Array.from(monthly.values()).sort((a, b) => b.pts - a.pts || b.wins - a.wins),
     monthBest,
     streak,
+    picks,
     legend: legend.slice(-14).reverse(),
   };
 }
@@ -4356,11 +4374,15 @@ function createRace() {
   const last = lastRealRace(races);
   const rec = allTimeRecord(races);
   const lastWinner = last ? last.res.slice().sort((a, b) => b.dist - a.dist)[0] : null;
+  // what today's players have done before (for first-launch and first-win callouts)
+  const career = { shows: races.length, who: {} };
+  const mine = new Set(players.map(p => p.key));
+  for (const r of races) { const w = r.res.length > 1 ? r.res.slice().sort((a, b) => b.dist - a.dist)[0] : null; for (const e of r.res) { const k = personKey(e.p); if (!mine.has(k)) continue; const c = career.who[k] || (career.who[k] = { races: 0, wins: 0 }); c.races++; if (e === w) c.wins++; } }
   S.race = {
     v: 1, id: hex8(seed), seed, day, practice: !!S.settings.practice, created: Date.now(),
     players, queue: order.map(pi => ({ p: pi, s: 0 })), idx: 0, stage: 'reveal', results: {}, shots: {},
     ov: Object.keys(S.dbg.ov).length ? deepClone(S.dbg.ov) : null,
-    champ: lastWinner ? personKey(lastWinner.p) : null,
+    champ: lastWinner ? personKey(lastWinner.p) : null, career,
     lastWin: lastWinner ? lastWinner.dist : null,
     record: rec ? rec.dist : null, recordStart: rec ? rec.dist : null,
     leaderKey: null, legend: [], revealDone: false, shuffled: false,
@@ -4620,6 +4642,8 @@ function finalizeRace() {
       hl: computeHighlights(R).slice(0, 3),
       legend: R.legend.slice(0, 12),
     };
+    const pk = billPickKey(R), pi = st.findIndex(e => e.pl.key === pk);
+    if (pk && pi >= 0) rec.pick = { p: st[pi].pl.name, rank: pi + 1 };
     S.history.push(rec);
     saveHistory(S.history);
   }
@@ -4678,6 +4702,7 @@ function setPhase(p) {
     if (L.q.bonus) Caps.say('Bonus shot for ' + pl.name + "'s duck, " + d.name + '! Best shot counts.', { prio: 1 });
     else if (firstShot && R.streak && R.streak.key === pl.key) say('streakIntro', Object.assign({ n: R.streak.n + 1 }, vars), { prio: 1 });
     else if (firstShot && R.champ === pl.key && R.players.length > 1) say('champIntro', vars, { prio: 1 });
+    else if (firstShot && !R.practice && R.career && R.career.shows >= 3 && !R.career.who[pl.key]) say('debutIntro', vars, { prio: 1 });   // someone new to an established show
     else say('intro', vars, { prio: 1 });
     SFX.play('quack', d.pitch, 2);
     if (d.rarity === 'legendary' || d.rarity === 'epic') SFX.play('sting', d.rarity);
@@ -4688,7 +4713,13 @@ function setPhase(p) {
       const lead = leaderEntry();
       L.drum = true;
       say(lead && lead.dist > 2600 ? 'lastDuckLong' : 'lastDuck', { duck: d.name }, { prio: 1, delay: 0.3 });
-    } else if (fx.chance(0.5)) say('ladder', { duck: d.name }, { delay: 0.4 });
+    } else {
+      // the day's conditions get a mention for the second duck and now and then after: modifier first, else a strong
+      // wind, else an unusual sky
+      const c = S.cond, pool = c.mod !== 'standard' ? 'mod_' + c.mod : c.wind.mph >= 14 && c.wind.kind !== 'calm' ? 'wind_' + c.wind.kind + '_strong' : c.sky === 'fog' || c.sky === 'night' ? 'sky_' + c.sky : null;
+      if (pool && C.LINES[pool] && (R.idx === 1 || hash(R.seed, 'condline', R.idx) % 5 === 0)) say(pool, { duck: d.name }, { delay: 0.4 });
+      else if (fx.chance(0.5)) say('ladder', { duck: d.name }, { delay: 0.4 });
+    }
   }
   if (p === 'armed') {
     setBig('LIGHT THE FUSE', true);
@@ -5976,6 +6007,25 @@ function resumeRace(c) {
 /* ---------- title ---------- */
 let titleDuck = null;
 const DEMO = { cyc: -1, duck: null };
+// The running story for people joining the call: champion, record, the month's race, Bill's record. Rebuilt only
+// when the history or the day changes.
+const STORY = { key: null, lines: [] };
+function titleStory() {
+  const key = S.day + '|' + S.history.length + '|' + (S.history.length ? S.history[S.history.length - 1].id : '');
+  if (STORY.key === key) return STORY.lines;
+  STORY.key = key; const out = [];
+  if (S.history.length) {
+    const F = computeFame(S.history, S.day), last = lastRealRace(S.history);
+    const w = last ? last.res.slice().sort((a, b) => b.dist - a.dist)[0] : null;
+    if (w) out.push('Defending champion: ' + w.p + (F.streak && F.streak.n > 1 && F.streak.key === personKey(w.p) ? ' (' + F.streak.n + ' in a row)' : ''));
+    if (F.top10[0]) out.push('Pond record: ' + fmtFt(F.top10[0].dist) + ' by ' + F.top10[0].d + ' (' + F.top10[0].p + ')');
+    if (F.monthly.length > 1 && F.monthly[0].pts > 0) out.push('Duck of the Month race: ' + F.monthly.slice(0, 2).map(m => m.name + ' ' + m.pts + ' pts').join(', '));
+    if (F.picks.n >= 3) out.push("Bill's picks to win: " + F.picks.hits + ' right out of ' + F.picks.n);
+    if (F.races >= 2 && F.races < 400) out.push('Show number ' + (F.races + 1) + ' today');
+  }
+  STORY.lines = out;
+  return out;
+}
 function drawTitle(ctx, dt) {
   // left open past midnight: re-enter the title so the date, forecast and button label all follow the clock
   if (S.screen === 'roster' && !S.race && !S.dbg.day && !Modal.isOpen && localDayKey() !== S.day) Roster.render();
@@ -6001,18 +6051,25 @@ function drawTitle(ctx, dt) {
   drawLogo(ctx, 1160, 230, 1.0, S.rt);
   // date + conditions teaser
   const px = 1150, py = 520;
-  rr(ctx, px - 400, py - 40, 800, 200, 30); fillStroke(ctx, 'rgba(255,248,230,0.96)', 6);
+  const story = titleStory(), sh = story.length ? 46 : 0;   // the card grows a line when there is a story to tell
+  rr(ctx, px - 400, py - 40, 800, 200 + sh, 30); fillStroke(ctx, 'rgba(255,248,230,0.96)', 6);
   txt(ctx, prettyDate(S.dbg.day || S.day), px, py + 4, { px: 44, color: OUT, sw: 0 });
   txt(ctx, "TODAY'S POND FORECAST", px, py + 58, { px: 26, color: '#e8412c', sw: 0 });
   txt(ctx, conditionsSummary(S.cond), px, py + 104, { px: 32, color: '#4a4458', sw: 0, maxW: 760, weight: 800 });
+  if (story.length) {   // one line of the running story, changing every 4 s with a fade
+    const k = S.rt / 4, i = Math.floor(k) % story.length, f = k - Math.floor(k);
+    ctx.save(); ctx.globalAlpha = story.length > 1 ? clamp(Math.min(f, 1 - f) * 8, 0, 1) : 1;
+    txt(ctx, story[i], px, py + 154, { px: 27, color: '#2a6cbf', sw: 0, maxW: 760, weight: 800 });
+    ctx.restore();
+  }
   const c = savedShow();
   if (DEMO.duck && u < 2.4 && S.screen === 'title') {
     const dx = mz.x + 150 * u, dy = mz.y + 105 * u - 18 * u * u;
     drawDuck(ctx, DEMO.duck, V.sx(dx), V.sy(dy), 84, { pose: 'scared', rot: u * 5, flap: t * 4, t, mouth: 0.8 });
   }
   const fin = c ? null : finishedShow();
-  if (c) txt(ctx, showLabel(c), px, py + 186, { px: 28, color: '#fff', sw: 6, maxW: 900 });
-  if (Store.full) txt(ctx, 'Browser storage is full: changes aren\'t being saved. Export from Settings.', px, py + 226, { px: 24, color: '#ffd23f', sw: 5, maxW: 900 });
+  if (c) txt(ctx, showLabel(c), px, py + 186 + sh, { px: 28, color: '#fff', sw: 6, maxW: 900 });
+  if (Store.full) txt(ctx, 'Browser storage is full: changes aren\'t being saved. Export from Settings.', px, py + 226 + sh, { px: 24, color: '#ffd23f', sw: 5, maxW: 900 });
   if (S.screen !== 'title') return;
   button(ctx, 'fame', 40, 948, 330, 76, 'Waddle of Fame', { fn: () => { FM.back = 'title'; go('fame'); } });
   button(ctx, 'settings', 390, 948, 210, 76, 'Settings', { fn: () => openSettings(false) });
@@ -6020,7 +6077,7 @@ function drawTitle(ctx, dt) {
   if (c && today) button(ctx, 'newshow', 1460, 948, 420, 76, 'Start a new show instead', { px: 26, bg: '#fff8e6', fn: () => confirmBox('Start over? The show in progress will be discarded.', 'Start a new show', () => { Store.del('current'); setPaused(false); setBig('START', true); go('roster'); }) });
   if (c && !today) button(ctx, 'oldshow', 1460, 948, 420, 76, 'Resume ' + shortDate(c.day) + ' show', { px: 26, bg: '#fff8e6', fn: () => resumeRace(c) });
   if (fin) button(ctx, 'lastres', 1460, 948, 420, 76, 'Last results (' + shortDate(fin.day) + ')', { px: 26, bg: '#fff8e6', fn: () => viewLastResults(fin) });
-  if (!SFX.ready) txt(ctx, 'Click anywhere to turn on sound', px, py + 186 + (c ? 40 : 0) + (Store.full ? 40 : 0), { px: 26, color: '#fff', sw: 6 });
+  if (!SFX.ready) txt(ctx, 'Click anywhere to turn on sound', px, py + 186 + sh + (c ? 40 : 0) + (Store.full ? 40 : 0), { px: 26, color: '#fff', sw: 6 });
 }
 
 /* ---------- reveal: cards flip in a cascade, then the launch order shuffles, then the Pond Forecast ---------- */
@@ -6201,13 +6258,17 @@ function startResults() {
     SFX.play('fanfare'); setTimeout(() => SFX.play('cheer', 2), 300);
     const margin = st.length > 1 ? shownGap(st[0].dist, st[1].dist, showsTenths(st, 0) || showsTenths(st, 1)) : null;
     RS.margin = margin != null && margin < 25 ? margin : null;
+    const newChamp = !R.practice && st.length > 1 && R.career && R.career.shows >= 3 && !(R.career.who[st[0].pl.key] && R.career.who[st[0].pl.key].wins);
     if (RS.margin != null) say('closeWin', { duck: st[0].pl.duck.name, margin: marginText(RS.margin) }, { prio: 2, delay: 0.6 });
-    else say('winner', { duck: st[0].pl.duck.name }, { prio: 2, delay: 0.6 });
+    else say(newChamp ? 'firstWin' : 'winner', { duck: st[0].pl.duck.name, player: st[0].pl.name }, { prio: 2, delay: 0.6 });
     if (RS.feather) say('feather', { duck: RS.feather.pl.duck.name }, { delay: 3.2 });
     const tod = teamOfDay(R);
     if (tod) say('teamDay', { team: tod.name }, { delay: 5.6 });
     const pk = billPickKey(R), pi = st.findIndex(e => e.pl.key === pk);
     if (pk && pi >= 0) say(pi === 0 ? 'billPickWon' : 'billPickLost', { duck: st[pi].pl.duck.name, rank: ordinal(pi + 1) }, { delay: 8 });
+    // his record, once there is one worth mentioning (today's show is already in the history unless it is practice)
+    const bp = pk && pi >= 0 && !R.practice ? computeFame(S.history, R.day).picks : null;
+    if (bp && bp.n >= 3) Caps.say('That makes Bill ' + bp.hits + ' for ' + bp.n + ' on his picks.', { delay: 11.4 });
   }
   RS.tod = teamOfDay(R);
   RS.conf = 0;
@@ -6401,11 +6462,12 @@ function drawFame(ctx, dt) {
   }
   if (FM.page === 0) {
     panel(40, 120, 900, 760, 'MOST WINS');
-    F.players.slice(0, 12).forEach((p, i) => { const y = 200 + i * 54; txt(ctx, (i + 1) + '. ' + p.name, 80, y, { px: 30, minPx: 26, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, p.wins + ' win' + (p.wins === 1 ? '' : 's') + ' · best ' + fmtFt(p.best), 900, y, { px: 28, color: '#4a4458', sw: 0, align: 'right', weight: 800 }); });
+    F.players.slice(0, 12).forEach((p, i) => { const y = 200 + i * 54; txt(ctx, (i + 1) + '. ' + p.name, 80, y, { px: 30, minPx: 24, color: OUT, sw: 0, align: 'left', maxW: 330 }); txt(ctx, p.wins + ' win' + (p.wins === 1 ? '' : 's') + ' · ' + p.podiums + ' podium' + (p.podiums === 1 ? '' : 's') + ' · best ' + fmtFt(p.best), 900, y, { px: 26, minPx: 20, color: '#4a4458', sw: 0, align: 'right', weight: 800, maxW: 500 }); });
     panel(980, 120, 900, 250, 'TEAM WINS');
     teams().forEach((tm, i) => { const row = F.teams.find(x => x.i === i); const y = 200 + i * 56; teamShape(ctx, tm.shape, 1030, y, 14); ctx.fillStyle = tm.color; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = OUT; ctx.stroke(); txt(ctx, tm.name, 1060, y, { px: 30, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, String(row ? row.wins : 0), 1840, y, { px: 32, color: OUT, sw: 0, align: 'right' }); });
     panel(980, 390, 900, 130, 'CURRENT WIN STREAK');
-    txt(ctx, F.streak ? F.streak.name + ' · ' + F.streak.n + ' in a row' : '—', 1430, 470, { px: 34, color: OUT, sw: 0, maxW: 840 });
+    txt(ctx, F.streak ? F.streak.name + ' · ' + F.streak.n + ' in a row' : '—', 1430, F.picks.n ? 458 : 470, { px: 34, color: OUT, sw: 0, maxW: 840 });
+    if (F.picks.n) txt(ctx, "Bill's picks to win: " + F.picks.hits + ' right out of ' + F.picks.n, 1430, 496, { px: 24, color: '#6b6577', sw: 0, maxW: 840, weight: 800 });
     panel(980, 540, 900, 340, 'DUCK OF THE MONTH · ' + MONTHS[parseDayKey(S.day).getMonth()].toUpperCase());
     if (F.monthBest) { txt(ctx, F.monthBest.d, 1430, 624, { px: 34, color: OUT, sw: 0, maxW: 840 }); txt(ctx, F.monthBest.p + ' · ' + fmtFt(F.monthBest.dist) + ' · longest launch this month', 1430, 664, { px: 26, color: '#6b6577', sw: 0, maxW: 840, weight: 800 }); }
     F.monthly.slice(0, 4).forEach((m, i) => { const y = 724 + i * 40; txt(ctx, (i + 1) + '. ' + m.name, 1020, y, { px: 28, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, m.pts + ' pts · ' + m.wins + ' W', 1840, y, { px: 28, color: '#4a4458', sw: 0, align: 'right' }); });
