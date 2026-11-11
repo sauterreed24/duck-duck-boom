@@ -121,7 +121,7 @@ Flights play close to real time. The launch always plays at exactly full speed, 
 Latest balance run (10,000 flights):
 
 ```text
-distance  min -459  p10 723  p25 1,069  median 1,447  p75 1,941  p90 2,656  p99 4,466  max 7,210 ft
+distance  min -459  p10 722  p25 1,070  median 1,447  p75 1,941  p90 2,656  p99 4,466  max 7,210 ft
 past 2,500 ft: 12.3%   past 5,000 ft: 3.1 per 1,000   backfire: 0.91%   misfire: 1.26%
 distance-changing events per flight: 1.91 avg   0: 16.4%  1: 31.7%  2: 22.4%  3: 12.8%  4: 7.3%  5: 9.3%
 most decisive events: mystery crate (the winner had it in 27% of races) and espresso drone (27%)

@@ -483,7 +483,7 @@ C.LINES = {
   sky_fog: ['Foggy out there. We will find the ducks eventually.', "It's a pea-souper today. Listen for the quack."],
   sky_night: ['A night launch today. The stars are out for it.', 'Launching under the stars tonight. Very romantic.'],
   debutIntro: ['A first ever launch for {player}! Be gentle, Thunderbill.', 'Welcome to the cannon, {player}! First time in the barrel.', "{player}'s very first duck. Everybody remembers their first."],
-  firstWin: ['{duck} wins it, and that is a FIRST Golden Loaf for {player}!', 'A first ever Golden Loaf for {player}! {duck} did it!', "{player} finally has a Golden Loaf, thanks to {duck}!"],
+  firstWin: ['{duck} wins it, and that is a FIRST Golden Loaf for {player}!', 'A first ever Golden Loaf for {player}! {duck} did it!', "A Golden Loaf for {player}, thanks to {duck}! The very first one!"],
   ladder: [
     '{duck} is climbing the ladder. Slowly. Very slowly.', 'One rung at a time, {duck}.', "{duck} is in the barrel. It's roomy in there.",
     "That's a brave little duck. Or a very relaxed one.", '{duck} just asked about a seatbelt. There is no seatbelt.', 'The crew duck gives a big wing up!',
@@ -1320,7 +1320,7 @@ const SIM = (() => {
     const fakeout = opts.special === 'fakeout' ? true : (special ? false : crng.chance(0.02));
 
     const s = { t: 0, x: 0, y: 0, vx: 0, vy: 0, rot: 0, spin: spin0, mode: MODE.script, pose: POSE.fly, vis: 1,
-      used: new Set(), nDist: 0, cool: 0, forces: [], slick: false, sc: null, landT: -1, apexT: -1, maxAlt: 0, air: 0,
+      used: new Set(), nDist: 0, cool: 0, coolEv: 0, forces: [], slick: false, sc: null, landT: -1, apexT: -1, maxAlt: 0, air: 0,
       deadOnLand: false, wasUp: false, launchT: 0, skipN: 0, skipEv: null, events: [], extra: {} };
     const rec = { x: [], y: [], rot: [], mode: [], pose: [], vis: [] };
     let step = 0;
@@ -1328,11 +1328,13 @@ const SIM = (() => {
     function emit(id, data, dur) {
       const e = { id, t: s.t, tEnd: s.t + (dur || 0), x: s.x, y: s.y, data: data || {} };
       s.events.push(e);
-      if (C.EVENTS[id] && C.EVENTS[id].dist) { s.nDist++; s.cool = Math.max(s.cool, s.t + 0.5); }
+      if (C.EVENTS[id] && C.EVENTS[id].dist) { s.nDist++; s.coolEv = s.t + 0.5; }
       s.used.add(id);
       return e;
     }
-    function canFire() { return s.nDist < 5 && s.t >= s.cool && s.mode !== MODE.done; }
+    function canFire() { return s.nDist < 5 && s.t >= s.cool && s.t >= s.coolEv && s.mode !== MODE.done; }
+    // water answers at once: the short gap after an instant event never turns a fast skip into a dead stop
+    function canWater() { return s.nDist < 5 && s.t >= s.cool && s.mode !== MODE.done; }
     function launch(ang, pow) {
       const a = ang * DEG;
       s.x = PIV.x + Math.cos(a) * PIV.len;
@@ -1389,7 +1391,7 @@ const SIM = (() => {
         const fast = opts.force === 'skip' ? s.vx > 8 : s.vx > 40 && (s.mode === MODE.ground || -s.vy < s.vx * 1.4);
         // a fast, flat arrival always skips (the pond is a lane to cross, not a wall); a slower flat one needs the
         // pond's roll. Either way a first skip is an event like any other: it respects the 5-event cap and cooldown.
-        const maySkip = s.skipEv != null || canFire();
+        const maySkip = s.skipEv != null || canWater();
         if (!forcePlop && (rolled || (maySkip && (s.mode === MODE.ground || s.vx > 75))) && fast && s.skipN < 6) {
           if (!s.skipEv) s.skipEv = emit('skip', { piece: pc.id, n: 0, ts: [] });
           s.skipN++; s.skipEv.data.n = s.skipN; s.skipEv.tEnd = s.t; s.skipEv.data.ts.push(+s.t.toFixed(3));
@@ -1400,7 +1402,7 @@ const SIM = (() => {
         // a busy pond (the course balancer tames it): some would-be swimmers land on a lily pad and hop back out,
         // so the pond is never where half the field ends up. One hop per flight.
         const lily = opts.force === 'lilypad' || (pc.tame < 1 && !forcePlop && !only && rng.next() > pc.tame);
-        if (lily && !s.used.has('lilypad') && canFire()) {
+        if (lily && !s.used.has('lilypad') && canWater()) {
           emit('lilypad', { piece: pc.id });
           s.y = 0.5; s.vy = rng.range(44, 60); s.vx = Math.max(s.vx, 0) * 0.5 + rng.range(28, 52);
           // the hop always carries past the far bank: a lily pad bounce never ends in the same pond
@@ -1737,7 +1739,7 @@ const SIM = (() => {
         // Ice Rink: some ponds are frozen for the whole day (drawn as ice): ducks bounce and slide on them like the field
         if (pc.data && pc.data.frozen && only !== 'skip' && only !== 'plop' && only !== 'lilypad') return false;
         if (s.mode === MODE.ground && Math.abs(s.vx) < 6) return FX.pond(pc, false);   // slow sliders still get wet
-        return FX.pond(pc, pieceRoll[i] && (s.skipEv != null || canFire()));
+        return FX.pond(pc, pieceRoll[i] && (s.skipEv != null || canWater()));
       }
       if (reach && !pieceRoll[i] && !s.used.has(pc.ev) && canFire() && inPiece(pc, s.x, s.y, s.vy, s.mode)) reach.add(pc.id);
       if (!pieceRoll[i] || s.used.has(pc.ev) || !canFire()) return false;
@@ -4140,7 +4142,7 @@ function openSettings(fromPause) {
       if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? (S.race.practice ? 'Close these practice results and go back to the title? (Practice races are not saved.)' : 'Close these results and go back to the title? They are already saved in the Waddle of Fame.') : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
       el.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => { const pi = +bt.dataset.rm; const nm = S.race.players[pi].name; confirmBox('Take ' + nm + "'s duck out of today's show?", 'Remove', () => { removePlayer(pi); setPaused(false); }, () => openSettings(fromPause)); });
       const la = el.querySelector('#lateadd');
-      if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; addLatePlayer(nm, +el.querySelector('#lateteam').value); openSettings(fromPause); };
+      if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; const tm = +el.querySelector('#lateteam').value; addLatePlayer(nm, tm); openSettings(fromPause); const sel = document.querySelector('#lateteam'); if (sel) sel.value = tm; };
       el.querySelector('#sclose').onclick = () => Modal.close();
     });
 }
@@ -4272,7 +4274,7 @@ const Roster = {
       '<div class="bar"><button class="btn small green" id="onlybtn" title="Tick exactly these people and untick everyone else">Tick only these</button><button class="btn small ghost" id="pastebtn" title="Tick these people and keep everyone already ticked">Add to ticked</button></div></div>' +
       '<div class="box"><h3>Add one person</h3><div class="bar"><input type="text" id="addname" maxlength="40" placeholder="Name" style="flex:1;min-width:0"><select id="addteam">' + T.map((t, j) => '<option value="' + j + '">' + esc(t.name) + '</option>').join('') + '</select><button class="btn small green" id="addbtn">Add</button></div>' +
       '<div class="bar"><input type="text" id="rfind" placeholder="Find a name…" value="' + esc(this.filter) + '" style="flex:1;min-width:0"></div></div>' +
-      '<div class="box toggles"><label><input type="checkbox" id="tpractice"' + (S.settings.practice ? ' checked' : '') + '> Practice race (not saved, this visit only)</label><label><input type="checkbox" id="tauto"' + (S.settings.autoAdvance ? ' checked' : '') + '> Auto-advance</label><label><input type="checkbox" id="tturbo"' + (S.settings.turboDefault ? ' checked' : '') + '> Turbo (2x)</label>' +
+      '<div class="box toggles"><label><input type="checkbox" id="tpractice"' + (S.settings.practice ? ' checked' : '') + '> Practice race (not saved, next show only)</label><label><input type="checkbox" id="tauto"' + (S.settings.autoAdvance ? ' checked' : '') + '> Auto-advance</label><label><input type="checkbox" id="tturbo"' + (S.settings.turboDefault ? ' checked' : '') + '> Turbo (2x)</label>' +
       '<div class="bar"><button class="btn small ghost" id="rall">Tick all</button><button class="btn small ghost" id="rnone">Untick all</button></div></div>' +
       '</div></div>';
     const $ = s => this.el.querySelector(s);
@@ -4314,7 +4316,7 @@ const Roster = {
     // find: just hide rows, no re-render
     $('#rfind').oninput = e => { this.filter = e.target.value; const q = personKey(this.filter); this.el.querySelectorAll('.list .row[data-key]').forEach(r => { r.style.display = !q || r.dataset.key.includes(q) ? '' : 'none'; }); this.el.querySelectorAll('.team .list').forEach(l => { const nm = l.querySelector('.nomatch'); if (nm) nm.style.display = [...l.querySelectorAll('.row[data-key]')].some(r => r.style.display !== 'none') ? 'none' : 'flex'; }); };
     const fr = $('#rfresh'); if (fr) fr.onclick = () => { oldTicks.forEach(p => { p.checked = false; }); save(true); };
-    $('#tpractice').onchange = e => { S.settings.practice = e.target.checked; saveSettings(); this.render(); };
+    $('#tpractice').onchange = e => { S.settings.practice = e.target.checked; saveSettings(); setBig(S.settings.practice ? 'REVEAL (PRACTICE)' : 'REVEAL DUCKS', checked > 0); };   // only the label changes: focus stays on the box
     $('#tauto').onchange = e => { S.settings.autoAdvance = e.target.checked; saveSettings(); };
     $('#tturbo').onchange = e => { S.settings.turboDefault = e.target.checked; saveSettings(); };
     $('#rback').onclick = () => go('title');
@@ -4376,8 +4378,7 @@ function createRace() {
   const lastWinner = last ? last.res.slice().sort((a, b) => b.dist - a.dist)[0] : null;
   // what today's players have done before (for first-launch and first-win callouts)
   const career = { shows: races.length, who: {} };
-  const mine = new Set(players.map(p => p.key));
-  for (const r of races) { const w = r.res.length > 1 ? r.res.slice().sort((a, b) => b.dist - a.dist)[0] : null; for (const e of r.res) { const k = personKey(e.p); if (!mine.has(k)) continue; const c = career.who[k] || (career.who[k] = { races: 0, wins: 0 }); c.races++; if (e === w) c.wins++; } }
+  for (const p of players) { const c = careerOf(p.key, races); if (c) career.who[p.key] = c; }
   S.race = {
     v: 1, id: hex8(seed), seed, day, practice: !!S.settings.practice, created: Date.now(),
     players, queue: order.map(pi => ({ p: pi, s: 0 })), idx: 0, stage: 'reveal', results: {}, shots: {},
@@ -4428,6 +4429,7 @@ function addLatePlayer(name, team) {
   const pl = makePlayer(nm, team, rer[personKey(nm)] || 0, nameCtx(null), R.day);
   pl.late = true;
   R.players.push(pl);
+  if (R.career && !R.career.who[pl.key]) { const c = careerOf(pl.key, S.history); if (c) R.career.who[pl.key] = c; }   // a late arrival may be an old hand
   // late arrivals get the same personal-best and streak callbacks as everyone else
   if (!R.pbs) R.pbs = {};
   const F = computeFame(S.history, R.day);
@@ -4570,6 +4572,12 @@ function teamOfDay(R) {
   for (const [t, ds] of by) { const avg = ds.reduce((a, c) => a + c, 0) / ds.length; if (!best || avg > best.avg) best = { team: t, avg, n: ds.length }; }
   return Object.assign(best, { name: teams()[best.team].name, color: teams()[best.team].color, shape: teams()[best.team].shape });
 }
+// Past shows and wins for one person (counted the way the Waddle of Fame counts them), or null for a newcomer.
+function careerOf(key, races) {
+  let c = null;
+  for (const r of races) { const w = r.res.slice().sort((a, b) => b.dist - a.dist)[0]; for (const e of r.res) { if (personKey(e.p) !== key) continue; c = c || { races: 0, wins: 0 }; c.races++; if (e === w) c.wins++; } }
+  return c;
+}
 function billPickKey(R) {
   if (R.pick !== undefined) return R.pick && R.players.some(p => p.key === R.pick && !p.out) ? R.pick : null;
   const act = R.players.filter(p => !p.out);
@@ -4602,7 +4610,8 @@ function computeHighlights(R) {
   const take = c => { picked.push(c); used.add(c.who); usedId.add(c.id); };
   for (const c of cands) { if (picked.length >= 5) break; if (!used.has(c.who) && !usedId.has(c.id)) take(c); }
   for (const c of cands) { if (picked.length >= 5) break; if (!picked.includes(c) && !used.has(c.who)) take(c); }
-  for (const c of cands) { if (picked.length >= 3) break; if (!picked.includes(c)) take(c); }
+  for (const c of cands) { if (picked.length >= 5) break; if (!picked.includes(c) && !usedId.has(c.id)) take(c); }   // a small show: a duck's second story, if it is a new kind
+  for (const c of cands) { if (picked.length >= 5) break; if (!picked.includes(c)) take(c); }
   const champ = st.length ? st[0].pl.duck.name : null, cw = cands.find(c => c.who === champ);
   if (cw && !picked.some(c => c.who === champ)) { if (picked.length >= 5) picked.pop(); picked.push(cw); }
   picked.sort((a, b) => b.s - a.s);
@@ -6017,11 +6026,12 @@ function titleStory() {
   if (S.history.length) {
     const F = computeFame(S.history, S.day), last = lastRealRace(S.history);
     const w = last ? last.res.slice().sort((a, b) => b.dist - a.dist)[0] : null;
-    if (w) out.push('Defending champion: ' + w.p + (F.streak && F.streak.n > 1 && F.streak.key === personKey(w.p) ? ' (' + F.streak.n + ' in a row)' : ''));
-    if (F.top10[0]) out.push('Pond record: ' + fmtFt(F.top10[0].dist) + ' by ' + F.top10[0].d + ' (' + F.top10[0].p + ')');
-    if (F.monthly.length > 1 && F.monthly[0].pts > 0) out.push('Duck of the Month race: ' + F.monthly.slice(0, 2).map(m => m.name + ' ' + m.pts + ' pts').join(', '));
+    const sn = s => s.length > 22 ? s.slice(0, 21).trimEnd() + '…' : s;   // long names never push the end of a line off the card
+    if (w) out.push('Defending champion: ' + sn(w.p) + (F.streak && F.streak.n > 1 && F.streak.key === personKey(w.p) ? ' (' + F.streak.n + ' in a row)' : ''));
+    if (F.top10[0]) out.push('Pond record: ' + fmtFt(F.top10[0].dist) + ' by ' + sn(F.top10[0].d) + ' (' + sn(F.top10[0].p) + ')');
+    if (F.monthly.length > 1 && F.monthly[0].pts > 0) out.push('Duck of the Month race: ' + F.monthly.slice(0, 2).map(m => sn(m.name) + ' ' + m.pts + ' pts').join(', '));
     if (F.picks.n >= 3) out.push("Bill's picks to win: " + F.picks.hits + ' right out of ' + F.picks.n);
-    if (F.races >= 2 && F.races < 400) out.push('Show number ' + (F.races + 1) + ' today');
+    if (F.races >= 2 && F.races < 400 && !(last && last.date === S.day)) out.push('Show number ' + (F.races + 1) + ' today');
   }
   STORY.lines = out;
   return out;
@@ -6258,7 +6268,8 @@ function startResults() {
     SFX.play('fanfare'); setTimeout(() => SFX.play('cheer', 2), 300);
     const margin = st.length > 1 ? shownGap(st[0].dist, st[1].dist, showsTenths(st, 0) || showsTenths(st, 1)) : null;
     RS.margin = margin != null && margin < 25 ? margin : null;
-    const newChamp = !R.practice && st.length > 1 && R.career && R.career.shows >= 3 && !(R.career.who[st[0].pl.key] && R.career.who[st[0].pl.key].wins);
+    const cw = R.career && R.career.who[st[0].pl.key];   // a first Golden Loaf is for someone who has played before and never won
+    const newChamp = !R.practice && st.length > 1 && !!cw && R.career.shows >= 3 && cw.races > 0 && cw.wins === 0;
     if (RS.margin != null) say('closeWin', { duck: st[0].pl.duck.name, margin: marginText(RS.margin) }, { prio: 2, delay: 0.6 });
     else say(newChamp ? 'firstWin' : 'winner', { duck: st[0].pl.duck.name, player: st[0].pl.name }, { prio: 2, delay: 0.6 });
     if (RS.feather) say('feather', { duck: RS.feather.pl.duck.name }, { delay: 3.2 });
