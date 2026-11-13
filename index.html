@@ -65,6 +65,7 @@
   #roster .side h3 { margin: 0; font-size: 24px; }
   #roster .side .hint { font-size: 17px; font-weight: 700; opacity: .75; }
   #roster .toggles label { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800; }
+  #roster .toggles .tgrow { display: flex; gap: 22px; flex-wrap: wrap; }
   #roster .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   #roster .total { font-size: 30px; font-weight: 900; }
   #roster .warn { color: #b0392b; font-size: 20px; font-weight: 900; min-height: 24px; }
@@ -487,6 +488,7 @@ C.LINES = {
   salvoLaunch: ['THERE THEY GO! All {n} of them!', '{n} ducks in the air! Keep your eye on yours!', 'What a sight! The whole flock is away!', 'BOOM! Find your duck, folks, find your duck!', "That's {n} ducks airborne and nobody steering!"],
   salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!'],
   salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!"],
+  salvoCall: ['{duck} is out in front at {distance}!', 'Still {n} ducks on the move out there!', "{player}'s duck leads the way: {distance} and counting.", '{n} of them still going. Do not blink!', 'Out in front right now: {duck}!', "It's {duck} at the front of the flock. {n} ducks still moving!", 'Anybody could still win this. {n} ducks left out there!'],
   salvoRecord: ['{duck} is past the pond record line and still going!', "That's record country! {player}'s duck is out there!", '{duck} just flew past the all-time record!'],
   salvoWin: ['{duck} is the farthest duck out there: {distance}!', 'Nobody went farther than {duck}! {distance}!', "It's {duck} out in front when the feathers settle: {distance}!", '{duck} takes it by {margin}!'],
   debutIntro: ['A first ever launch for {player}! Be gentle, Thunderbill.', 'Welcome to the cannon, {player}! First time in the barrel.', "{player}'s very first duck. Everybody remembers their first."],
@@ -4288,7 +4290,7 @@ const Roster = {
       '<div class="bar"><button class="btn small green" id="onlybtn" title="Tick exactly these people and untick everyone else">Tick only these</button><button class="btn small ghost" id="pastebtn" title="Tick these people and keep everyone already ticked">Add to ticked</button></div></div>' +
       '<div class="box"><h3>Add one person</h3><div class="bar"><input type="text" id="addname" maxlength="40" placeholder="Name" style="flex:1;min-width:0"><select id="addteam">' + T.map((t, j) => '<option value="' + j + '">' + esc(t.name) + '</option>').join('') + '</select><button class="btn small green" id="addbtn">Add</button></div>' +
       '<div class="bar"><input type="text" id="rfind" placeholder="Find a name…" value="' + esc(this.filter) + '" style="flex:1;min-width:0"></div></div>' +
-      '<div class="box toggles"><label><input type="checkbox" id="tpractice"' + (S.settings.practice ? ' checked' : '') + '> Practice race (not saved, next show only)</label><label><input type="checkbox" id="tauto"' + (S.settings.autoAdvance ? ' checked' : '') + '> Auto-advance</label><label><input type="checkbox" id="tturbo"' + (S.settings.turboDefault ? ' checked' : '') + '> Turbo (2x)</label><label title="Every duck in the cannon at once. Untick to launch them one by one."><input type="checkbox" id="tsalvo"' + (S.settings.salvo !== false ? ' checked' : '') + '> Salvo (all ducks at once)</label>' +
+      '<div class="box toggles"><label><input type="checkbox" id="tpractice"' + (S.settings.practice ? ' checked' : '') + '> Practice race (not saved, next show only)</label><div class="tgrow"><label><input type="checkbox" id="tauto"' + (S.settings.autoAdvance ? ' checked' : '') + '> Auto-advance</label><label><input type="checkbox" id="tturbo"' + (S.settings.turboDefault ? ' checked' : '') + '> Turbo (2x)</label></div><label title="Every duck in the cannon at once. Untick to launch them one by one."><input type="checkbox" id="tsalvo"' + (S.settings.salvo !== false ? ' checked' : '') + '> Salvo (all ducks at once)</label>' +
       '<div class="bar"><button class="btn small ghost" id="rall">Tick all</button><button class="btn small ghost" id="rnone">Untick all</button></div></div>' +
       '</div></div>';
     const $ = s => this.el.querySelector(s);
@@ -6166,6 +6168,7 @@ function salvoFire(replay) {
   const plan = buildSalvoPlan(SV.fl, replay, photoT);
   SV.pb = { simT: 0, rate: 1, T: 0, segs: plan.segs, P: plan.P, endT: plan.endT, dur: plan.dur, drumAt: plan.drumAt, photoAt: plan.photoAt, photo: photoT > 0, fired: new Set(), done: false, brake: null };
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
+  SV.pend = null;
   SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.leadSince = 0; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.result = null;
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
@@ -6324,7 +6327,10 @@ function updateSalvoFlight(dt) {
         if (['geese', 'billboard', 'mud', 'tree', 'ooo', 'gatekeeper', 'replyall', 'castle', 'trampoline', 'bell'].includes(e.id)) Shake.add(3);
         // the big moments get the big caption (with whose duck it is); Bill calls the best of the rest when he is free
         if (sc >= 70 && cap && !Caps.freshBig(1.6) && t > 2.2) Caps.big(cap + '\n' + f.pl.name, { px: 84, color: def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', dur: 2.2 });
-        if (!SV.replay && C.LINES['ev_' + e.id]) salvoSay('ev_' + e.id, vars, { delay: 0.3, prio: sc >= 55 ? 1 : 0 }, sc >= 70 ? 0 : sc >= 44 ? 1.6 : 2.6);
+        if (!SV.replay && C.LINES['ev_' + e.id]) {
+          // Bill is mid-sentence: the best of what he missed gets said as soon as he is free, while it is still news
+          if (!salvoSay('ev_' + e.id, vars, { delay: 0.3, prio: sc >= 55 ? 1 : 0 }, sc >= 70 ? 0 : sc >= 44 ? 1.6 : 2.6) && (!SV.pend || sc > SV.pend.sc)) SV.pend = { pool: 'ev_' + e.id, vars, sc, at: S.rt };
+        }
       }
       if (e.id === 'ufo' && !f.fired.has('u' + i) && t >= e.t + 2.2) { f.fired.add('u' + i); salvoTag(f, e.data.outcome === 'ahead' ? 'DROPPED AHEAD!' : e.data.outcome === 'behind' ? 'PUT BACK...' : 'ANTENNAE!', { color: '#d9b8ff' }); if (!SV.replay) salvoSay('ev_ufo_' + e.data.outcome, vars, { prio: 1 }, 1.2); }
       if (e.id === 'tornado' && !f.fired.has('tw' + i) && t >= e.tEnd) { f.fired.add('tw' + i); const back = Math.cos(e.data.ang) < 0; salvoTag(f, back ? 'WRONG WAY!' : 'FLUNG ONWARD!', { color: back ? '#ffb8a8' : '#ffd23f' }); salvoSnd('whoosh', 0.3, 0.7); if (!SV.replay) salvoSay(back ? 'ev_tornado_back' : 'ev_tornado_fwd', vars, { prio: 1 }, 1.6); }
@@ -6382,6 +6388,12 @@ function updateSalvoFlight(dt) {
         if (t > 3.5) { salvoSnd('rankup', 0.3, 1); salvoTag(front, 'LEADS!', { color: '#9be58b', px: 32, dur: 1.4 }); if (!SV.replay && moving > 1) salvoSay('salvoLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 0 }, 4.5); }
       }
     } else SV.cand = null;
+  }
+  // Bill keeps the call going: something he missed a moment ago, or after a few quiet seconds who is in front
+  if (!SV.replay) {
+    if (SV.pend && S.rt - SV.pend.at > 2.4) SV.pend = null;
+    if (SV.pend && S.rt - SV.lineAt >= 2.0) { const pd = SV.pend; SV.pend = null; salvoSay(pd.pool, pd.vars, { prio: 0 }, 0); }
+    else if (front && n > 1 && moving > 1 && t > 4 && S.rt - SV.lineAt > 4.4 && pb.dur - pb.T > 3 && Caps.free()) salvoSay('salvoCall', { duck: front.pl.duck.name, player: front.pl.name, distance: fmtFt(Math.max(0, front.x)), n: moving }, { prio: 0 }, 0);
   }
   // the lines to beat (last show's winner, the pond record): the first duck across each gets a cheer
   if (front && !SV.replay && t > 2.5) {
