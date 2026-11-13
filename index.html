@@ -485,6 +485,7 @@ C.LINES = {
   sky_night: ['A night launch today. The stars are out for it.', 'Launching under the stars tonight. Very romantic.'],
   // the salvo: every duck in the cannon at once
   salvoLoad: ['All {n} of them. In one cannon. What could possibly go wrong?', '{n} ducks, one barrel. Squeeze in, everybody!', "Ol' Thunderbill is taking all {n} at once today. Mind the elbows.", 'Everybody in! {n} ducks and not a seatbelt between them.', "That is {n} ducks in one cannon. The manual says four. We don't have the manual."],
+  salvoCount: ['Count it down with me, folks!', 'Everybody together now: three, two, one!', 'The fuse is ready. Help me count!', 'All aboard? Then count with me!', 'Big breath, everybody. Count it down!'],
   salvoLaunch: ['THERE THEY GO! All {n} of them!', '{n} ducks in the air! Keep your eye on yours!', 'What a sight! The whole flock is away!', 'BOOM! Find your duck, folks, find your duck!', "That's {n} ducks airborne and nobody steering!"],
   salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!'],
   salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!"],
@@ -4409,7 +4410,8 @@ function createRace() {
     leaderKey: null, legend: [], revealDone: false, shuffled: false,
   };
   // bonus round shots go at the very end
-  if (S.settings.bonusAmmo) players.forEach((pl, pi) => { for (let k = 1; k <= (pl.ammo | 0); k++) S.race.queue.push({ p: pi, s: k, bonus: true }); });
+  if (S.settings.bonusAmmo && S.race.mode === 'salvo') { for (let k = 1; k <= 3; k++) players.forEach((pl, pi) => { if ((pl.ammo | 0) >= k) S.race.queue.push({ p: pi, s: k, bonus: true }); }); }   // by round: each round is one volley
+  else if (S.settings.bonusAmmo) players.forEach((pl, pi) => { for (let k = 1; k <= (pl.ammo | 0); k++) S.race.queue.push({ p: pi, s: k, bonus: true }); });
   S.turbo = !!S.settings.turboDefault || (S.race.mode !== 'salvo' && players.length > 15);   // a big one-by-one show starts in turbo; a salvo is one flight however many ducks
   // personal bests and the current streak, for Bill's callbacks
   const F = computeFame(races, day);
@@ -4438,7 +4440,9 @@ function addLatePlayer(name, team) {
   if (!R) return;
   const key = personKey(name);
   const loadedNow = S.screen === 'launch' && L.q && R.queue[R.idx] === L.q && L.phase !== 'idle' && L.phase !== 'result';
-  const insertAt = () => { const fb = R.queue.findIndex((q, i) => q.bonus && i >= R.idx); return fb >= 0 ? Math.max(fb, R.idx + (loadedNow ? 1 : 0)) : R.queue.length; };
+  // a salvo volley whose fuse is lit is spoken for: nobody is slotted into it
+  const flying = R.mode === 'salvo' && S.screen === 'launch' && L.phase === 'salvo' && (SV.phase === 'countdown' || SV.phase === 'flight') && !SV.replay ? SV.fl.length : 0;
+  const insertAt = () => { const fb = R.queue.findIndex((q, i) => q.bonus && i >= R.idx + flying); return fb >= 0 ? Math.max(fb, R.idx + flying + (loadedNow ? 1 : 0)) : R.queue.length; };
   // putting back someone who was removed by mistake: same person, same duck
   const back = R.players.findIndex(p => p.key === key && p.out && !R.results[p.key]);
   if (back >= 0) { R.players[back].out = false; R.queue.splice(insertAt(), 0, { p: back, s: 0 }); saveRace(); refreshIdleBig(); Toast.show(R.players[back].name + "'s duck is back in" + (R.mode === 'salvo' ? '!' : ' and will launch last!'), 2600); if (R.mode === 'salvo' && S.screen === 'launch' && L.phase === 'salvo') salvoQueueChanged(); return; }
@@ -6025,14 +6029,15 @@ function salvoLoad(first) {
     if (!vol.length) { SV.fl = []; SV.phase = 'idle'; SV.pt = 0; if (standings().length) setBig('SEE RESULTS', true); else { Store.del('current'); S.race = null; go('title'); } return; }
     SV.fl = vol.map((q, i) => ({ q, i, pl: R.players[q.p], tl: null, fired: new Set(), prevY: 0, landed: false, squash: 0, done: false, x: 0, y: 0, vis: 1, lastSmoke: 0, doneAt: -1 }));
     SV.volley = R.idx === 0 ? 0 : (SV.volley | 0) + 1;
-    SV.bonus = vol.some(q => q.bonus);
+    SV.bonus = vol.every(q => q.bonus);
+    SV.driftSeed = R.seed >>> 0;
     SV.phase = 'load'; SV.pt = 0; SV.loaded = 0;
     Particles.clear();
     L.cam = { cx: -40, gy: GROUND_Y, z: 3.0 };
     setBig('LOADING…', false);
     const n = SV.fl.length;
     if (SV.bonus) Caps.say('Bonus volley! ' + n + ' duck' + (n === 1 ? '' : 's') + ' going again. Best shot counts.', { prio: 1 });
-    else if (R.idx > 0) Caps.say(n === 1 ? 'One more for the cannon: ' + SV.fl[0].pl.name + "'s duck, " + SV.fl[0].pl.duck.name + '!' : 'A late volley! ' + n + ' more ducks for the cannon.', { prio: 1 });
+    else if (R.idx > 0) Caps.say(n === 1 ? 'One more for the cannon: ' + SV.fl[0].pl.name + "'s duck, " + SV.fl[0].pl.duck.name + '!' : 'Another volley! ' + n + ' ducks for the cannon.', { prio: 1 });
     else if (n === 1) say('solo', { duck: SV.fl[0].pl.duck.name }, { delay: 0.2 });
     else say('salvoLoad', { n }, { prio: 1 });
   };
@@ -6119,6 +6124,9 @@ function buildSalvoPlan(fl, fast, photoT) {
   // a very long volley (many ducks, long slides) lets its quiet stretches run faster so it stays inside the cap
   let k = 1, segs = make(1), run = salvoRun(segs, P, endT);
   for (let it = 0; it < 4 && run.T > P.cap; it++) { k *= clamp(run.T / P.cap, 1.1, 1.8) * 1.15; segs = make(k); run = salvoRun(segs, P, endT); }
+  // still too long (an Ice Rink day with a dozen long slides): everything between the launch and the last stop runs
+  // a little faster
+  for (let it = 0; it < 3 && run.T > P.cap * 1.12; it++) { const f = clamp(run.T / (P.cap * 1.08), 1.05, 1.5); for (const sg of segs) if (!sg.fix && sg.a >= 2.4 && sg.b <= endT - 0.8) sg.r *= f; run = salvoRun(segs, P, endT); }
   let drumAt = 0;
   for (const m of run.marks) if (m[0] <= run.T - 6) drumAt = m[1];
   return { segs, P, endT, dur: run.T, drumAt, photoAt: photoT > 0 ? Math.max(0.5, photoT - P.photoLen) : -1 };
@@ -6137,7 +6145,8 @@ function salvoPhotoT(fl) {
   all.sort((a, b) => b.d - a.d);
   if (all.length < 2 || all[0].d - all[1].d >= 25) return -1;
   const t = Math.max(all[0].endT, all[1].endT);
-  return t > 3 ? t : -1;
+  // it is a photo FINISH: slow motion only when the flight is all but over by then (two ducks at most still going)
+  return t > 3 && fl.filter(f => f.tl.endT > t + 0.3).length <= 2 ? t : -1;
 }
 
 /* ---------- fire ---------- */
@@ -6152,11 +6161,12 @@ function salvoNext() {
   salvoLoad(false);
 }
 function salvoCountdown() {
-  SV.phase = 'countdown'; SV.pt = 0; SV.ticks = -1;
+  SV.phase = 'countdown'; SV.pt = 0; SV.ticks = -1; SV.fizzled = false;
   setBig('LIGHT THE FUSE', false);
+  const fakeDbg = S.dbg.special === 'fakeout';   // read before the simulation clears the debug choices
   salvoSimulate();
   // the fuse fizzles out now and then (it is only for show)
-  SV.fake = S.dbg.special === 'fakeout' || (SV.fl.length > 1 && hash(S.race.seed, 'salvofake', SV.volley) % 100 < 6);
+  SV.fake = fakeDbg || (SV.fl.length > 1 && hash(S.race.seed, 'salvofake', SV.volley) % 100 < 6);
   SV.cdT = 3 * PACE();
   SFX.play('fuse', SV.cdT * (SV.fake ? 0.75 : 1));
 }
@@ -6164,12 +6174,14 @@ function salvoFire(replay) {
   const R = S.race;
   SV.replay = !!replay;
   for (const f of SV.fl) { f.fired = new Set(); f.prevY = f.tl.y[0]; f.landed = false; f.squash = 0; f.done = false; f.doneAt = -1; f.x = f.tl.x[0]; f.y = f.tl.y[0]; f.vis = 1; f.rank = 0; }
-  const photoT = salvoPhotoT(SV.fl);
+  const photoT = replay && SV.photoT != null ? SV.photoT : salvoPhotoT(SV.fl);   // a replay keeps the first showing's photo finish
+  if (!replay) SV.photoT = photoT;
   const plan = buildSalvoPlan(SV.fl, replay, photoT);
   SV.pb = { simT: 0, rate: 1, T: 0, segs: plan.segs, P: plan.P, endT: plan.endT, dur: plan.dur, drumAt: plan.drumAt, photoAt: plan.photoAt, photo: photoT > 0, fired: new Set(), done: false, brake: null };
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
-  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.leadSince = 0; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.result = null;
+  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.leadSince = 0; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false;
+  if (!replay) SV.result = null;   // after a replay the winner card comes back
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
   const normal = SV.fl.filter(f => f.tl.special !== 'misfire');
@@ -6208,7 +6220,7 @@ function salvoReplay() {
 function salvoReplan() {
   const pb = SV.pb;
   if (SV.phase !== 'flight' || !pb || pb.done) return;
-  const plan = buildSalvoPlan(SV.fl, SV.replay, pb.photo ? salvoPhotoT(SV.fl) : -1);
+  const plan = buildSalvoPlan(SV.fl, SV.replay, pb.photo ? SV.photoT : -1);
   pb.segs = plan.segs; pb.P = plan.P; pb.brake = null; pb.photoAt = plan.photoAt;
   const rest = salvoRun(pb.segs, pb.P, pb.endT, { simT: pb.simT, rate: pb.rate });
   pb.dur = pb.T + rest.T;
@@ -6224,7 +6236,7 @@ function salvoIdleBig() {
   const R = S.race;
   if (!R) return;
   const vol = salvoVolley();
-  setBig(!vol.length ? 'SEE RESULTS' : vol.some(q => q.bonus) ? 'BONUS VOLLEY' : 'NEXT VOLLEY', true);
+  setBig(!vol.length ? 'SEE RESULTS' : vol.every(q => q.bonus) ? 'BONUS VOLLEY' : 'NEXT VOLLEY', true);
 }
 
 /* ---------- per-frame ---------- */
@@ -6236,7 +6248,7 @@ function updateSalvo(dt) {
       const step = salvoLoadStep(), n = SV.fl.length;
       const loaded = clamp(Math.floor((SV.pt - 0.5 * pace) / step) + 1, 0, n);
       if (loaded > SV.loaded) { for (let i = SV.loaded; i < loaded; i++) { if (S.rt - (SV.sndAt.load || -9) > 0.07) { SV.sndAt.load = S.rt; SFX.play('quack', SV.fl[i].pl.duck.pitch * 1.15, 3); } } SV.loaded = loaded; }
-      if (SV.pt >= 0.5 * pace + n * step + 0.75 * pace) { SV.loaded = n; SV.phase = 'armed'; SV.pt = 0; setBig('LIGHT THE FUSE', true); SFX.play('click'); SFX.play('crank', 3); if (n > 1) say(S.race.idx === 0 ? 'countInFirst' : 'countIn', {}, { prio: 1 }); }
+      if (SV.pt >= 0.5 * pace + n * step + 0.75 * pace) { SV.loaded = n; SV.phase = 'armed'; SV.pt = 0; setBig('LIGHT THE FUSE', true); SFX.play('click'); SFX.play('crank', 3); if (n > 1) say('salvoCount', {}, { prio: 1 }); }
       salvoCam(dt, -110 - 15 * Math.min(n, 16), 150, 3.0);
       break;
     }
@@ -6457,7 +6469,9 @@ function salvoEnd() {
   const w = SV.result.best, vars = { duck: w.pl.duck.name, player: w.pl.name, distance: fmtFt(w.tl.final), margin: margin != null ? marginText(Math.abs(margin)) : '' };
   SFX.play('quack', w.pl.duck.pitch, 1);
   if (newRecord) { setTimeout(() => SFX.play('record'), 200); SFX.play('fireworks'); SFX.play('cheer', 2); Caps.big('NEW POND RECORD!', { px: 100, color: '#ffd23f', dur: 3, y: 560 }); say('newRecord', vars, { prio: 2, delay: 0.3 }); fireworks(); }
-  else if (leaderF) { SFX.play('leader'); SFX.play('cheer', 1.6); if (SV.result.photo && margin != null && margin < 25) say('photoWon', vars, { prio: 2, delay: 0.25 }); else say(st.length > 1 ? 'salvoWin' : 'landLong', vars, { prio: 2, delay: 0.3 }); }
+  else if (leaderF && (w.tl.final < 0 || (st.length === 1 && w.tl.special === 'backfire'))) { SFX.play('sad'); say('wrongWay', vars, { prio: 2, delay: 0.3 }); }
+  else if (leaderF && st.length === 1) { const D = w.tl.final; if (D > 2000) SFX.play('cheer', 1.4); else if (D < 300) SFX.play('aww'); say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', vars, { prio: 2, delay: 0.3 }); }
+  else if (leaderF) { SFX.play('leader'); SFX.play('cheer', 1.6); if (SV.result.photo && margin != null && margin < 25) say('photoWon', vars, { prio: 2, delay: 0.25 }); else say('salvoWin', vars, { prio: 2, delay: 0.3 }); }
   else { SFX.play('aww'); Caps.say('Nobody caught ' + lead.pl.duck.name + '. Still ' + fmtFt(lead.dist) + ' to beat.', { prio: 2, delay: 0.3 }); }
   if (pbs.length && !newRecord) Caps.say(pbs.length === 1 ? 'And a personal best for ' + pbs[0].pl.name + '!' : pbs.length + ' personal bests in that volley!', { delay: 3.0 });
   burst('confetti', 60, { x: 760, y: 240, sp0: 200, sp1: 560, l0: 1.4, l1: 2.4, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
@@ -6677,7 +6691,7 @@ function drawSalvoHUD(ctx, V, t) {
     let line = n + ' duck' + (n === 1 ? '' : 's') + ', one cannon';
     if (ph === 'load') line = 'Loading: ' + SV.loaded + ' of ' + n;
     else if (ph === 'flight') { const air = SV.fl.filter(f => !f.done && (f.y - SIM.groundY(f.x) > 3)).length, roll = SV.fl.filter(f => !f.done).length - air, down = SV.fl.filter(f => f.done).length; line = (air ? air + ' in the air' : '') + (air && roll ? ' · ' : '') + (roll ? roll + ' rolling' : '') + ((air || roll) && down ? ' · ' : '') + (down ? down + ' down' : ''); }
-    else if (ph === 'result' || ph === 'idle') line = 'All ' + n + ' down' + (salvoVolley().length ? ' · ' + salvoVolley().length + ' still to launch' : '');
+    else if (ph === 'result' || ph === 'idle') line = (n ? 'All ' + n + ' down' : standings().length + ' duck' + (standings().length === 1 ? '' : 's') + ' on the board') + (salvoVolley().length ? ' · ' + salvoVolley().length + ' still to launch' : '');
     txt(ctx, line, x + 24, y + 84, { px: 28, color: OUT, sw: 0, align: 'left', maxW: w - 44 });
   }
   // who is in front, live
@@ -6846,7 +6860,7 @@ function resumeRace(c) {
   L.phase = 'idle';   // never inherit a finished show's 'on the way to the results' state
   refreshWorld();
   Lines.reset(c.seed);
-  S.turbo = c.turbo != null ? !!c.turbo : (!!S.settings.turboDefault || c.players.length > 15);
+  S.turbo = c.turbo != null ? !!c.turbo : (!!S.settings.turboDefault || (c.mode !== 'salvo' && c.players.length > 15));
   Toast.show('Resuming race ' + c.id, 2000);
   if (c.stage === 'reveal' || c.stage === 'forecast') go('reveal');
   else if (c.stage === 'launch') { Particles.clear(); Caps.reset(); go('launch'); if (c.mode === 'salvo') salvoLoad(true); else loadDuck(true); }
