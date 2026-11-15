@@ -490,6 +490,7 @@ C.LINES = {
   salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!'],
   salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!"],
   salvoCall: ['{duck} is out in front at {distance}!', 'Still {n} ducks on the move out there!', "{player}'s duck leads the way: {distance} and counting.", '{n} of them still going. Do not blink!', 'Out in front right now: {duck}!', "It's {duck} at the front of the flock. {n} ducks still moving!", 'Anybody could still win this. {n} ducks left out there!'],
+  salvoPickLead: ["My pick! {duck} takes the lead! I said this! I said this on air!", "Bill's pick is out in front! Nobody act surprised.", "{player}'s duck, my pick, takes the lead! Vindication!"],
   salvoRecord: ['{duck} is past the pond record line and still going!', "That's record country! {player}'s duck is out there!", '{duck} just flew past the all-time record!'],
   salvoWin: ['{duck} is the farthest duck out there: {distance}!', 'Nobody went farther than {duck}! {distance}!', "It's {duck} out in front when the feathers settle: {distance}!", '{duck} takes it by {margin}!'],
   debutIntro: ['A first ever launch for {player}! Be gentle, Thunderbill.', 'Welcome to the cannon, {player}! First time in the barrel.', "{player}'s very first duck. Everybody remembers their first."],
@@ -5469,7 +5470,7 @@ function drawLaunch(ctx, dt) {
 }
 
 /* ---------- landing flags + ghost lines ---------- */
-function drawFieldMarks(ctx, V, noLabels) {
+function drawFieldMarks(ctx, V, noLabels, extra) {
   const R = S.race;
   L.curLabel = null;
   if (!R) return;
@@ -5481,6 +5482,7 @@ function drawFieldMarks(ctx, V, noLabels) {
     const isCur = L.pl && pl.key === L.pl.key && L.phase === 'result';
     marks.push({ x: r.dist, pl, rise: isCur ? easeBack(L.pt / 0.4) : 1, cur: L.pl && pl.key === L.pl.key });
   }
+  if (extra) for (const m of extra) marks.push(m);
   marks.sort((a, b) => a.x - b.x);
   const lead = leaderEntry();
   // ghost lines: leader, last real race winner, all-time record
@@ -5645,7 +5647,7 @@ function drawWaitingLine(ctx, V, t) {
   if (ph !== 'flight' && V.z > 2.5) txt(ctx, 'UP NEXT', lx, ly, { px: 22, color: '#fff', sw: 5 });
 }
 // actors for distance events and gags; behind=true draws the ones that go behind the duck
-function drawEventActors(ctx, V, t, s, px, behind, tlArg, plArg) {
+function drawEventActors(ctx, V, t, s, px, behind, tlArg, plArg, hideGag) {
   const tl = tlArg || L.tl, PL = plArg || L.pl;
   const W = (x, y) => [V.sx(x), V.sy(y)];
   for (const e of tl.events) {
@@ -5679,7 +5681,9 @@ function drawEventActors(ctx, V, t, s, px, behind, tlArg, plArg) {
       case 'tree': if (!behind && rt > (e.tEnd - e.t) - 1.2 && rt < (e.tEnd - e.t) + 0.3) { const [x, y] = W(e.x - 8, e.y + 6); drawSquirrel(ctx, x, y, 60 * ds, S.time); } break;
     }
   }
-  for (const g of tl.gags) {
+  for (let gi = 0; gi < tl.gags.length; gi++) {
+    const g = tl.gags[gi];
+    if (hideGag && hideGag.has(gi)) continue;
     const def = C.EVENTS[g.id];
     const rt = t - g.t;
     if (rt < -(def.antic || 0) || rt > g.tEnd - g.t + 0.3) continue;
@@ -6027,7 +6031,7 @@ function salvoLoad(first) {
     L.barrel = 45; L.squash = 0;
     SV.replay = false; SV.result = null; SV.tags = []; SV.pb = null; SV.lead = null; SV.drumOn = false; SV.ticks = -1; SV.sndAt = {};
     if (!vol.length) { SV.fl = []; SV.phase = 'idle'; SV.pt = 0; if (standings().length) setBig('SEE RESULTS', true); else { Store.del('current'); S.race = null; go('title'); } return; }
-    SV.fl = vol.map((q, i) => ({ q, i, pl: R.players[q.p], tl: null, fired: new Set(), prevY: 0, landed: false, squash: 0, done: false, x: 0, y: 0, vis: 1, lastSmoke: 0, doneAt: -1 }));
+    SV.fl = vol.map((q, i) => ({ q, i, pl: R.players[q.p], tl: null, fired: new Set(), hideGag: new Set(), gagOn: {}, prevY: 0, landed: false, squash: 0, done: false, x: 0, y: 0, vis: 1, lastSmoke: 0, doneAt: -1 }));
     SV.volley = R.idx === 0 ? 0 : (SV.volley | 0) + 1;
     SV.bonus = vol.every(q => q.bonus);
     SV.driftSeed = R.seed >>> 0;
@@ -6173,7 +6177,7 @@ function salvoCountdown() {
 function salvoFire(replay) {
   const R = S.race;
   SV.replay = !!replay;
-  for (const f of SV.fl) { f.fired = new Set(); f.prevY = f.tl.y[0]; f.landed = false; f.squash = 0; f.done = false; f.doneAt = -1; f.x = f.tl.x[0]; f.y = f.tl.y[0]; f.vis = 1; f.rank = 0; }
+  for (const f of SV.fl) { f.fired = new Set(); f.hideGag = new Set(); f.gagOn = {}; f.prevY = f.tl.y[0]; f.landed = false; f.squash = 0; f.done = false; f.doneAt = -1; f.x = f.tl.x[0]; f.y = f.tl.y[0]; f.vis = 1; f.rank = 0; }
   const photoT = replay && SV.photoT != null ? SV.photoT : salvoPhotoT(SV.fl);   // a replay keeps the first showing's photo finish
   if (!replay) SV.photoT = photoT;
   const plan = buildSalvoPlan(SV.fl, replay, photoT);
@@ -6194,8 +6198,8 @@ function salvoFire(replay) {
     for (let i = 0; i < 16; i++) Particles.add({ type: 'smoke', ws: true, x: m.x + fx.range(-5, 5), y: m.y + fx.range(-5, 5), vx: Math.cos(a) * fx.range(10, 70) + fx.range(-14, 14), vy: Math.sin(a) * fx.range(10, 70) + fx.range(-6, 12), drag: 1.5, life: fx.range(1.2, 2.4), r: fx.range(26, 46), a: 0.8 });
     burst('feather', 22, { x: m.x, y: m.y, a0: -a, spread: 1.4, sp0: 20, sp1: 90, l0: 1.2, l1: 2.4, r0: 8, r1: 14, colors: normal.slice(0, 6).map(f => C.COLORS[f.pl.duck.color].c).concat(['#ffffff']), extra: { ws: true, g: -12, drag: 1.2 } });
   } else SFX.play('puff');
-  Caps.big(SV.fl.length > 1 ? 'FIRE IN THE DUCKS!' : 'FIRE IN THE DUCK!', { px: 96, dur: 2, y: 250 });
-  if (replay) Caps.big('INSTANT REPLAY', { px: 64, color: '#ffffff', y: 360, delay: 0.1 });
+  Caps.big(SV.fl.length > 1 ? 'FIRE IN THE DUCKS!' : 'FIRE IN THE DUCK!', { px: 96, dur: 2, y: 620 });   // below the flock, which goes up and away
+  if (replay) Caps.big('INSTANT REPLAY', { px: 64, color: '#ffffff', y: 520, delay: 0.1 });
   else say(SV.fl.length > 1 ? 'salvoLaunch' : 'launch', { n: SV.fl.length, duck: SV.fl[0].pl.duck.name }, { delay: 0.5, prio: 1 });
   if (SV.fl.length > 2) SFX.play('cheer', 1.6);
 }
@@ -6335,10 +6339,11 @@ function updateSalvoFlight(dt) {
         impactFX(e, sampleTL(tl, e.t), d);
         const sc = SALVO_SCORE[e.id] || 20;
         const cap = e.id === 'skip' ? 'SKIP!' : e.id === 'billboard' ? 'BONK!' : def.cap;
-        if (cap) salvoTag(f, cap, { color: def.kind === 'obstacle' ? '#ffb8a8' : def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', px: sc >= 55 ? 36 : 30, dur: sc >= 55 ? 2 : 1.5 });
+        const bigCap = sc >= 70 && cap && !Caps.freshBig(1.6) && t > 2.2;   // the big ones get the big caption instead
+        if (cap && !bigCap) salvoTag(f, cap, { color: def.kind === 'obstacle' ? '#ffb8a8' : def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', px: sc >= 55 ? 36 : 30, dur: sc >= 55 ? 2 : 1.5 });
         if (['geese', 'billboard', 'mud', 'tree', 'ooo', 'gatekeeper', 'replyall', 'castle', 'trampoline', 'bell'].includes(e.id)) Shake.add(3);
         // the big moments get the big caption (with whose duck it is); Bill calls the best of the rest when he is free
-        if (sc >= 70 && cap && !Caps.freshBig(1.6) && t > 2.2) Caps.big(cap + '\n' + f.pl.name, { px: 84, color: def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', dur: 2.2 });
+        if (bigCap) Caps.big(cap + '\n' + f.pl.name, { px: 84, color: def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', dur: 2.2 });
         if (!SV.replay && C.LINES['ev_' + e.id]) {
           // Bill is mid-sentence: the best of what he missed gets said as soon as he is free, while it is still news
           if (!salvoSay('ev_' + e.id, vars, { delay: 0.3, prio: sc >= 55 ? 1 : 0 }, sc >= 70 ? 0 : sc >= 44 ? 1.6 : 2.6) && (!SV.pend || sc > SV.pend.sc)) SV.pend = { pool: 'ev_' + e.id, vars, sc, at: S.rt };
@@ -6360,10 +6365,13 @@ function updateSalvoFlight(dt) {
       const def = C.EVENTS[g.id];
       if (!f.fired.has('g' + i) && t >= g.t - (def.antic || 0)) {
         f.fired.add('g' + i);
+        // the screen-filling gags take turns: one plane, one balloon, two screams at a time across the whole flock
+        const lim = { plane: 1, balloon: 1, scream: 1 }[g.id];
+        if (lim) { const busy = SV.fl.filter(o => o !== f && o.gagOn && o.gagOn[g.id] > t).length; if (busy >= lim) { f.hideGag.add(i); return; } f.gagOn[g.id] = g.tEnd + 0.3; }
         if (g.id === 'scream') salvoSnd('scream', 0.5, (g.tEnd - g.t) / Math.max(1, pb.rate));
         else if (g.id === 'wave') salvoSnd('quack', 0.15, d.pitch, 1);
         else if (def.sfx) salvoSnd(def.sfx, 0.5);
-        if (def.cap) salvoTag(f, def.cap, { color: '#ffffff', dur: 1.4 });
+        // (a gag's own picture says it all: no call-out, the flock is busy enough)
       }
       if (g.id === 'shades' && !f.fired.has('gc' + i) && t >= g.t + 0.6) { f.fired.add('gc' + i); salvoSnd('cool', 0.4); }
     });
@@ -6383,7 +6391,6 @@ function updateSalvoFlight(dt) {
     if (t >= tl.endT) {
       f.done = true; f.doneAt = S.rt;
       salvoSnd('thud', 0.05); salvoSnd('quack', 0.12, d.pitch, 1);
-      salvoTag(f, fmtFt(tl.final), { color: '#ffffff', px: 34, dur: 2.4 });
     } else { moving++; lastMover = f; }
   }
   // who is in front right now (ducks still in the barrel or hidden do not count)
@@ -6397,6 +6404,7 @@ function updateSalvoFlight(dt) {
       if (SV.cand !== front) { SV.cand = front; SV.candAt = pb.T; }
       else if (pb.T - SV.candAt > 0.45) {
         SV.lead = front; SV.leadSince = pb.T; SV.cand = null;
+        if (t > 3.5 && front.pl.key === billPickKey(R) && !pb.fired.has('pickLead') && !SV.replay) { pb.fired.add('pickLead'); salvoSay('salvoPickLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 1.2); }
         if (t > 3.5) { salvoSnd('rankup', 0.3, 1); salvoTag(front, 'LEADS!', { color: '#9be58b', px: 32, dur: 1.4 }); if (!SV.replay && moving > 1) salvoSay('salvoLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 0 }, 4.5); }
       }
     } else SV.cand = null;
@@ -6506,6 +6514,7 @@ function salvoPieceState(t) {
     return st;
   };
 }
+function ph0() { return SV.phase === 'flight' && !SV.replay; }
 function drawSalvo(ctx, dt) {
   const R = S.race;
   if (!R) return;
@@ -6518,7 +6527,10 @@ function drawSalvo(ctx, dt) {
   wc.save(); wc.translate(shx, shy);
   // the sky only goes dark when the camera's own duck is up there, and in a salvo the camera stays with the pack
   drawWorld(wc, { cond: S.cond, course: { dayKey: S.course.dayKey, pieces: S.course.pieces }, V, t: S.time, pieceState: salvoPieceState(t), space: 0 });
-  drawFieldMarks(wc, V, true);   // flags without labels: the salvo's own name tags say who is who
+  // flags without labels (the salvo's own name tags say who is who); a duck's flag goes in the moment it stops
+  const extra = ph0() ? SV.fl.filter(f => f.done && f.tl && !(S.race.results[f.pl.key] && S.race.results[f.pl.key].dist >= f.tl.final)).map(f => ({ x: f.tl.final, pl: f.pl, rise: easeBack(clamp((S.rt - f.doneAt) / 0.4, 0, 1)), cur: false })) : null;
+  SV.flagN = extra ? extra.length : 0;
+  drawFieldMarks(wc, V, true, extra);
   drawSalvoActors(wc, V, t);
   Particles.draw(wc, V, 'world');
   wc.restore();
@@ -6555,6 +6567,7 @@ function drawSalvoActors(ctx, V, t) {
         const hx = lerp(x0, m.x, u), hy = lerp(y0, m.y + 3, u) + Math.sin(u * Math.PI) * (46 + (m.x - x0) * 0.16);
         const k = 1 - 0.45 * clamp((u - 0.7) / 0.3, 0, 1);
         drawDuck(ctx, d, V.sx(hx), V.sy(hy) - sz * 0.45 * k, sz * k, duckDrawOpts(f.pl, { pose: 'scared', rot: -u * 3.2, flap: S.time * 4 + i }));
+        if (u < 0.8) { const tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff', lab = f.pl.name; ctx.font = font(26); const w = Math.min(280, ctx.measureText(lab).width + 22), tx = V.sx(hx), ty = V.sy(hy) - sz * 1.15; ctx.save(); ctx.globalAlpha = clamp(Math.min(u * 6, (0.8 - u) * 6), 0, 1); rr(ctx, tx - w / 2, ty - 18, w, 36, 10); fillStroke(ctx, tm.color, 3); txt(ctx, lab, tx, ty + 1, { px: 26, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 }); ctx.restore(); }   // whose duck is this one?
       }
     }
     // the last few in poke their heads out; the barrel shudders with every new arrival
@@ -6588,7 +6601,7 @@ function drawSalvoActors(ctx, V, t) {
     if (ft < tl.launchT && tl.special !== 'misfire') continue;   // still in the barrel
     const sxw = V.sx(s.x);
     if (sxw < -220 || sxw > 2140) { if (!done && s.vis) tags.push({ f, s, off: true }); continue; }
-    if (!done) drawEventActors(ctx, V, ft, s, px, true, tl, f.pl);
+    if (!done) drawEventActors(ctx, V, ft, s, px, true, tl, f.pl, f.hideGag);
     const ex = tl.extra || {};
     const hatGone = (tl.hat && ft >= tl.hat.t0) || (ex.hatStolenT != null && ft >= ex.hatStolenT);
     if (tl.hat && ft >= tl.hat.t0) {
@@ -6622,7 +6635,7 @@ function drawSalvoActors(ctx, V, t) {
       f.sx = sx; f.sy = sy;
       tags.push({ f, s, sx, sy, done });
     }
-    if (!done) drawEventActors(ctx, V, ft, s, px, false, tl, f.pl);
+    if (!done) drawEventActors(ctx, V, ft, s, px, false, tl, f.pl, f.hideGag);
   }
   SV.drawn = tags; SV.px = px;
 }
@@ -6632,17 +6645,21 @@ function drawSalvoTags(ctx, V) {
   const fpx = n > 24 ? 20 : n > 12 ? 22 : 25;
   const placed = [];
   const leadKey = SV.phase === 'flight' ? (SV.lead && SV.lead.pl.key) : (SV.result && SV.result.lead && SV.result.lead.pl.key);
+  const pick = S.race ? billPickKey(S.race) : null;
   // movers and the leader get their tag first (best spot); the rest fit in around them
   const order = tags.filter(g => !g.off).sort((a, b) => ((b.f.pl.key === leadKey ? 2 : 0) + (b.done ? 0 : 1)) - ((a.f.pl.key === leadKey ? 2 : 0) + (a.done ? 0 : 1)) || b.sx - a.sx);
   for (const g of order) {
     const f = g.f, tm = teamOf(f.pl), isLead = f.pl.key === leadKey && n > 1;
-    const label = f.pl.name + (g.done && f.tl ? ' · ' + fmtFt(f.tl.final) : '');
+    const label = (f.pl.key === pick ? '★ ' : '') + f.pl.name + (g.done && f.tl ? ' · ' + fmtFt(f.tl.final) : '');
     ctx.font = font(fpx);
     const w = Math.min(300, ctx.measureText(label).width + 22), h = fpx + 12;
     let x = clamp(g.sx, w / 2 + 6, 1480 - w / 2), y = g.sy - px * 0.62 - h / 2, lvl = 0;
     while (lvl < 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) { y -= h + 3; lvl++; }
-    if (lvl >= 7 && !isLead && g.done) continue;   // a crowd: the board has everybody
-    placed.push({ x, y, w, h });
+    if (lvl >= 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) continue;   // a crowd with no room left: the board has everybody
+    // a big flock packed together: a tag that would have to stack is shown only for the leaders (the rest are on the
+    // board, and their own tags come back as soon as the pack spreads out)
+    if (n > 14 && lvl > 0 && !isLead && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) continue;
+    placed.push({ x, y, w, h, label });
     const dark = tm.color === '#F0E442' || tm.color === '#ffffff';
     rr(ctx, x - w / 2, y - h / 2, w, h, 9); fillStroke(ctx, tm.color, 3);
     txt(ctx, label, x, y + 1, { px: fpx, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 });
@@ -6650,18 +6667,27 @@ function drawSalvoTags(ctx, V) {
     if (isLead) { const cy = y - h / 2 - 16; ctx.save(); ctx.translate(x, cy + Math.sin(S.time * 5) * 2); ctx.beginPath(); ctx.moveTo(-17, 9); ctx.lineTo(-19, -9); ctx.lineTo(-8, 0); ctx.lineTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(19, -9); ctx.lineTo(17, 9); ctx.closePath(); fillStroke(ctx, '#ffd23f', 3.5); ctx.restore(); }
     f.tagY = y - h / 2;
   }
-  // event call-outs float up from the duck
+  // event call-outs float up from the duck; each one moves up until it is clear of the name tags and the call-outs
+  // already placed
+  const cps = placed.slice();
   for (const g of SV.tags) {
     const f = g.f;
     if (f.sx == null) continue;
     const k = (S.rt - g.t0) / g.dur;
     if (k < 0 || k > 1) continue;
     const a = k < 0.12 ? k / 0.12 : k > 0.75 ? (1 - k) / 0.25 : 1;
-    const y = (f.tagY != null ? f.tagY : f.sy - px) - 26 - k * 46 - (g.slot || 0) * 34;
-    ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(clamp(f.sx, 120, 1380), y); ctx.scale(0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1)), 0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1))); ctx.rotate(-0.05);
+    ctx.font = font(g.px);
+    const cw = Math.min(420, ctx.measureText(g.text).width) + 16, chh = g.px * 1.1, cx = clamp(f.sx, 120, 1380);
+    let y = (f.tagY != null ? f.tagY : f.sy - px) - 26 - k * 46;
+    const hit = () => cps.some(o => Math.abs(o.x - cx) < (o.w + cw) / 2 && Math.abs(o.y - y) < (o.h + chh) / 2);
+    for (let tries = 0; tries < 6 && hit(); tries++) y -= chh * 0.55;
+    if (y < 120 || hit()) continue;   // no clear spot: the board and the name tags carry the story
+    cps.push({ x: cx, y, w: cw, h: chh, text: g.text });
+    ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(cx, y); ctx.scale(0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1)), 0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1))); ctx.rotate(-0.05);
     txt(ctx, g.text, 0, 0, { px: g.px, color: g.color, sw: g.px * 0.22, maxW: 420 });
     ctx.restore();
   }
+  SV.drawnTags = cps;   // what went on screen this frame (name tags first, then call-outs): for the tests
   // ducks that are out of the picture: an arrow on the edge says who and where
   let upN = 0, sideN = 0;
   for (const g of tags) {
@@ -6765,6 +6791,13 @@ function drawSalvoBoard(ctx) {
     }
   }
   rows.sort((a, b) => (a.wait ? 1 : 0) - (b.wait ? 1 : 0) || (a.wait ? a.order - b.order : b.dist - a.dist));
+  // in flight the order is only re-dealt every half second (ducks pass each other all the time; rows that never stop
+  // sliding cannot be read). Between re-deals the distances keep counting.
+  if (flying) {
+    const key = rows.map(e => e.pl.key).join();
+    if (!SVB.order || S.rt - SVB.orderAt > 0.5 || SVB.order.length !== rows.length) { SVB.order = rows.map(e => e.pl.key); SVB.orderAt = S.rt; }
+    else if (key !== SVB.order.join()) { const pos = new Map(SVB.order.map((k, i) => [k, i])); rows.sort((a, b) => (pos.has(a.pl.key) ? pos.get(a.pl.key) : 999) - (pos.has(b.pl.key) ? pos.get(b.pl.key) : 999)); }
+  } else SVB.order = null;
   const x = 1500, y = 14, w = 404, total = rows.length;
   const maxH = 880, cap = total > 28 ? 26 : total;
   const rh = clamp(Math.floor((maxH - 70 - (total > cap ? 40 : 10)) / Math.max(1, cap)), 28, 70);
@@ -6778,10 +6811,10 @@ function drawSalvoBoard(ctx) {
   const down = flying ? SV.fl.filter(f => f.done).length + standings().filter(e => !inVol.has(e.pl.key)).length : standings().length;
   txt(ctx, down + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
   const two = rh >= 56, npx = two ? 27 : clamp(Math.round(rh * 0.62), 18, 28);
-  const best = SV.result && SV.result.best ? SV.result.best.pl.key : null;
+  const best = SV.result && SV.result.best ? SV.result.best.pl.key : null, pick = billPickKey(R);
   shown.forEach((e, i) => {
     const pl = e.pl, target = y + 62 + i * rh;
-    const prev = SVB.seen[pl.key], ry = prev == null || Math.abs(prev - target) > 600 || SVB.pg !== pg ? target : approach(prev, target, 9, 1 / 60);
+    const prev = SVB.seen[pl.key], ry = prev == null || Math.abs(prev - target) > 600 || SVB.pg !== pg ? target : approach(prev, target, 16, 1 / 60);
     SVB.seen[pl.key] = ry;
     const hl = (flying && SV.lead && SV.lead.pl.key === pl.key) || (!flying && e.rank === 1 && !e.wait && standings().length > 0);
     if (hl) { rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = 'rgba(255,210,63,0.5)'; ctx.fill(); }
@@ -6796,11 +6829,11 @@ function drawSalvoBoard(ctx) {
     const dtxt = e.wait ? '' : e.live ? fmtFt(Math.max(0, e.dist)) : fmtFt(e.dist);
     ctx.font = font(npx); const dw = dtxt ? ctx.measureText(dtxt).width + 14 : 0;
     if (two) {
-      txt(ctx, pl.name, nx + 24, cy - 13, { px: npx, color: OUT, sw: 0, align: 'left', maxW: w - (nx - x) - 40 });
+      txt(ctx, (pl.key === pick ? '★ ' : '') + pl.name, nx + 24, cy - 13, { px: npx, color: OUT, sw: 0, align: 'left', maxW: w - (nx - x) - 40 });
       txt(ctx, pl.duck.name, nx, cy + 15, { px: 22, color: '#6b6577', sw: 0, align: 'left', maxW: w - (nx - x) - dw - 24, weight: 800 });
       if (dtxt) txt(ctx, dtxt, x + w - 18, cy + 15, { px: npx, color: e.live ? '#c22f1f' : OUT, sw: 0, align: 'right' });
     } else {
-      txt(ctx, pl.name, nx + 22, cy + 1, { px: npx, color: OUT, sw: 0, align: 'left', maxW: w - (nx - x) - dw - 44 });
+      txt(ctx, (pl.key === pick ? '★ ' : '') + pl.name, nx + 22, cy + 1, { px: npx, color: OUT, sw: 0, align: 'left', maxW: w - (nx - x) - dw - 44 });
       if (dtxt) txt(ctx, dtxt, x + w - 18, cy + 1, { px: npx, color: e.live ? '#c22f1f' : OUT, sw: 0, align: 'right' });
     }
   });
