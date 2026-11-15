@@ -2019,6 +2019,71 @@ function runSelfTest() {
   check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
+  // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
+  const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
+  try {
+    const fakeTl = dist => ({ final: dist, maxAlt: 40, airtime: 2, nDist: 0, special: null, hat: null, events: [], gags: [] });
+    const duck = (name) => ({ name, rarity: 'common', pitch: 1 });
+    let mismatch = 0;
+    const fl = [];
+    for (let i = 0; i < 4; i++) {
+      const seed = flightSeed(raceSeed, players[i].key, 0);
+      const alone = SIM.simulate(seed, cond, course, null, { record: false });
+      const again = SIM.simulate(seed, cond, course, null, { record: false });
+      if (alone.final !== again.final || !isFinite(alone.final)) mismatch++;
+      fl.push({ tl: alone, pl: { key: players[i].key } });
+    }
+    check('a volley flies the same distances as the same seeds one by one', mismatch === 0, mismatch + ' mismatches');
+    const wasTurbo = S.turbo;
+    S.turbo = false;
+    const plan = buildSalvoPlan(fl, false, -1);
+    const planFast = buildSalvoPlan(fl, true, -1);
+    S.turbo = wasTurbo;
+    const segsOk = s => s.segs && s.segs.length && s.segs.every((sg, i) => sg.a <= sg.b + 1e-6 && (i === 0 || Math.abs(sg.a - s.segs[i - 1].b) < 1e-3) && isFinite(sg.r)) && Math.abs(s.segs[0].a) < 1e-6 && Math.abs(s.segs[s.segs.length - 1].b - s.endT) < 1e-3;
+    check('salvo plan is ordered and inside the pace cap', isFinite(plan.dur) && plan.dur > 0 && plan.dur <= SALVO_PACE.normal.cap * 1.12 + 0.05 && segsOk(plan) && isFinite(planFast.dur) && planFast.dur <= SALVO_PACE.turbo.cap * 1.12 + 0.05 && segsOk(planFast), 'normal ' + (plan.dur && plan.dur.toFixed(1)) + 's turbo ' + (planFast.dur && planFast.dur.toFixed(1)) + 's');
+    S.race = { id: 'self-quiet', seed: 7, day, practice: false, saved: false, mode: 'classic', players: [{ name: 'Ada', key: 'ada', team: 0, duck: duck('Quiet Duck') }], queue: [{ p: 0, s: 0 }, { p: 0, s: 1, bonus: true }], idx: 0, results: {}, shots: {}, legend: [], record: 80, pbs: { ada: 50 } };
+    L.pl = S.race.players[0]; L.q = S.race.queue[0]; L.tl = fakeTl(120); L.photo = false; L.drum = true; L.replay = false;
+    Caps.reset();
+    endFlight(true);
+    const shot1 = S.race.shots.ada ? S.race.shots.ada.length : 0;
+    check('a quiet landing is scored once and shows its card', L.phase === 'result' && L.result && L.result.dist === 120 && S.race.results.ada.dist === 120 && shot1 === 1 && S.race.idx === 1 && S.race.record === 120 && !Caps.bigs.length && !Caps.queue.length && !Caps.cur && !Caps.bubble);
+    skipFlight();
+    check('skip does nothing once the duck has already landed', S.race.idx === 1 && S.race.shots.ada.length === 1);
+    L.q = S.race.queue[1]; L.tl = fakeTl(40); L.replay = false;
+    endFlight(true);
+    check('bonus ammo keeps the longer shot', S.race.results.ada.dist === 120 && S.race.shots.ada.length === 2);
+    L.replay = true; L.tl = fakeTl(999); L.q = S.race.queue[0];
+    endFlight(false);
+    check('a replay is never scored', S.race.results.ada.dist === 120 && S.race.shots.ada.length === 2);
+    S.race = { id: 'self-salvo', seed: 9, day, practice: true, saved: false, mode: 'salvo', players: [{ name: 'Ada', key: 'ada', team: 0, duck: duck('A') }, { name: 'Bo', key: 'bo', team: 1, duck: duck('B') }], queue: [{ p: 0, s: 0 }, { p: 1, s: 0 }], idx: 0, results: {}, shots: {}, legend: [], record: null, pbs: {} };
+    SV.replay = false; SV.drumOn = false; SV.pb = { photo: false }; SV.phase = 'flight';
+    SV.fl = [{ q: S.race.queue[0], pl: S.race.players[0], tl: fakeTl(300) }, { q: S.race.queue[1], pl: S.race.players[1], tl: fakeTl(180) }];
+    Caps.reset();
+    salvoEnd(true);
+    check('a quiet salvo is scored once with no celebration', SV.phase === 'result' && S.race.idx === 2 && S.race.results.ada.dist === 300 && S.race.results.bo.dist === 180 && !Caps.bigs.length && !Caps.queue.length && !Caps.bubble);
+    salvoSkip();
+    check('skip after a salvo does not score it again', S.race.idx === 2 && S.race.shots.ada.length === 1 && S.race.shots.bo.length === 1);
+    SV.replay = true; SV.phase = 'flight'; SV.pb = { photo: false };
+    salvoEnd(true);
+    check('a salvo replay is never scored', S.race.idx === 2 && S.race.results.ada.dist === 300);
+    const real = { id: 'self-last', stage: 'results', saved: true, practice: false, players: [{ name: 'Ada', key: 'ada' }], queue: [{ p: 0, s: 0 }], results: { ada: { dist: 10 } }, day, seed: 1 };
+    Store.set('current', real);
+    S.race = Store.get('current', null);
+    keepFinishedShow();
+    const fin = finishedShow();
+    check('DONE on a real show leaves Last results', !!fin && fin.id === 'self-last' && fin.stage === 'results' && !savedShow());
+    const prac = { id: 'self-prac', stage: 'results', saved: true, practice: true, players: [{ name: 'Bo', key: 'bo' }], queue: [{ p: 0, s: 0 }] };
+    Store.set('current', prac);
+    S.race = Store.get('current', null);
+    keepFinishedShow();
+    check('DONE on a practice show does not leave Last results', !finishedShow() && !storedShow());
+  } finally {
+    S.race = keep.race; S.turbo = keep.turbo;
+    L.phase = keep.phase; L.pl = keep.pl; L.q = keep.q; L.tl = keep.tl; L.pb = keep.pb; L.result = keep.result; L.replay = keep.replay; L.drum = keep.drum; L.photo = keep.photo; L.quietLand = keep.quietLand;
+    SV.phase = keep.sv.phase; SV.fl = keep.sv.fl; SV.replay = keep.sv.replay; SV.pb = keep.sv.pb; SV.result = keep.sv.result; SV.drumOn = keep.sv.drumOn; SV.pt = keep.sv.pt;
+    if (keep.current) Store.set('current', keep.current); else Store.del('current');
+    Caps.reset();
+  }
   return out;
 }
 
@@ -5260,9 +5325,10 @@ function onGag(g) {
   if (C.LINES['ev_' + g.id] && fx.chance(0.75)) say('ev_' + g.id, { duck: d.name }, { delay: 0.5 });
   if (g.id === 'selfie') quip('selfie', { delay: 0.3 });
 }
-function endFlight() {
+function endFlight(quiet) {
   L.restAt = S.time;   // wandering pieces keep roaming on this clock once the flight clock stops
   if (L.replay) { L.replay = false; L.phase = 'idle'; L.pt = 0; const last = S.race.idx >= S.race.queue.length; setBig(last ? 'SEE RESULTS' : 'NEXT DUCK', true); return; }
+  L.quietLand = !!quiet;   // a skip scores the flight and shows the card, with no celebration
   setPhase('result');
 }
 function onResult() {
@@ -5299,6 +5365,8 @@ function onResult() {
   const personalBest = !R.practice && pbBefore != null && D > pbBefore && D > 0 && !L.q.bonus;
   if (personalBest) R.pbs[pl.key] = Math.round(D);
   L.result = { dist: D, cmp, rank, of: st.length, newLeader, newRecord, photo: L.photo, counted, bonus: !!L.q.bonus, margin, personalBest };
+  const quiet = L.quietLand; L.quietLand = false;
+  if (quiet) { if (L.drum) { SFX.stopDrum(0.04); L.drum = false; } return; }   // scored, card up, no cheer
   // flag + celebration
   SFX.play('quack', d.pitch, 1);
   if (L.drum) { SFX.stopDrum(0.04); SFX.play('cymbal'); L.drum = false; }
@@ -5325,13 +5393,19 @@ function fireworks() {
 }
 function skipFlight() {
   if (L.phase === 'intro' || L.phase === 'ladder') { setPhase('armed'); return; }
-  if (L.phase === 'countdown') { L.barrel = L.tl.angle; L.gauge.locked = true; L.gauge.a = L.tl.angle; L.gauge.p = Math.round(L.tl.power * 100); startFlight(false); }
+  if (L.phase === 'armed') { lightFuse(); return; }   // same as the big button: the countdown starts, it does not fire yet
+  if (L.phase === 'countdown') {
+    SFX.stopLong(0.05); Voice.stop();   // the fuse was still burning; the boom takes over
+    L.barrel = L.tl.angle; L.gauge.locked = true; L.gauge.a = L.tl.angle; L.gauge.p = Math.round(L.tl.power * 100);
+    startFlight(false);
+    return;   // firing is the skip: another S, once they are in the air, is the silent landing
+  }
   if (L.phase === 'flight' && L.pb) {
     L.pb.simT = L.tl.endT; L.pb.hold = 0; L.pb.done = true;
     Caps.reset(); L.drum = false; SFX.stopLong(0.06); Voice.stop();
     const s = sampleTL(L.tl, L.tl.endT);
     L.cam.cx = s.x + 120; L.cam.z = 3.2; L.cam.gy = GROUND_Y;
-    endFlight();
+    endFlight(true);
   }
 }
 function replayFlight() {
@@ -6206,12 +6280,13 @@ function salvoFire(replay) {
 }
 function salvoSkip() {
   if (SV.phase === 'load') { SV.pt = 1e6; return; }
-  if (SV.phase === 'countdown') { salvoFire(false); return; }
+  if (SV.phase === 'armed') { salvoPrimary(); return; }   // same as the big button: light the fuse, don't fire yet
+  if (SV.phase === 'countdown') { SFX.stopLong(0.05); Voice.stop(); salvoFire(false); return; }
   if (SV.phase === 'flight' && SV.pb) {
     SV.pb.simT = SV.pb.endT; SV.pb.done = true;
     Caps.reset(); SFX.stopLong(0.06); Voice.stop(); SV.drumOn = false; SV.tags = [];
     for (const f of SV.fl) { const s = sampleTL(f.tl, f.tl.endT); f.x = s.x; f.y = s.y; f.vis = 1; f.done = true; if (f.doneAt < 0) f.doneAt = S.rt - 9; }
-    salvoEnd();
+    salvoEnd(true);   // scored, winner card up, no cheer
   }
 }
 function salvoReplay() {
@@ -6450,11 +6525,11 @@ function salvoFlightCam(dt, t) {
   cam.cx = approach(cam.cx, mid + 210 / cam.z, 2.2 * fast, dt);
   cam.gy = approach(cam.gy, GROUND_Y, 3, dt);
 }
-function salvoEnd() {
+function salvoEnd(quiet) {
   const R = S.race, pb = SV.pb;
   SV.restAt = S.time;
   Caps.bigs = Caps.bigs.filter(b => S.rt - b.t0 < 0.4);
-  if (SV.drumOn) { SFX.stopDrum(0.04); SFX.play('cymbal'); SV.drumOn = false; }
+  if (SV.drumOn) { SFX.stopDrum(0.04); if (!quiet) SFX.play('cymbal'); SV.drumOn = false; }
   if (SV.replay) { SV.replay = false; SV.phase = 'idle'; SV.pt = 0; salvoIdleBig(); return; }
   const before = leaderEntry(), prevRecord = R.record;
   const pbs = [];
@@ -6477,6 +6552,7 @@ function salvoEnd() {
   SV.fl.forEach(f => { f.finalRank = st.findIndex(e => e.pl.key === f.pl.key) + 1; });
   SV.phase = 'result'; SV.pt = 0; SV.tags = [];
   setBig(R.idx >= R.queue.length ? 'SEE RESULTS' : 'NEXT VOLLEY', false);
+  if (quiet) return;   // the card is up and the distances are in; the cheer waits for a landing that was actually watched
   const w = SV.result.best, vars = { duck: w.pl.duck.name, player: w.pl.name, distance: fmtFt(w.tl.final), margin: margin != null ? marginText(Math.abs(margin)) : '' };
   SFX.play('quack', w.pl.duck.pitch, 1);
   if (newRecord) { setTimeout(() => SFX.play('record'), 200); SFX.play('fireworks'); SFX.play('cheer', 2); Caps.big('NEW POND RECORD!', { px: 100, color: '#ffd23f', dur: 3, y: 560 }); say('newRecord', vars, { prio: 2, delay: 0.3 }); fireworks(); }
@@ -7182,10 +7258,21 @@ function startResults() {
   RS.tod = teamOfDay(R);
   RS.conf = 0;
 }
+// DONE on a real show leaves it in storage so Last results can reopen the panorama. A practice show is discarded.
+function keepFinishedShow() {
+  const R = S.race;
+  if (!R) return;
+  if (R.saved && !R.practice) {
+    if (R.stage !== 'results') { R.stage = 'results'; saveRace(); }
+  } else {
+    const c = Store.get('current', null);
+    if (!c || c.id === R.id) Store.del('current');
+  }
+}
 function resultsPrimary() {
   if (RS.page === 0) { RS.page = 1; RS.t = 0; Caps.reset(); setBig('PANORAMA', true); SFX.play('whoosh', 0.6); }
   else if (RS.page === 1) { RS.page = 2; RS.t = 0; Caps.reset(); setBig('DONE', true); SFX.play('whoosh', 0.6); }
-  else { const R = S.race; if (R) { R.stage = 'done'; const c = Store.get('current', null); if (!c || c.id === R.id) Store.del('current'); } S.race = null; go('title'); }
+  else { keepFinishedShow(); S.race = null; go('title'); }
 }
 function updateResults(dt) {
   RS.t += dt;

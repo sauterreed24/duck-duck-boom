@@ -44,11 +44,11 @@ If the laptop struggles while screen-sharing, the game notices the dropped frame
 
 There are five screens, and the **big red button** (or **Space**) is the only control you need.
 
-1. **Title:** the animated logo, Ol' Thunderbill idling with a smoldering fuse, today's date and the Pond Forecast teaser. If today's show was interrupted, the button reads **RESUME SHOW**. A finished show never comes back on the big button: it's already in the Waddle of Fame, and **Last results** reopens its panorama for copying. An unfinished show from an earlier day leaves the big button on **START** and gets its own dated **Resume** button instead.
+1. **Title:** the animated logo, Ol' Thunderbill idling with a smoldering fuse, today's date and the Pond Forecast teaser. If today's show was interrupted, the button reads **RESUME SHOW**. A finished show never comes back on the big button: it's already in the Waddle of Fame, and **Last results** stays on the title until the next show starts, reopening the panorama for copying. Pressing **DONE** there returns to the title and leaves it in place. A practice show is not kept. An unfinished show from an earlier day leaves the big button on **START** and gets its own dated **Resume** button instead.
 2. **Who booked today?** A saved roster grouped by three teams, up to 40 ducks. See [Editing today's names](#editing-todays-names) below. You can also tick **Practice race** (not saved; it covers one show and then switches itself off, and the big button says so), **Auto-advance**, **Turbo** and **Salvo** here (untick Salvo to launch the ducks one by one instead).
 3. **Duck reveal:** cards flip in a cascade and pause on Epic and Legendary ducks. Click any card to reroll that duck. Spotted a typo or a missing person? **◀ Edit names** goes back to the roster before anything starts. **LOCK THEM IN** locks the ducks, then the **Pond Forecast** appears.
 4. **The salvo:** every duck hops into the cannon (a counter on the barrel keeps score). The safety cover flips open, then **LIGHT THE FUSE** runs the 3-2-1 countdown and "FIRE IN THE DUCKS!" sends the whole flock up together. One camera follows the ducks that are still moving. Every duck wears its player's name; call-outs pop up over whatever happens to it; arrows on the edge of the picture point at ducks that have left it (the one in space, say). The leaderboard re-sorts live as ducks pass each other, a crown marks whoever is in front, and Bill calls it like a race. Each duck plants its flag where it stops. When only one is still going, everybody watches that one. Then the farthest duck gets its card and **SEE RESULTS** takes over.
-5. **Results:** a podium with the Golden Loaf (with the winning margin when it's close), the Good Sport Feather and a list of everyone else, then awards and highlights, then a panorama of every landing flag with **Copy results** for the team chat.
+5. **Results:** a podium with the Golden Loaf (with the winning margin when it's close), the Good Sport Feather and a list of everyone else, then awards and highlights, then a panorama of every landing flag with **Copy results** for the team chat. **DONE** on a real show returns to the title and leaves **Last results** there until the next show replaces it. **DONE** on a practice show discards it.
 
 ### Editing today's names
 
@@ -69,7 +69,7 @@ The roster is saved in the browser, so you only build it once. Each day you just
 | Space | The big red button |
 | R | Instant replay of the volley (or of the last flight in one-by-one mode). Replays use the quicker turbo pacing and are never scored twice. |
 | T | Turbo: quicker loading and countdown, and a flight in a little over half the time. |
-| S | Skip ahead: past the loading, the countdown, or straight to where everyone lands (silent) |
+| S | Skip ahead: past the loading, from the armed wait into the countdown, past the countdown (the cannon fires), or straight to the landing. The landing skip is silent: the flight is scored and the result card shows, with no cheer, fireworks or new captions. A second press is what lands them after the countdown skip. |
 | M | Mute |
 | F | Fullscreen |
 | P | Pause and settings: add a late player, remove a duck that hasn't launched, teams, volume, data. Pause freezes everything, sound included. P again resumes. |
@@ -78,7 +78,7 @@ Hotkeys are ignored while you're typing in a text field. Esc stays the browser's
 
 ### Pacing
 
-A whole salvo show runs about a minute from the first duck hopping in to the results: loading about 5 s, the countdown 3 s, and a flight of about 29 s for a dozen ducks (never more than about 40 s, even with 40). One duck alone flies for about 14 s. Turbo brings a 12-duck flight down to about 17 s.
+A whole salvo show runs about a minute from the first duck hopping in to the results: loading about 5 s, the countdown 3 s, and a flight of about 29 s for a dozen ducks (never longer than 34 s, even with 40). One duck alone flies for about 14 s. Turbo brings a 12-duck flight down to about 17 s, and a turbo flight is never longer than 20 s.
 
 The salvo plays at full speed while it matters: the launch, every event, and as long as two or more ducks are in the air. Once most of the flock is down, the stragglers' quiet stretches run faster (the speed only ever eases up and down), and every duck's final stop near the end plays at full speed again. A finish within 25 ft gets a **PHOTO FINISH!** in slow motion, and a drumroll builds over the last seconds.
 
@@ -149,10 +149,7 @@ pond: 6% of all flights end with a swim; at most 18% of one day's ducks
 | `ART` | Ducks, Ol' Thunderbill, set pieces, actors, scenery, flags, Bill, trophies, logo, the big red button |
 | `AUDIO` | Web Audio synth, all sound effects, announcer voice |
 | `UI` | Screens, captions, launch sequence and playback, HUD, results, Waddle of Fame, roster and settings, debug panel |
+| `SALVO` | The whole flock in one cannon: loading, countdown, shared playback, name tags, live board |
 | `BOOT` | Main loop, input, hotkeys, resize, `window.DDB` |
 
 To add an event, add an entry to `C.EVENTS` and give it a physics effect in `SIM`'s `FX` table (or a piece type in `PIECE_DEFS`). Then add art in `ART.piece` or the actor switch, and optional `ev_<id>` lines in `C.LINES`.
-
-## Not included
-
-- **Salvo mode** (every duck fires at once). It was the last stretch goal and was left out to keep the core show solid.
