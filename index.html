@@ -5482,7 +5482,8 @@ function drawFieldMarks(ctx, V, noLabels, extra) {
     const isCur = L.pl && pl.key === L.pl.key && L.phase === 'result';
     marks.push({ x: r.dist, pl, rise: isCur ? easeBack(L.pt / 0.4) : 1, cur: L.pl && pl.key === L.pl.key });
   }
-  if (extra) for (const m of extra) marks.push(m);
+  // a duck that has just stopped past its earlier best: its new flag replaces the old one
+  if (extra && extra.length) { const ks = new Set(extra.map(m => m.pl.key)); for (let i = marks.length - 1; i >= 0; i--) if (ks.has(marks[i].pl.key)) marks.splice(i, 1); for (const m of extra) marks.push(m); }
   marks.sort((a, b) => a.x - b.x);
   const lead = leaderEntry();
   // ghost lines: leader, last real race winner, all-time record
@@ -6404,8 +6405,10 @@ function updateSalvoFlight(dt) {
       if (SV.cand !== front) { SV.cand = front; SV.candAt = pb.T; }
       else if (pb.T - SV.candAt > 0.45) {
         SV.lead = front; SV.leadSince = pb.T; SV.cand = null;
-        if (t > 3.5 && front.pl.key === billPickKey(R) && !pb.fired.has('pickLead') && !SV.replay) { pb.fired.add('pickLead'); salvoSay('salvoPickLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 1.2); }
-        if (t > 3.5) { salvoSnd('rankup', 0.3, 1); salvoTag(front, 'LEADS!', { color: '#9be58b', px: 32, dur: 1.4 }); if (!SV.replay && moving > 1) salvoSay('salvoLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 0 }, 4.5); }
+        const showBest = Math.max(-1e9, ...Object.values(R.results).map(r => r.dist));   // earlier volleys' best
+        const showLead = front.x > showBest;
+        if (t > 3.5 && showLead && front.pl.key === billPickKey(R) && !pb.fired.has('pickLead') && !SV.replay) { pb.fired.add('pickLead'); salvoSay('salvoPickLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 1.2); }
+        if (t > 3.5 && showLead) { salvoSnd('rankup', 0.3, 1); salvoTag(front, 'LEADS!', { color: '#9be58b', px: 32, dur: 1.4 }); if (!SV.replay && moving > 1) salvoSay('salvoLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 0 }, 4.5); }
       }
     } else SV.cand = null;
   }
@@ -6552,7 +6555,8 @@ function drawSalvoActors(ctx, V, t) {
   if (ph === 'loading') { ART.cannon(ctx, V, cannonSt); return; }
   if (ph === 'load' || ph === 'armed' || ph === 'countdown') {
     // the queue on the hill, hopping into the barrel one after another
-    const step = salvoLoadStep(), sz = clamp(13 * V.z, 46, 78), hopT = 0.55 * pace;
+    const step = salvoLoadStep(), sz = clamp(13 * V.z, 46, 78), hopT = 0.55 * pace, loadTags = [];
+    SV.loadTags = loadTags;
     const peek = [];
     for (let i = n - 1; i >= 0; i--) {
       const f = SV.fl[i], d = f.pl.duck;
@@ -6567,7 +6571,7 @@ function drawSalvoActors(ctx, V, t) {
         const hx = lerp(x0, m.x, u), hy = lerp(y0, m.y + 3, u) + Math.sin(u * Math.PI) * (46 + (m.x - x0) * 0.16);
         const k = 1 - 0.45 * clamp((u - 0.7) / 0.3, 0, 1);
         drawDuck(ctx, d, V.sx(hx), V.sy(hy) - sz * 0.45 * k, sz * k, duckDrawOpts(f.pl, { pose: 'scared', rot: -u * 3.2, flap: S.time * 4 + i }));
-        if (u < 0.8) { const tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff', lab = f.pl.name; ctx.font = font(26); const w = Math.min(280, ctx.measureText(lab).width + 22), tx = V.sx(hx), ty = V.sy(hy) - sz * 1.15; ctx.save(); ctx.globalAlpha = clamp(Math.min(u * 6, (0.8 - u) * 6), 0, 1); rr(ctx, tx - w / 2, ty - 18, w, 36, 10); fillStroke(ctx, tm.color, 3); txt(ctx, lab, tx, ty + 1, { px: 26, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 }); ctx.restore(); }   // whose duck is this one?
+        if (u < 0.8) { const tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff', lab = f.pl.name; ctx.font = font(26); const w = Math.min(280, ctx.measureText(lab).width + 22), tx = V.sx(hx), ty = V.sy(hy) - sz * 1.15; if (loadTags.some(o => Math.abs(o.x - tx) < (o.w + w) / 2 + 4 && Math.abs(o.y - ty) < 40)) continue; loadTags.push({ x: tx, y: ty, w }); SV.loadTags = loadTags; ctx.save(); ctx.globalAlpha = clamp(Math.min(u * 6, (0.8 - u) * 6), 0, 1); rr(ctx, tx - w / 2, ty - 18, w, 36, 10); fillStroke(ctx, tm.color, 3); txt(ctx, lab, tx, ty + 1, { px: 26, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 }); ctx.restore(); }   // whose duck is this one?
       }
     }
     // the last few in poke their heads out; the barrel shudders with every new arrival
@@ -6646,6 +6650,8 @@ function drawSalvoTags(ctx, V) {
   const placed = [];
   const leadKey = SV.phase === 'flight' ? (SV.lead && SV.lead.pl.key) : (SV.result && SV.result.lead && SV.result.lead.pl.key);
   const pick = S.race ? billPickKey(S.race) : null;
+  for (const f of SV.fl) f.tagY = null;   // a call-out anchors to this frame's tag only (or to the duck itself)
+  const movers = tags.filter(g => !g.done && !g.off).length;
   // movers and the leader get their tag first (best spot); the rest fit in around them
   const order = tags.filter(g => !g.off).sort((a, b) => ((b.f.pl.key === leadKey ? 2 : 0) + (b.done ? 0 : 1)) - ((a.f.pl.key === leadKey ? 2 : 0) + (a.done ? 0 : 1)) || b.sx - a.sx);
   for (const g of order) {
@@ -6655,10 +6661,13 @@ function drawSalvoTags(ctx, V) {
     const w = Math.min(300, ctx.measureText(label).width + 22), h = fpx + 12;
     let x = clamp(g.sx, w / 2 + 6, 1480 - w / 2), y = g.sy - px * 0.62 - h / 2, lvl = 0;
     while (lvl < 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) { y -= h + 3; lvl++; }
-    if (lvl >= 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) continue;   // a crowd with no room left: the board has everybody
+    const keep = isLead || (!g.done && movers <= 3);   // the leader and the last few ducks still going always keep their tag
+    const drop = () => { f.tagOffAt = S.rt; };
+    if (lvl >= 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) { drop(); continue; }   // a crowd with no room left: the board has everybody
+    if (!keep && f.tagOffAt != null && S.rt - f.tagOffAt < 0.4) continue;   // once dropped, stays off a moment (no flicker)
     // a big flock packed together: a tag that would have to stack is shown only for the leaders (the rest are on the
     // board, and their own tags come back as soon as the pack spreads out)
-    if (n > 14 && lvl > 0 && !isLead && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) continue;
+    if (n > 14 && lvl > 0 && !keep && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) { drop(); continue; }
     placed.push({ x, y, w, h, label });
     const dark = tm.color === '#F0E442' || tm.color === '#ffffff';
     rr(ctx, x - w / 2, y - h / 2, w, h, 9); fillStroke(ctx, tm.color, 3);
