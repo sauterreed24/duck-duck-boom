@@ -68,7 +68,8 @@
   #roster .toggles .tgrow { display: flex; gap: 22px; flex-wrap: wrap; }
   #roster .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   #roster .total { font-size: 30px; font-weight: 900; }
-  #roster .warn { color: #b0392b; font-size: 20px; font-weight: 900; min-height: 24px; }
+  #roster .warn { color: #b0392b; font-size: 20px; font-weight: 900; min-height: 24px; max-width: 640px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #roster #rundo { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ---------- modal (settings / pause / text fallback) ---------- */
   #modal { position: absolute; inset: 0; background: rgba(20,18,28,.55); display: flex; align-items: center; justify-content: center; }
@@ -2020,7 +2021,7 @@ function runSelfTest() {
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
   // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
-  const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
+  const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
   try {
     const fakeTl = dist => ({ final: dist, maxAlt: 40, airtime: 2, nDist: 0, special: null, hat: null, events: [], gags: [] });
     const duck = (name) => ({ name, rarity: 'common', pitch: 1 });
@@ -2089,8 +2090,30 @@ function runSelfTest() {
     const cap = 'It is Squire Crouton Beakworth out in front: 5,569 ft!', room = mctx.measureText('It is Squire Crouton Beakworth out in front: 5,569').width + 4;
     const wl = wrapText(mctx, cap, room);
     check('a caption keeps a distance and its unit on one line', wl.length === 2 && wl[1] === '5,569 ft!' && wl.join(' ') === cap, wl.join(' | '));
+    // the yellow label is part of the big button, except where the title screen already has a button at x=1460
+    S.screen = 'reveal';
+    for (const lab of ['LOCK IN & SHUFFLE', 'REVEAL (PRACTICE)']) {
+      Big.label = lab;
+      const pill = bigLabelBox(mctx), hit = bigHitRect(mctx);
+      const covers = pill && hit && pill.x >= hit.x - 0.5 && pill.y >= hit.y - 0.5 && pill.x + pill.natural <= hit.x + hit.w + 0.5 && pill.y + pill.h <= hit.y + hit.h + 0.5;
+      check('the big button includes its ' + lab + ' label', covers, pill && hit ? Math.round(pill.x + pill.natural) + ' in ' + Math.round(hit.x) + '+' + Math.round(hit.w) : 'missing');
+    }
+    S.screen = 'title';
+    Big.label = 'LOCK IN & SHUFFLE';
+    const hitT = bigHitRect(mctx);
+    check('the big button stays clear of the title-screen button', hitT.x + hitT.w <= 1450, Math.round(hitT.x + hitT.w) + '');
+    const longArrow = '▲ ' + 'M'.repeat(40) + ' · 1,234 ft up';
+    const chipW = edgeChipWidth(mctx, longArrow);
+    const stack = edgeChipFit(40, 190, 40, 800);
+    const stackY = 190 + (stack.shown + (stack.more ? 1 : 0) - 1) * 40;
+    check('an off-screen arrow keeps a long name inside its chip', chipW <= 280 && chipW >= 36, chipW + 'px');
+    check('a stack of off-screen arrows stops above the big button', stack.more > 0 && stackY < 800 && stackY < Big.y - 50, stack.shown + '+' + stack.more + ' at ' + stackY);
+    const longHl = 'Admiral Breadcrumbs Quackington got caught by ANOTHER CANNON at 12,345 ft and fired again, then kept going past every flag on the pond.';
+    const lay = layoutHighlights(mctx, [longHl, 'Ada flew 40 ft.', longHl, longHl, longHl]);
+    check('a long highlight wraps once and stays above the big button', lay.rows[0].lines.length === 2 && lay.rows[1].lines.length === 1 && lay.rows.every(r => r.lines.length <= 2) && lay.y0 + lay.boxH <= 880 && lay.y0 + lay.boxH < Big.y - 50, 'box ' + Math.round(lay.y0 + lay.boxH) + ' lines ' + lay.rows.map(r => r.lines.length).join(','));
   } finally {
-    S.race = keep.race; S.turbo = keep.turbo;
+    S.race = keep.race; S.turbo = keep.turbo; S.screen = keep.screen;
+    Big.label = keep.bigLabel; Big.enabled = keep.bigEnabled;
     L.phase = keep.phase; L.pl = keep.pl; L.q = keep.q; L.tl = keep.tl; L.pb = keep.pb; L.result = keep.result; L.replay = keep.replay; L.drum = keep.drum; L.photo = keep.photo; L.quietLand = keep.quietLand;
     SV.phase = keep.sv.phase; SV.fl = keep.sv.fl; SV.replay = keep.sv.replay; SV.pb = keep.sv.pb; SV.result = keep.sv.result; SV.drumOn = keep.sv.drumOn; SV.pt = keep.sv.pt;
     if (keep.current) Store.set('current', keep.current); else Store.del('current');
@@ -3931,23 +3954,38 @@ function hitButton(x, y) { for (let i = S.buttons.length - 1; i >= 0; i--) { con
 /* ---------- the big red button (primary action on every screen) ---------- */
 const Big = { open: 0, target: 0, label: '', enabled: false, press: 0, x: 960, y: 992, changedAt: -9, lastPress: -9 };
 function setBig(label, enabled) { if (label !== Big.label || !!enabled !== Big.enabled) Big.changedAt = S.rt; Big.label = label; Big.enabled = !!enabled; Big.target = enabled ? 1 : 0; }
+// the title screen's right-hand button starts at x=1460; the label must not steal its clicks
+function bigHitLimit() { return S.screen === 'title' ? 1450 : 1912; }
+function bigLabelBox(ctx) {
+  if (!Big.label) return null;
+  ctx.font = font(34);
+  const natural = ctx.measureText(Big.label).width + 40;
+  const x = Big.x + 125, y = Big.y - 26;
+  const w = Math.max(80, Math.min(natural, bigHitLimit() - x));
+  return { x, y, w, h: 60, natural };
+}
+function bigHitRect(ctx) {
+  let x = Big.x - 95, y = Big.y - 50, r = x + 190, b = y + 100;
+  const pill = ctx && Big.label ? bigLabelBox(ctx) : null;
+  if (pill) { r = Math.max(r, pill.x + pill.w); y = Math.min(y, pill.y); b = Math.max(b, pill.y + pill.h); }
+  return { x, y, w: r - x, h: b - y };
+}
 function drawBig(ctx, dt) {
   Big.open = approach(Big.open, Big.target, 9, dt);
   Big.press = Math.max(0, Big.press - dt);
   const hov = S.hover === 'big';
   drawBigButton(ctx, Big.x, Big.y, { open: Big.open, enabled: Big.enabled && Big.open > 0.8, hover: hov, press: Big.press > 0 }, S.rt);
-  if (Big.label) {
-    const lx = Big.x + 125, ly = Big.y + 4;
-    ctx.font = font(34);
-    const w = ctx.measureText(Big.label).width + 40;
+  const pill = bigLabelBox(ctx);
+  if (pill) {
     ctx.globalAlpha = Big.enabled ? 1 : 0.85;
-    rr(ctx, lx, ly - 30, w, 60, 18); fillStroke(ctx, Big.enabled ? '#fff8e6' : '#d8d2c4', 5);
-    txt(ctx, Big.label, lx + w / 2, ly + 1, { px: 34, color: Big.enabled ? '#c22f1f' : '#6b6577', sw: 0 });
+    rr(ctx, pill.x, pill.y, pill.w, pill.h, 18); fillStroke(ctx, Big.enabled ? '#fff8e6' : '#d8d2c4', 5);
+    txt(ctx, Big.label, pill.x + pill.w / 2, pill.y + pill.h / 2 + 1, { px: 34, color: Big.enabled ? '#c22f1f' : '#6b6577', sw: 0, maxW: pill.w - 28 });
     ctx.globalAlpha = 1;
     // keyboard hint
-    txt(ctx, 'or press SPACE', lx + w / 2, ly + 52, { px: 20, color: '#fff', sw: 4 });
+    txt(ctx, 'or press SPACE', pill.x + pill.w / 2, pill.y + pill.h + 22, { px: 20, color: '#fff', sw: 4 });
   }
-  S.buttons.push({ id: 'big', x: Big.x - 95, y: Big.y - 50, w: 190, h: 100, fn: () => primary(true) });
+  const hit = bigHitRect(ctx);
+  S.buttons.push({ id: 'big', x: hit.x, y: hit.y, w: hit.w, h: hit.h, fn: () => primary(true) });
 }
 
 /* ---------- captions: Bill's lower third + big impact text + duck speech bubbles ---------- */
@@ -4361,9 +4399,10 @@ const Roster = {
     const stale = oldTicks.length > 0;
     const oldDay = stale ? oldTicks.map(p => p.td || lastDay).sort()[oldTicks.length - 1] : null;
     const over = checked > 40 ? S.roster.filter(p => p.checked).sort((a, b) => a.team - b.team || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(40).map(p => p.name) : [];
+    const warnText = over.length ? 'Only 40 fit. Sitting out: ' + over.join(', ') : checked === 1 ? 'Solo run: one duck versus the record!' : '';
     this.el.innerHTML =
       '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick who booked · click a name to fix it · dots move teams · up to 40 ducks</div></div>' +
-      '<div style="text-align:right;flex:none"><div class="bar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap">' + (this.undo ? '<button class="btn small" id="rundo" title="Put this person back on the roster">↶ Undo: put ' + esc(this.undo.p.name) + ' back</button>' : '') + '<button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn">' + (over.length ? 'Only 40 fit. Sitting out: ' + esc(over.join(', ')) : checked === 1 ? 'Solo run: one duck versus the record!' : '') + '</div></div></div>' +
+      '<div style="text-align:right;flex:none"><div class="bar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap">' + (this.undo ? '<button class="btn small" id="rundo" title="Put this person back on the roster">↶ Undo: put ' + esc(this.undo.p.name) + ' back</button>' : '') + '<button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn"' + (warnText ? ' title="' + esc(warnText) + '"' : '') + '>' + esc(warnText) + '</div></div></div>' +
       (stale ? '<div class="stale">' + (oldTicks.length === checked ? 'These ticks are' : oldTicks.length + ' of the ticks are') + ' from ' + esc(prettyDate(oldDay)) + '. New day? <button class="btn small" id="rfresh">' + (oldTicks.length === checked ? 'Untick everyone' : 'Untick those ' + oldTicks.length) + '</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
@@ -5893,7 +5932,7 @@ function drawLaunchHUD(ctx, V, t) {
   drawSidebar(ctx);
   // a quiet reminder of the host keys
   if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
-  Caps.drawBigs(ctx, L.duckScreen && (ph === 'flight' || ph === 'result') ? L.duckScreen.y : null);
+  Caps.drawBigs(ctx, L.duckScreen && (ph === 'flight' || ph === 'result') ? L.duckScreen.y : null, 1040);
   // after landing the bubble goes up-left of the duck, unless NEW LEADER / RECORD is up there: then it sits low as before
   const bannerLive = Caps.bigs.some(b => b.fixedY && S.rt >= b.t0 && S.rt < b.t0 + b.dur);
   if (L.duckScreen && (ph === 'flight' || ph === 'result' || ph === 'idle')) Caps.drawBubble(ctx, L.duckScreen.x, L.duckScreen.y, ph !== 'flight' && L.duckScreen.x > 640 && !bannerLive);
@@ -6414,7 +6453,7 @@ function updateSalvoFlight(dt) {
   const t = pb.simT, n = SV.fl.length;
   // the drumroll builds over the last seconds and lands on the result
   if (!SV.replay && n > 1 && !SV.drumOn && t >= pb.drumAt && pb.dur - pb.T > 1.2) { SV.drumOn = true; SFX.startDrum(Math.max(1.2, pb.dur - pb.T)); }
-  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
+  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff', y: 620 }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
   let moving = 0, lastMover = null;
   for (const f of SV.fl) {
     const tl = f.tl, d = f.pl.duck, vars = { duck: d.name, player: f.pl.name };
@@ -6441,7 +6480,7 @@ function updateSalvoFlight(dt) {
         if (cap && !bigCap) salvoTag(f, cap, { color: def.kind === 'obstacle' ? '#ffb8a8' : def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', px: sc >= 55 ? 36 : 30, dur: sc >= 55 ? 2 : 1.5 });
         if (['geese', 'billboard', 'mud', 'tree', 'ooo', 'gatekeeper', 'replyall', 'castle', 'trampoline', 'bell'].includes(e.id)) Shake.add(3);
         // the big moments get the big caption (with whose duck it is); Bill calls the best of the rest when he is free
-        if (bigCap) Caps.big(cap + '\n' + f.pl.name, { px: 84, color: def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', dur: 2.2 });
+        if (bigCap) Caps.big(cap + '\n' + f.pl.name, { px: 84, color: def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', dur: 2.2, y: 620 });
         if (!SV.replay && C.LINES['ev_' + e.id]) {
           // Bill is mid-sentence: the best of what he missed gets said as soon as he is free, while it is still news
           if (!salvoSay('ev_' + e.id, vars, { delay: 0.3, prio: sc >= 55 ? 1 : 0 }, sc >= 70 ? 0 : sc >= 44 ? 1.6 : 2.6) && (!SV.pend || sc > SV.pend.sc)) SV.pend = { pool: 'ev_' + e.id, vars, sc, at: S.rt };
@@ -6518,7 +6557,7 @@ function updateSalvoFlight(dt) {
   // the lines to beat (last show's winner, the pond record): the first duck across each gets a cheer
   if (front && !SV.replay && t > 2.5) {
     if (R.lastWin != null && R.lastWin > 300 && !pb.fired.has('lw') && front.x > R.lastWin) { pb.fired.add('lw'); salvoTag(front, "PAST LAST SHOW'S WINNER!", { color: '#ffffff', px: 30, dur: 2 }); salvoSnd('ooh', 1); }
-    if (!R.practice && SV.recordAt != null && SV.recordAt > 300 && !pb.fired.has('rec') && front.x > SV.recordAt) { pb.fired.add('rec'); salvoTag(front, 'PAST THE POND RECORD!', { color: '#ffd23f', px: 34, dur: 2.4 }); salvoSnd('ooh', 1); SFX.play('cheer', 1.2); if (!Caps.freshBig(1.2)) Caps.big('PAST THE RECORD LINE!\n' + front.pl.name, { px: 76, color: '#ffd23f', dur: 2.2 }); salvoSay('salvoRecord', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 0.8); }
+    if (!R.practice && SV.recordAt != null && SV.recordAt > 300 && !pb.fired.has('rec') && front.x > SV.recordAt) { pb.fired.add('rec'); salvoTag(front, 'PAST THE POND RECORD!', { color: '#ffd23f', px: 34, dur: 2.4 }); salvoSnd('ooh', 1); SFX.play('cheer', 1.2); if (!Caps.freshBig(1.2)) Caps.big('PAST THE RECORD LINE!\n' + front.pl.name, { px: 76, color: '#ffd23f', dur: 2.2, y: 620 }); salvoSay('salvoRecord', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 0.8); }
   }
   // only one duck still going: everybody watches that one
   if (!SV.replay && n > 2 && moving === 1 && !SV.lastMover && pb.dur - pb.T > 2.2) { SV.lastMover = true; salvoTag(lastMover, 'STILL GOING!', { color: '#ffffff', px: 32, dur: 2 }); salvoSay('salvoLast', { duck: lastMover.pl.duck.name, player: lastMover.pl.name }, { prio: 1 }, 1.2); }
@@ -6742,6 +6781,20 @@ function drawSalvoActors(ctx, V, t) {
   SV.drawn = tags; SV.px = px;
 }
 // name tags over the ducks (stacked where they would overlap), event call-outs, arrows for ducks out of the picture
+// an off-screen arrow stays inside a chip, and a stack of them stops before y=limit
+function edgeChipWidth(ctx, label) {
+  ctx.font = font(24);
+  return Math.min(280, Math.ceil(ctx.measureText(label).width) + 24);
+}
+function edgeChipFit(n, y0, step, limit) {
+  if (n <= 0 || !step) return { shown: 0, more: 0 };
+  const ok = i => { const y = y0 + i * step; return step > 0 ? y < limit : y > limit; };
+  let slots = 0;
+  while (slots < n && ok(slots)) slots++;
+  if (n <= slots) return { shown: n, more: 0 };
+  if (slots <= 1) return { shown: 0, more: n };
+  return { shown: slots - 1, more: n - (slots - 1) };
+}
 function drawSalvoTags(ctx, V) {
   const tags = SV.drawn || [], px = SV.px || 80, n = SV.fl.length;
   const fpx = n > 24 ? 20 : n > 12 ? 22 : 25;
@@ -6795,22 +6848,52 @@ function drawSalvoTags(ctx, V) {
     ctx.restore();
   }
   SV.drawnTags = cps;   // what went on screen this frame (name tags first, then call-outs): for the tests
-  // ducks that are out of the picture: an arrow on the edge says who and where
-  let upN = 0, sideN = 0;
+  // ducks that are out of the picture: an arrow on the edge says who and where. A long name stays inside the
+  // chip, and a tall stack stops above Bill and the big button; the last chip says how many did not fit.
+  const off = [];
   for (const g of tags) {
     const f = g.f, s = g.s;
-    if (g.done) continue;
+    if (g.done || !s || !s.vis) continue;
     const sx = V.sx(s.x), sy = V.sy(s.y);
     const up = sy < 96, left = sx < 20, right = sx > 1470;
     if (!up && !left && !right) continue;
-    if (!s.vis) continue;
-    const tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff';
+    const tm = teamOf(f.pl);
     const label = (up ? '▲ ' : left ? '◀ ' : '') + f.pl.name + (up ? ' · ' + fmtInt(Math.max(0, s.y)) + ' ft up' : '') + (right ? ' ▶' : '');
-    ctx.font = font(24);
-    const w = ctx.measureText(label).width + 24;
-    const x = up ? clamp(sx, w / 2 + 12, 1470 - w / 2) : left ? w / 2 + 12 : 1470 - w / 2, y = up ? 190 + (upN++) * 40 : clamp(sy, 230, 720) - (sideN++) * 40;
-    rr(ctx, x - w / 2, y - 18, w, 36, 12); fillStroke(ctx, tm.color, 3.5);
-    txt(ctx, label, x, y + 1, { px: 24, color: dark ? OUT : '#fff', sw: 0 });
+    off.push({ up, left, sx, sy, label, tm, dark: tm.color === '#F0E442' || tm.color === '#ffffff' });
+  }
+  const drawChip = (label, x, y, fill, dark) => {
+    const w = edgeChipWidth(ctx, label);
+    rr(ctx, x - w / 2, y - 18, w, 36, 12); fillStroke(ctx, fill, 3.5);
+    txt(ctx, label, x, y + 1, { px: 24, color: dark ? OUT : '#fff', sw: 0, maxW: w - 16 });
+  };
+  const ups = off.filter(c => c.up), sides = off.filter(c => !c.up);
+  const upFit = edgeChipFit(ups.length, 190, 40, 800);
+  for (let i = 0; i < upFit.shown; i++) {
+    const c = ups[i], w = edgeChipWidth(ctx, c.label);
+    drawChip(c.label, clamp(c.sx, w / 2 + 12, 1470 - w / 2), 190 + i * 40, c.tm.color, c.dark);
+  }
+  if (upFit.more) {
+    const label = '+' + upFit.more + ' more', w = edgeChipWidth(ctx, label);
+    const anchor = upFit.shown ? ups[upFit.shown - 1].sx : 740;
+    drawChip(label, clamp(anchor, w / 2 + 12, 1470 - w / 2), 190 + upFit.shown * 40, '#fff8e6', true);
+  }
+  const sideYs = [];
+  for (let i = 0; i < sides.length; i++) {
+    const y = clamp(sides[i].sy, 230, 720) - sideYs.length * 40;
+    if (y < 190 || y >= 800) break;
+    sideYs.push(y);
+  }
+  let sideShown = sideYs.length;
+  if (sides.length > sideShown && sideShown) sideShown--;
+  for (let i = 0; i < sideShown; i++) {
+    const c = sides[i], w = edgeChipWidth(ctx, c.label);
+    drawChip(c.label, c.left ? w / 2 + 12 : 1470 - w / 2, sideYs[i], c.tm.color, c.dark);
+  }
+  const sideMore = sides.length - sideShown;
+  if (sideMore && sideYs.length) {
+    const label = '+' + sideMore + ' more', w = edgeChipWidth(ctx, label), c = sides[sideShown] || sides[0];
+    const y = sideYs[sideShown] != null ? sideYs[sideShown] : sideYs[sideYs.length - 1];
+    if (y >= 190 && y < 800) drawChip(label, c.left ? w / 2 + 12 : 1470 - w / 2, y, '#fff8e6', true);
   }
 }
 function drawSalvoHUD(ctx, V, t) {
@@ -7386,7 +7469,7 @@ function drawPodium(ctx, st) {
     txt(ctx, 'ALSO FLEW', x + 200, y + 32, { px: 26, color: '#6b6577', sw: 0 });
     const fade = pages > 1 ? clamp(Math.min(((k - 1.5) % 4 + 4) % 4, 4 - ((k - 1.5) % 4 + 4) % 4) / 0.3, 0, 1) : 1;
     ctx.globalAlpha = k < 3 ? 1 : fade;
-    rest.forEach((e, i) => { const r = pg * PER + i + 4; txt(ctx, r + '. ' + e.pl.name, x + 20, y + 76 + i * 44, { px: 28, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: 228 }); txt(ctx, fmtDist(st, r - 1), x + 380, y + 76 + i * 44, { px: 28, color: OUT, sw: 0, align: 'right' }); });
+    rest.forEach((e, i) => { const r = pg * PER + i + 4, yy = y + 76 + i * 44; txt(ctx, r + '. ' + e.pl.name, x + 20, yy, { px: 28, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: 190 }); txt(ctx, fmtDist(st, r - 1), x + 380, yy, { px: 28, minPx: 18, color: OUT, sw: 0, align: 'right', maxW: 156 }); });
     ctx.globalAlpha = 1;
     if (pages > 1) txt(ctx, 'page ' + (pg + 1) + ' of ' + pages, x + 200, y + 76 + rows * 44 - 6, { px: 22, color: '#6b6577', sw: 0 });
   }
@@ -7407,6 +7490,41 @@ function awardIcon(ctx, id, x, y, s) {
     default: heartPath(ctx, 0, 0, 22); fillStroke(ctx, '#ff6fb5', 5); break;
   }
   ctx.restore();
+}
+// highlights: a line that does not fit at 28px wraps once, and the panel stays above the big button
+function layoutHighlights(ctx, hl) {
+  const maxW = 1520, y0 = 590, first = y0 + 84, ceil = 880, tail = 34;   // the open safety lid reaches about y=897
+  const rows = (hl || []).map(h => {
+    const text = '• ' + h;
+    ctx.font = font(28, 800);
+    return { lines: ctx.measureText(text).width <= maxW ? [text] : wrapText(ctx, text, maxW, 2) };
+  });
+  if (!rows.length) return { rows, ys: [], y0, boxH: 70, px: 28 };
+  // the space inside a wrapped row stays a full line; only the gaps between rows (and then the type) give way
+  const at = px => {
+    const lead = px * 1.15;
+    const core = rows.map(r => r.lines.length > 1 ? lead : 0);
+    const gap0 = [];
+    for (let i = 0; i < rows.length - 1; i++) gap0.push(rows[i].lines.length > 1 ? 36 : 48);
+    const place = gaps => {
+      const ys = [];
+      let y = first;
+      rows.forEach((r, i) => { ys.push(y); if (i < rows.length - 1) y += core[i] + gaps[i]; });
+      return { ys, bottom: ys[ys.length - 1] + core[core.length - 1] + tail };
+    };
+    let gaps = gap0.slice(), lay = place(gaps);
+    if (lay.bottom > ceil && gap0.length) {
+      const sum = gap0.reduce((a, b) => a + b, 0);
+      const k = Math.max(0, (sum - (lay.bottom - ceil)) / sum);
+      gaps = gap0.map(g => g * k);
+      lay = place(gaps);
+    }
+    return { ys: lay.ys, bottom: lay.bottom, lead, px, gaps };
+  };
+  let px = 28, lay = at(px);
+  while (px > 20 && lay.gaps.length && Math.min.apply(null, lay.gaps) < 16) { px--; lay = at(px); }
+  rows.forEach(r => { r.px = lay.px; r.lead = lay.lead; });
+  return { rows, ys: lay.ys, y0, boxH: Math.max(70, Math.min(lay.bottom, ceil) - y0), px: lay.px };
 }
 function drawAwards(ctx) {
   const aw = RS.aw || [];
@@ -7431,11 +7549,15 @@ function drawAwards(ctx) {
     ctx.restore();
   });
   // highlights
-  const hl = RS.hl || [];
-  const y0 = 590;
-  rr(ctx, 160, y0, 1600, 70 + hl.length * 48, 28); fillStroke(ctx, 'rgba(255,248,230,0.96)', 5);
-  txt(ctx, 'HIGHLIGHTS', 960, y0 + 36, { px: 32, color: '#e8412c', sw: 0 });
-  hl.forEach((h, i) => { const k = clamp((RS.t - 1 - i * 0.3) / 0.3, 0, 1); ctx.globalAlpha = k; txt(ctx, '• ' + h, 200, y0 + 84 + i * 48, { px: 30, color: OUT, sw: 0, align: 'left', maxW: 1520, weight: 800 }); ctx.globalAlpha = 1; });
+  const lay = layoutHighlights(ctx, RS.hl || []);
+  rr(ctx, 160, lay.y0, 1600, lay.boxH, 28); fillStroke(ctx, 'rgba(255,248,230,0.96)', 5);
+  txt(ctx, 'HIGHLIGHTS', 960, lay.y0 + 36, { px: 32, color: '#e8412c', sw: 0 });
+  lay.rows.forEach((r, i) => {
+    const k = clamp((RS.t - 1 - i * 0.3) / 0.3, 0, 1);
+    ctx.globalAlpha = k;
+    r.lines.forEach((ln, j) => txt(ctx, ln, 200, lay.ys[i] + j * r.lead, { px: r.px, color: OUT, sw: 0, align: 'left', weight: 800 }));
+    ctx.globalAlpha = 1;
+  });
 }
 function drawPanorama(ctx, st) {
   const R = S.race, t = S.time;
