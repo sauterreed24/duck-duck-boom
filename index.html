@@ -2110,7 +2110,9 @@ function runSelfTest() {
     check('a stack of off-screen arrows stops above the big button', stack.more > 0 && stackY < 800 && stackY < Big.y - 50, stack.shown + '+' + stack.more + ' at ' + stackY);
     const longHl = 'Admiral Breadcrumbs Quackington got caught by ANOTHER CANNON at 12,345 ft and fired again, then kept going past every flag on the pond.';
     const lay = layoutHighlights(mctx, [longHl, 'Ada flew 40 ft.', longHl, longHl, longHl]);
-    check('a long highlight wraps once and stays above the big button', lay.rows[0].lines.length === 2 && lay.rows[1].lines.length === 1 && lay.rows.every(r => r.lines.length <= 2) && lay.y0 + lay.boxH <= 880 && lay.y0 + lay.boxH < Big.y - 50, 'box ' + Math.round(lay.y0 + lay.boxH) + ' lines ' + lay.rows.map(r => r.lines.length).join(','));
+    check('a long highlight wraps once and stays above the big button', lay.rows[0].lines.length === 2 && lay.rows[1].lines.length === 1 && lay.rows.every(r => r.lines.length <= 2) && lay.y0 + lay.boxH <= 900 && lay.y0 + lay.boxH < Big.y - 50, 'box ' + Math.round(lay.y0 + lay.boxH) + ' lines ' + lay.rows.map(r => r.lines.length).join(','));
+    const shortLay = layoutHighlights(mctx, ['Ada flew 40 ft.', 'Bo flew 50 ft.', 'Cy flew 60 ft.', 'Di flew 70 ft.', 'Ed flew 80 ft.']);
+    check('five short highlights keep their rows', shortLay.px === 28 && shortLay.rows.every(r => r.lines.length === 1) && shortLay.ys.length === 5 && Math.round(shortLay.ys[4] - shortLay.ys[0]) === 192 && shortLay.y0 + shortLay.boxH <= 900, 'pitch ' + (shortLay.ys[4] - shortLay.ys[0]));
   } finally {
     S.race = keep.race; S.turbo = keep.turbo; S.screen = keep.screen;
     Big.label = keep.bigLabel; Big.enabled = keep.bigEnabled;
@@ -7493,7 +7495,7 @@ function awardIcon(ctx, id, x, y, s) {
 }
 // highlights: a line that does not fit at 28px wraps once, and the panel stays above the big button
 function layoutHighlights(ctx, hl) {
-  const maxW = 1520, y0 = 590, first = y0 + 84, ceil = 880, tail = 34;   // the open safety lid reaches about y=897
+  const maxW = 1520, y0 = 590, first = y0 + 84, ceil = 900, tail = 34;   // five ordinary lines already end here, above the safety lid
   const rows = (hl || []).map(h => {
     const text = '• ' + h;
     ctx.font = font(28, 800);
