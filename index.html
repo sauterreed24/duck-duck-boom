@@ -2077,6 +2077,18 @@ function runSelfTest() {
     S.race = Store.get('current', null);
     keepFinishedShow();
     check('DONE on a practice show does not leave Last results', !finishedShow() && !storedShow());
+    // highlights: a set piece that caught several ducks is told once, and the winner's moment is always there
+    const story = (name, dist, id) => ({ name, key: name.toLowerCase(), team: 0, duck: duck('Duck ' + name), r: { dist, sp: null, ev: [[id, 500, 0]] } });
+    const cast = [story('Win', 900, 'cannonception'), story('Two', 800, 'cannonception'), story('Tri', 700, 'ufo'), story('Fou', 600, 'wormhole'), story('Fiv', 500, 'hammock'), story('Six', 400, 'bread'), story('Sev', 300, 'pelican')];
+    S.race = { id: 'self-hl', seed: 3, day, players: cast, queue: [], idx: 0, results: Object.fromEntries(cast.map(p => [p.key, p.r])), shots: {}, legend: [] };
+    const hls = computeHighlights(S.race);
+    check('highlights tell each kind of moment once and include the winner', hls.length === 5 && hls.filter(h => /ANOTHER CANNON/.test(h)).length === 1 && hls.some(h => h.startsWith('Duck Win ')), hls.length + ' lines, ' + hls.filter(h => /ANOTHER CANNON/.test(h)).length + ' cannon');
+    // captions: a distance never breaks between the number and its unit
+    const mctx = document.createElement('canvas').getContext('2d');
+    mctx.font = font(34);
+    const cap = 'It is Squire Crouton Beakworth out in front: 5,569 ft!', room = mctx.measureText('It is Squire Crouton Beakworth out in front: 5,569').width + 4;
+    const wl = wrapText(mctx, cap, room);
+    check('a caption keeps a distance and its unit on one line', wl.length === 2 && wl[1] === '5,569 ft!' && wl.join(' ') === cap, wl.join(' | '));
   } finally {
     S.race = keep.race; S.turbo = keep.turbo;
     L.phase = keep.phase; L.pl = keep.pl; L.q = keep.q; L.tl = keep.tl; L.pb = keep.pb; L.result = keep.result; L.replay = keep.replay; L.drum = keep.drum; L.photo = keep.photo; L.quietLand = keep.quietLand;
@@ -2165,7 +2177,9 @@ function txt(ctx, str, x, y, o) {
   return px;
 }
 function wrapText(ctx, str, maxW, maxLines) {
-  const words = String(str).split(' ');
+  // a number and its unit stay on one line ("5,569 ft!" never ends a caption with a lone "ft!")
+  const words = [];
+  for (const w of String(str).split(' ')) { if (words.length && /^(ft|mph)(?![a-z])/i.test(w) && /\d$/.test(words[words.length - 1])) words[words.length - 1] += ' ' + w; else words.push(w); }
   const lines = [];
   let cur = '';
   for (const w of words) {
@@ -4001,7 +4015,7 @@ const Caps = {
     ctx.restore();
   },
   side: null,
-  drawBigs(ctx, avoidY) {
+  drawBigs(ctx, avoidY, maxW) {
     // keep impact captions on the far side of the duck (with hysteresis so they don't flip-flop)
     if (avoidY != null) {
       if (this.side == null) this.side = avoidY < 520 ? 'low' : 'high';
@@ -4023,7 +4037,7 @@ const Caps = {
       ctx.save(); ctx.globalAlpha = clamp(out, 0, 1);
       ctx.translate(960, b.y); ctx.scale(k, k); ctx.rotate(-0.04);
       const lines = String(b.text).split('\n');
-      lines.forEach((ln, i) => txt(ctx, ln, 0, (i - (lines.length - 1) / 2) * b.px * 1.05, { px: b.px, color: b.color, sw: b.px * 0.2, maxW: 1500, shadow: true }));
+      lines.forEach((ln, i) => txt(ctx, ln, 0, (i - (lines.length - 1) / 2) * b.px * 1.05, { px: b.px, color: b.color, sw: b.px * 0.2, maxW: maxW || 1500, shadow: true }));
       ctx.restore();
     }
   },
@@ -4706,8 +4720,14 @@ function computeHighlights(R) {
   for (const c of cands) { if (picked.length >= 5) break; if (!picked.includes(c) && !used.has(c.who)) take(c); }
   for (const c of cands) { if (picked.length >= 5) break; if (!picked.includes(c) && !usedId.has(c.id)) take(c); }   // a small show: a duck's second story, if it is a new kind
   for (const c of cands) { if (picked.length >= 5) break; if (!picked.includes(c)) take(c); }
+  // (a set piece that caught half the flock is still told once: the winner's moment takes the place of the same kind
+  // of story when one is already on the list)
   const champ = st.length ? st[0].pl.duck.name : null, cw = cands.find(c => c.who === champ);
-  if (cw && !picked.some(c => c.who === champ)) { if (picked.length >= 5) picked.pop(); picked.push(cw); }
+  if (cw && !picked.some(c => c.who === champ)) {
+    const same = picked.findIndex(c => c.id === cw.id);
+    if (same >= 0) picked.splice(same, 1); else if (picked.length >= 5) picked.pop();
+    picked.push(cw);
+  }
   picked.sort((a, b) => b.s - a.s);
   const out = picked.map(c => c.t);
   if (!out.length && st.length) out.push(st[0].pl.duck.name + ' flew ' + fmtFt(st[0].dist) + ' with no help from anyone.');
@@ -6105,10 +6125,12 @@ function salvoLoad(first) {
     L.phase = 'salvo'; L.pt = 0; L.pl = null; L.q = null; L.tl = null; L.pb = null; L.result = null; L.drum = false; L.replay = false; L.photo = false; L.duckScreen = null; L.curLabel = null;
     L.barrel = 45; L.squash = 0;
     SV.replay = false; SV.result = null; SV.tags = []; SV.pb = null; SV.lead = null; SV.drumOn = false; SV.ticks = -1; SV.sndAt = {};
+    SV.bonus = false; SV.late = false;
     if (!vol.length) { SV.fl = []; SV.phase = 'idle'; SV.pt = 0; if (standings().length) setBig('SEE RESULTS', true); else { Store.del('current'); S.race = null; go('title'); } return; }
     SV.fl = vol.map((q, i) => ({ q, i, pl: R.players[q.p], tl: null, fired: new Set(), hideGag: new Set(), gagOn: {}, prevY: 0, landed: false, squash: 0, done: false, x: 0, y: 0, vis: 1, lastSmoke: 0, doneAt: -1 }));
     SV.volley = R.idx === 0 ? 0 : (SV.volley | 0) + 1;
     SV.bonus = vol.every(q => q.bonus);
+    SV.late = R.idx > 0 && !SV.bonus;   // someone who joined after the cannon went off
     SV.driftSeed = R.seed >>> 0;
     SV.phase = 'load'; SV.pt = 0; SV.loaded = 0;
     Particles.clear();
@@ -6798,7 +6820,7 @@ function drawSalvoHUD(ctx, V, t) {
   // top-left card: what this is and how it is going
   { const x = 20, y = 14, w = 470, h = 118;
     rr(ctx, x, y, w, h, 24); fillStroke(ctx, '#fff8e6', 5);
-    txt(ctx, SV.bonus ? 'BONUS VOLLEY' : R.idx > 0 && ph !== 'result' && ph !== 'idle' ? 'LATE VOLLEY' : 'THE SALVO', x + 24, y + 38, { px: 34, color: '#e8412c', sw: 0, align: 'left' });
+    txt(ctx, SV.bonus ? 'BONUS VOLLEY' : SV.late ? 'LATE VOLLEY' : 'THE SALVO', x + 24, y + 38, { px: 34, color: '#e8412c', sw: 0, align: 'left' });
     let line = n + ' duck' + (n === 1 ? '' : 's') + ', one cannon';
     if (ph === 'load') line = 'Loading: ' + SV.loaded + ' of ' + n;
     else if (ph === 'flight') { const air = SV.fl.filter(f => !f.done && (f.y - SIM.groundY(f.x) > 3)).length, roll = SV.fl.filter(f => !f.done).length - air, down = SV.fl.filter(f => f.done).length; line = (air ? air + ' in the air' : '') + (air && roll ? ' · ' : '') + (roll ? roll + ' rolling' : '') + ((air || roll) && down ? ' · ' : '') + (down ? down + ' down' : ''); }
@@ -6832,7 +6854,7 @@ function drawSalvoHUD(ctx, V, t) {
   if (SV.replay) badge('REPLAY', '#ffffff');
   drawSalvoBoard(ctx);
   if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
-  Caps.drawBigs(ctx, null);
+  Caps.drawBigs(ctx, null, 1040);   // a caption with a long player name stays clear of the leaderboard
   const w = SV.result && SV.result.best;
   if ((ph === 'result' || ph === 'idle') && w && w.sx != null) Caps.drawBubble(ctx, w.sx, w.sy - (SV.px || 80) * 0.5, false);
   else if (ph === 'armed' || ph === 'countdown') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
@@ -6843,7 +6865,7 @@ function drawSalvoResult(ctx, r) {
   ctx.save(); ctx.translate(760, 300); ctx.scale(k, k); ctx.translate(-760, -300);
   const x = 330, y = 160, W = 860, H = 290;
   rr(ctx, x, y, W, H, 30); fillStroke(ctx, '#fff8e6', 6);
-  const title = r.leaderInVolley ? (S.race.idx >= S.race.queue.length ? 'FARTHEST DUCK!' : 'IN THE LEAD!') : 'BEST OF THE VOLLEY';
+  const title = r.leaderInVolley ? (S.race.idx >= S.race.queue.length ? 'FARTHEST DUCK!' : 'IN THE LEAD!') : r.n > 1 ? 'BEST OF THE VOLLEY' : SV.bonus ? 'BONUS SHOT' : 'LATE DUCK';
   rr(ctx, x + W / 2 - 230, y - 26, 460, 54, 18); fillStroke(ctx, r.leaderInVolley ? '#ffd23f' : '#e9eef5', 5);
   txt(ctx, title, x + W / 2, y + 2, { px: 34, color: OUT, sw: 0, maxW: 430 });
   const pc = duckPortrait(w.pl.duck, 150, S.cond.friday ? 'party' : '');
@@ -6851,7 +6873,11 @@ function drawSalvoResult(ctx, r) {
   txt(ctx, w.pl.duck.name, x + 220, y + 78, { px: 46, minPx: 28, color: OUT, sw: 0, align: 'left', maxW: W - 250 });
   txt(ctx, w.pl.name + "'s duck", x + 220, y + 124, { px: 30, color: shade(teamOf(w.pl).color === '#F0E442' ? '#8a7d00' : teamOf(w.pl).color, -0.2), sw: 0, align: 'left', maxW: W - 250 });
   txt(ctx, fmtFt(w.tl.final), x + 220, y + 190, { px: 84, color: w.tl.final < 0 ? '#e8412c' : OUT, sw: 0, align: 'left' });
-  let sub = r.of > 1 && r.leaderInVolley && r.margin != null ? 'ahead by ' + marginText(r.margin) : r.leaderInVolley ? 'first on the board' : lead ? marginText(Math.max(0, lead.dist - w.tl.final)) + ' short of ' + lead.pl.name : '';
+  // a volley that did not take the lead says where its best duck stands (or that an earlier, longer shot still counts)
+  const own = S.race.results[w.pl.key];
+  let sub = r.of > 1 && r.leaderInVolley && r.margin != null ? 'ahead by ' + marginText(r.margin) : r.leaderInVolley ? 'first on the board'
+    : w.counted === false && own ? 'best shot stays ' + fmtFt(own.dist)
+    : lead ? (w.finalRank ? ordinal(w.finalRank) + ' of ' + r.of + ' · ' : '') + marginText(Math.max(0, lead.dist - w.tl.final)) + ' short of ' + lead.pl.name : '';
   if (r.newRecord) sub = 'a new pond record';
   rr(ctx, x + 30, y + H - 62, W - 60, 46, 16); fillStroke(ctx, r.leaderInVolley ? '#ffd23f' : '#e9eef5', 4);
   txt(ctx, sub + (r.pbs ? '  ·  ' + r.pbs + ' personal best' + (r.pbs === 1 ? '' : 's') : ''), x + W / 2, y + H - 38, { px: 30, minPx: 22, color: OUT, sw: 0, maxW: W - 90 });
@@ -7397,8 +7423,11 @@ function drawAwards(ctx) {
     drawDuck(ctx, a.e.pl.duck, x + w / 2, y + 250, 110, duckDrawOpts(a.e.pl, { pose: 'stand' }));
     txt(ctx, a.e.pl.duck.name, x + w / 2, y + 330, { px: 28, color: OUT, sw: 0, maxW: w - 24 });
     txt(ctx, a.e.pl.name, x + w / 2, y + 364, { px: 26, color: '#6b6577', sw: 0, maxW: w - 24, weight: 800 });
-    ctx.font = font(24, 800);
-    wrapText(ctx, awardDesc(a), w - 30, 2).forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 398 + j * 28, { px: 24, color: '#4a4458', sw: 0, weight: 800 }));
+    // a long duck name in the description gets smaller type before it gets cut off
+    let dpx = 24, dl;
+    for (; dpx >= 20; dpx -= 2) { ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30); if (dl.length <= 2) break; }
+    if (dl.length > 2) { dpx = 20; ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30, 2); }
+    dl.forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 398 + j * 28, { px: dpx, color: '#4a4458', sw: 0, weight: 800 }));
     ctx.restore();
   });
   // highlights
@@ -7430,7 +7459,9 @@ function drawPanorama(ctx, st) {
     drawFlag(ctx, sx, sy, h, teamOf(e.pl), null, { t, cloth: 74 });
     if (lab) labels.push([sx, sy, h, e, rank]);
   }
-  for (const [sx, sy, h, e, rank] of labels) drawFlag(ctx, sx, sy, h, teamOf(e.pl), rank + '. ' + e.pl.duck.name, { t, px: 26, maxW: 300, cloth: 74, labelOnly: true });
+  // the flags carry the players' names, as they do in the salvo and in the copied results: this is the picture for the
+  // team chat, and people look for themselves
+  for (const [sx, sy, h, e, rank] of labels) drawFlag(ctx, sx, sy, h, teamOf(e.pl), rank + '. ' + e.pl.name, { t, px: 26, maxW: 300, cloth: 74, labelOnly: true });
   // header strip for screenshots
   rr(ctx, 60, 24, 1800, 110, 26); fillStroke(ctx, 'rgba(255,248,230,0.96)', 5);
   txt(ctx, 'Duck Duck BOOM!  ·  ' + shortDate(R.day) + '  ·  ' + st.length + ' duck' + (st.length === 1 ? '' : 's') + '  ·  ' + modName(S.cond), 960, 66, { px: 40, color: OUT, sw: 0, maxW: 1740 });
