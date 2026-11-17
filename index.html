@@ -782,8 +782,11 @@ const Store = (() => {
 })();
 
 /* ---------- typed accessors ---------- */
+// someone who has asked their computer for less motion gets no screen shake by default (Settings can still turn it on)
+// and no camera flash
+const REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function defaultSettings() {
-  return { teams: deepClone(C.TEAM_DEFAULTS), volume: 0.6, muted: false, shake: true, voice: false, turboDefault: false, autoAdvance: false, practice: false, bonusAmmo: false, salvo: true };
+  return { teams: deepClone(C.TEAM_DEFAULTS), volume: 0.6, muted: false, shake: !REDUCED_MOTION, voice: false, turboDefault: false, autoAdvance: false, practice: false, bonusAmmo: false, salvo: true };
 }
 function loadSettings() {
   const s = Object.assign(defaultSettings(), Store.get('settings', {}) || {});
@@ -2137,6 +2140,14 @@ function runSelfTest() {
     check('a long highlight wraps once and stays above the big button', lay.rows[0].lines.length === 2 && lay.rows[1].lines.length === 1 && lay.rows.every(r => r.lines.length <= 2) && lay.y0 + lay.boxH <= 900 && lay.y0 + lay.boxH < Big.y - 50, 'box ' + Math.round(lay.y0 + lay.boxH) + ' lines ' + lay.rows.map(r => r.lines.length).join(','));
     const shortLay = layoutHighlights(mctx, ['Ada flew 40 ft.', 'Bo flew 50 ft.', 'Cy flew 60 ft.', 'Di flew 70 ft.', 'Ed flew 80 ft.']);
     check('five short highlights keep their rows', shortLay.px === 28 && shortLay.rows.every(r => r.lines.length === 1) && shortLay.ys.length === 5 && Math.round(shortLay.ys[4] - shortLay.ys[0]) === 192 && shortLay.y0 + shortLay.boxH <= 900, 'pitch ' + (shortLay.ys[4] - shortLay.ys[0]));
+    // results: a press during the podium reveal finishes it; the next press moves on
+    const rsKeep = { page: RS.page, t: RS.t, aw: RS.aw, hl: RS.hl };
+    RS.page = 0; RS.t = 0.5;
+    resultsPrimary();
+    const finished = RS.page === 0 && RS.t >= 3.7;
+    Big.lastPress = -9; resultsPrimary();
+    check('a press during the podium reveal finishes it, the next one moves on', finished && RS.page === 1, 'page ' + RS.page + ' t ' + RS.t);
+    Object.assign(RS, rsKeep); Big.lastPress = -9;
   } finally {
     S.race = keep.race; S.turbo = keep.turbo; S.screen = keep.screen;
     Big.label = keep.bigLabel; Big.enabled = keep.bigEnabled;
@@ -2191,6 +2202,12 @@ function heartPath(ctx, x, y, s) {
   ctx.bezierCurveTo(x - s * 1.4, y - s * 0.1, x - s * 0.8, y - s * 1.2, x, y - s * 0.4);
   ctx.bezierCurveTo(x + s * 0.8, y - s * 1.2, x + s * 1.4, y - s * 0.1, x, y + s * 0.9);
   ctx.closePath();
+}
+// a panel sits on the scene with a hard "sticker" shadow under it (the buttons have a solid lip; panels a lighter one).
+// The offset follows the current scale, so a panel that pops in keeps its proportions.
+function fillStrokeLifted(ctx, fill, lw, lift) {
+  ctx.save(); ctx.shadowColor = 'rgba(31,26,46,0.26)'; ctx.shadowOffsetY = (lift || 7) * (ctx.getTransform().d || 1); ctx.fillStyle = fill; ctx.fill(); ctx.restore();
+  if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = OUT; ctx.stroke(); }
 }
 function fillStroke(ctx, fill, lw, stroke) { if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = stroke || OUT; ctx.stroke(); } }
 
@@ -3666,7 +3683,7 @@ const Scenery = {
     }
     // clouds
     this.clouds = [];
-    const cloudCol = cond.sky === 'overcast' || cond.sky === 'drizzle' ? '#e2e7ee' : cond.sky === 'night' ? '#4a5a8a' : cond.sky === 'sunset' ? '#ffd9c2' : '#ffffff';
+    const cloudCol = cond.sky === 'overcast' || cond.sky === 'drizzle' ? '#e2e7ee' : cond.sky === 'fog' ? '#f1f4f6' : cond.sky === 'night' ? '#4a5a8a' : cond.sky === 'sunset' ? '#ffd9c2' : '#ffffff';
     // puffy cartoon clouds: a rounded base with a row of puffs on top (the biggest in the middle), a shaded belly and a
     // lit crown. No square corners anywhere.
     const belly = shade(cloudCol, cond.sky === 'night' ? -0.18 : -0.1), lit = cond.sky === 'night' ? 'rgba(170,185,235,0.3)' : 'rgba(255,255,255,0.75)';
@@ -3852,6 +3869,9 @@ function drawWorld(ctx, W) {
   const earth = 1 - clamp(W.space || 0, 0, 1);
   ctx.globalAlpha = earth;
   if (farY < 1080 && earth > 0) { const off = -((camPx * 0.12) % 2400 + 2400) % 2400; for (let x = off; x < 1920; x += 2400) ctx.drawImage(Scenery.far, x, farY); }
+  // fog: the far hills fade into it (and the near ones a little, below), with slow banks drifting along the horizon
+  const foggy = cond.sky === 'fog' && earth > 0;
+  if (foggy && farY < 1080) { const fg = ctx.createLinearGradient(0, farY, 0, farY + 460); fg.addColorStop(0, 'rgba(238,242,245,0.75)'); fg.addColorStop(1, 'rgba(238,242,245,0.45)'); ctx.fillStyle = fg; ctx.fillRect(0, farY, 1920, 460); }
   // clouds
   for (let i = 0; i < 7 && earth > 0; i++) {
     const cv = Scenery.clouds[i % Scenery.clouds.length];
@@ -3871,6 +3891,15 @@ function drawWorld(ctx, W) {
   // near hills
   const nearY = GROUND_Y - 260 + (V.gy - GROUND_Y) * 0.85;
   if (nearY < 1080) { const off = -((camPx * 0.32) % 2400 + 2400) % 2400; for (let x = off; x < 1920; x += 2400) ctx.drawImage(Scenery.near, x, nearY); }
+  if (foggy && nearY < 1080) {
+    const fg = ctx.createLinearGradient(0, nearY + 60, 0, nearY + 300); fg.addColorStop(0, 'rgba(238,242,245,0.38)'); fg.addColorStop(1, 'rgba(238,242,245,0.12)');
+    ctx.fillStyle = fg; ctx.fillRect(0, nearY + 60, 1920, 240);
+    ctx.fillStyle = 'rgba(244,247,249,0.22)';
+    for (let i = 0; i < 5; i++) {   // banks of fog drifting slowly along the horizon (they wrap around)
+      const bx = ((i * 520 + t * (10 + i * 3) - camPx * 0.4) % 2600 + 2600) % 2600 - 340;
+      ell(ctx, bx, nearY + 150 + (i % 3) * 40, 300 + (i % 2) * 120, 46 + (i % 3) * 10); ctx.fill();
+    }
+  }
   // ground
   const gy = V.gy;
   if (gy < 1100) {
@@ -4054,7 +4083,7 @@ function drawBig(ctx, dt) {
   const pill = bigLabelBox(ctx);
   if (pill) {
     ctx.globalAlpha = Big.enabled ? 1 : 0.85;
-    rr(ctx, pill.x, pill.y, pill.w, pill.h, 18); fillStroke(ctx, Big.enabled ? '#fff8e6' : '#d8d2c4', 5);
+    rr(ctx, pill.x, pill.y, pill.w, pill.h, 18); fillStrokeLifted(ctx, Big.enabled ? '#fff8e6' : '#d8d2c4', 5, 5);
     txt(ctx, Big.label, pill.x + pill.w / 2, pill.y + pill.h / 2 + 1, { px: 34, color: Big.enabled ? '#c22f1f' : '#6b6577', sw: 0, maxW: pill.w - 28 });
     ctx.globalAlpha = 1;
     // keyboard hint (only while SPACE would actually do something: "IN FLIGHT / or press SPACE" was a fib)
@@ -4119,7 +4148,7 @@ const Caps = {
     if (!c) return;
     ctx.save();
     ctx.globalAlpha = clamp(k * 1.5, 0, 1);
-    rr(ctx, x + 70, y + 8, w - 70, h - 16, 22); fillStroke(ctx, '#fff8e6', 5);
+    rr(ctx, x + 70, y + 8, w - 70, h - 16, 22); fillStrokeLifted(ctx, '#fff8e6', 5);
     rr(ctx, x + 140, y - 14, 300, 38, 12); fillStroke(ctx, '#e8412c', 4);
     txt(ctx, 'BILL FEATHERSTONE', x + 290, y + 5, { px: 22, color: '#fff', sw: 0 });
     drawBill(ctx, x + 66, y + h / 2, 64, S.rt, now - this.curStart < 1.6);
@@ -6035,7 +6064,7 @@ function drawLaunchHUD(ctx, V, t) {
 function rarityColor(r) { return C.RARITIES[RARITY_INDEX[r] || 0].color; }
 function drawDockCard(ctx, pl) {
   const x = 20, y = 14, w = 520, h = 136;
-  rr(ctx, x, y, w, h, 24); fillStroke(ctx, '#fff8e6', 5);
+  rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, '#fff8e6', 5);
   rr(ctx, x + 8, y + 8, 120, 120, 18); fillStroke(ctx, rarityColor(pl.duck.rarity), 4);
   const ex = (S.race.champ === pl.key ? 'crown' : '') + (S.cond.friday ? 'party' : '') + (S.cond.mod === 'bighead' ? 'big' : '');
   const pc = duckPortrait(pl.duck, 92, ex);
@@ -6049,7 +6078,7 @@ function drawIntroCard(ctx, pl) {
   const d = pl.duck, x = 330, y = 110, w = 1010, h = 610;
   const rc = C.RARITIES[RARITY_INDEX[d.rarity]];
   if (d.rarity !== 'common') { const g = ctx.createRadialGradient(x + 250, y + 300, 40, x + 250, y + 300, 380); g.addColorStop(0, rgba(rc.glow, 0.55 + 0.15 * Math.sin(S.rt * 2))); g.addColorStop(1, rgba(rc.glow, 0)); ctx.fillStyle = g; ctx.fillRect(x - 150, y - 150, 800, 900); }
-  rr(ctx, x, y, w, h, 34); fillStroke(ctx, '#fff8e6', 6);
+  rr(ctx, x, y, w, h, 34); fillStrokeLifted(ctx, '#fff8e6', 6);
   rr(ctx, x + 20, y + 20, 440, h - 40, 26); fillStroke(ctx, mix(rc.color, '#ffffff', 0.55), 5);
   drawDuck(ctx, d, x + 240, y + 330, 290, duckDrawOpts(pl, { pose: 'stand', aura: true }));
   rr(ctx, x + 60, y + h - 92, 360, 54, 18); fillStroke(ctx, rc.color, 5);
@@ -6079,7 +6108,7 @@ function drawIntroCard(ctx, pl) {
 }
 function drawGauges(ctx) {
   const x = 20, y = 164, w = 520, h = 170;
-  rr(ctx, x, y, w, h, 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
+  rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, 'rgba(255,248,230,0.95)', 5);
   const locked = L.gauge.locked;
   // angle dial
   const cx = x + 130, cy = y + 120, r = 92;
@@ -6131,7 +6160,7 @@ function drawToBeat(ctx, tg, x) {
 }
 function drawAltimeter(ctx, alt, peak) {
   const x = 26, y = 180, w = 92, h = 520;
-  rr(ctx, x, y, w, h, 22); fillStroke(ctx, 'rgba(255,248,230,0.92)', 5);
+  rr(ctx, x, y, w, h, 22); fillStrokeLifted(ctx, 'rgba(255,248,230,0.92)', 5);
   txt(ctx, 'ALT', x + w / 2, y + 26, { px: 26, color: OUT, sw: 0 });
   const top = y + 54, bot = y + h - 70;
   ctx.lineWidth = 8; ctx.strokeStyle = '#c9d6e3'; ctx.beginPath(); ctx.moveTo(x + w / 2, top); ctx.lineTo(x + w / 2, bot); ctx.stroke();
@@ -6155,7 +6184,7 @@ function drawResultPanel(ctx, r) {
   const k = L.phase === 'result' ? easeBack(clamp(L.pt / 0.35, 0, 1)) : 1;
   ctx.save(); ctx.translate(960, 290); ctx.scale(k, k); ctx.translate(-960, -290);
   const x = 560, y = 150, w = 800, h = 280;
-  rr(ctx, x, y, w, h, 30); fillStroke(ctx, '#fff8e6', 6);
+  rr(ctx, x, y, w, h, 30); fillStrokeLifted(ctx, '#fff8e6', 6);
   txt(ctx, fmtFt(r.dist), 960, y + 92, { px: 120, color: r.dist < 0 ? '#e8412c' : OUT, sw: 0 });
   txt(ctx, r.cmp, 960, y + 172, { px: 34, color: '#6b6577', sw: 0, maxW: w - 40, weight: 800 });
   const m = r.margin;
@@ -6190,7 +6219,7 @@ function drawSidebar(ctx) {
   const left = remainingCount() - (L.phase === 'idle' || L.phase === 'result' ? 0 : 1);
   const rh = 76;
   const h = 70 + rows.length * rh + (showCur ? rh + 34 : 0) + 56;
-  rr(ctx, x, y, w, h, 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
+  rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, 'rgba(255,248,230,0.95)', 5);
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
   txt(ctx, stReal.length + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
   let yy = y + 66;
@@ -6906,6 +6935,8 @@ function drawSalvoTags(ctx, V) {
   // movers and the leader get their tag first (best spot); the rest fit in around them
   const order = tags.filter(g => !g.off).sort((a, b) => ((b.f.pl.key === leadKey ? 2 : 0) + (b.done ? 0 : 1)) - ((a.f.pl.key === leadKey ? 2 : 0) + (a.done ? 0 : 1)) || b.sx - a.sx);
   for (const g of order) {
+    // a duck out of the picture (or behind the board) gets an arrow on the edge instead (below), not a squeezed-in tag too
+    if (!g.done && g.s && g.s.vis) { const ax = V.sx(g.s.x), ay = V.sy(g.s.y); if (ay < 96 || ax < 20 || ax > 1470) continue; }
     const f = g.f, tm = teamOf(f.pl), isLead = f.pl.key === leadKey && n > 1;
     const label = (f.pl.key === pick ? '★ ' : '') + f.pl.name + (g.done && f.tl ? ' · ' + fmtFt(f.tl.final) : '');
     ctx.font = font(fpx);
@@ -7008,7 +7039,7 @@ function drawSalvoHUD(ctx, V, t) {
   if (ph === 'flight' || ph === 'result' || ph === 'idle') drawSalvoTags(ctx, V);
   // top-left card: what this is and how it is going
   { const x = 20, y = 14, w = 470, h = 118;
-    rr(ctx, x, y, w, h, 24); fillStroke(ctx, '#fff8e6', 5);
+    rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, '#fff8e6', 5);
     txt(ctx, SV.bonus ? 'BONUS VOLLEY' : SV.late ? 'LATE VOLLEY' : 'THE SALVO', x + 24, y + 38, { px: 34, color: '#e8412c', sw: 0, align: 'left' });
     let line = n + ' duck' + (n === 1 ? '' : 's') + ', one cannon';
     if (ph === 'load') line = 'Loading: ' + SV.loaded + ' of ' + n;
@@ -7020,7 +7051,7 @@ function drawSalvoHUD(ctx, V, t) {
   if (ph === 'flight' && pb) {
     const lead = SV.lead && t > 1.2 ? SV.lead : null;
     drawOdometer(ctx, lead ? Math.max(0, lead.x) : 0);
-    if (lead && n > 1) { const label = 'IN FRONT: ' + lead.pl.name + ' · ' + lead.pl.duck.name; ctx.font = font(26); const w = Math.min(760, ctx.measureText(label).width + 36); rr(ctx, 960 - w / 2, 126, w, 40, 14); fillStroke(ctx, '#fff8e6', 4); txt(ctx, label, 960, 147, { px: 26, color: OUT, sw: 0, maxW: w - 24 }); }
+    if (lead && n > 1) { ctx.font = font(26); let label = 'IN FRONT: ' + lead.pl.name + ' · ' + lead.pl.duck.name; if (ctx.measureText(label).width > 700) label = 'IN FRONT: ' + lead.pl.name;   /* a long name keeps its size; the duck is on the board */ const w = Math.min(760, ctx.measureText(label).width + 36); rr(ctx, 960 - w / 2, 126, w, 40, 14); fillStrokeLifted(ctx, '#fff8e6', 4, 4); txt(ctx, label, 960, 147, { px: 26, color: OUT, sw: 0, maxW: w - 24 }); }
   }
   // countdown numbers
   if (ph === 'countdown') {
@@ -7057,7 +7088,7 @@ function drawSalvoResult(ctx, r) {
   const w = r.best, lead = r.lead;
   ctx.save(); ctx.translate(760, 300); ctx.scale(k, k); ctx.translate(-760, -300);
   const x = 330, y = 160, W = 860, H = 290;
-  rr(ctx, x, y, W, H, 30); fillStroke(ctx, '#fff8e6', 6);
+  rr(ctx, x, y, W, H, 30); fillStrokeLifted(ctx, '#fff8e6', 6);
   const title = r.leaderInVolley ? (S.race.idx >= S.race.queue.length ? 'FARTHEST DUCK!' : 'IN THE LEAD!') : r.n > 1 ? 'BEST OF THE VOLLEY' : SV.bonus ? 'BONUS SHOT' : 'LATE DUCK';
   rr(ctx, x + W / 2 - 230, y - 26, 460, 54, 18); fillStroke(ctx, r.leaderInVolley ? '#ffd23f' : '#e9eef5', 5);
   txt(ctx, title, x + W / 2, y + 2, { px: 34, color: OUT, sw: 0, maxW: 430 });
@@ -7110,7 +7141,7 @@ function drawSalvoBoard(ctx) {
   rows.forEach((e, i) => { e.rank = i + 1; });
   const shown = total > cap ? rows.slice(0, keep).concat(rows.slice(keep + pg * per, keep + (pg + 1) * per)) : rows;
   const h = 70 + shown.length * rh + (total > cap ? 44 : 12);
-  rr(ctx, x, y, w, h, 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
+  rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, 'rgba(255,248,230,0.95)', 5);
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
   const down = flying ? SV.fl.filter(f => f.done).length + standings().filter(e => !inVol.has(e.pl.key)).length : standings().length;
   txt(ctx, down + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
@@ -7128,7 +7159,10 @@ function drawSalvoBoard(ctx) {
   place.sort((a, b) => (a.moving - b.moving) || (a.up - b.up));
   place.forEach(({ e, ry, moving }) => {
     const pl = e.pl;
-    if (moving) { ctx.save(); ctx.shadowColor = 'rgba(31,26,46,0.25)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2; rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = '#fff8e6'; ctx.fill(); ctx.restore(); }
+    if (moving) {   // (an offset shadow, not a blurred one: a blur on every sliding row is costly on a laptop that is screen-sharing)
+      rr(ctx, x + 8, ry + 4, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = 'rgba(31,26,46,0.18)'; ctx.fill();
+      rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = '#fff8e6'; ctx.fill();
+    }
     const hl = (flying && SV.lead && SV.lead.pl.key === pl.key) || (!flying && e.rank === 1 && !e.wait && standings().length > 0);
     if (hl) { rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = 'rgba(255,210,63,0.5)'; ctx.fill(); }
     else if (!flying && !e.wait && (ph === 'result' || ph === 'idle') && (e.rank === 2 || e.rank === 3) && total > 3) { rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = e.rank === 2 ? 'rgba(190,200,214,0.6)' : 'rgba(222,160,110,0.5)'; ctx.fill(); }
@@ -7262,7 +7296,7 @@ function drawTitle(ctx, dt) {
   // date + conditions teaser
   const px = 1150, py = 520;
   const story = titleStory(), sh = story.length ? 46 : 0;   // the card grows a line when there is a story to tell
-  rr(ctx, px - 400, py - 40, 800, 200 + sh, 30); fillStroke(ctx, 'rgba(255,248,230,0.96)', 6);
+  rr(ctx, px - 400, py - 40, 800, 200 + sh, 30); fillStrokeLifted(ctx, 'rgba(255,248,230,0.96)', 6);
   txt(ctx, prettyDate(S.dbg.day || S.day), px, py + 4, { px: 44, color: OUT, sw: 0 });
   txt(ctx, "TODAY'S POND FORECAST", px, py + 58, { px: 26, color: '#e8412c', sw: 0 });
   txt(ctx, conditionsSummary(S.cond), px, py + 104, { px: 32, color: '#4a4458', sw: 0, maxW: 760, weight: 800 });
@@ -7434,7 +7468,7 @@ function drawForecast(ctx, k) {
   const cond = S.cond;
   ctx.save(); ctx.translate(960, 470); ctx.scale(k, k); ctx.translate(-960, -470);
   const x = 410, y = 150, w = 1100, h = 640;
-  rr(ctx, x, y, w, h, 36); fillStroke(ctx, '#fff8e6', 6);
+  rr(ctx, x, y, w, h, 36); fillStrokeLifted(ctx, '#fff8e6', 6);
   rr(ctx, x, y, w, 96, 36); ctx.fillStyle = '#3f8fd9'; ctx.fill(); ctx.fillRect(x, y + 60, w, 36); rr(ctx, x, y, w, h, 36); ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.stroke();
   txt(ctx, 'POND FORECAST', 960, y + 50, { px: 54, color: '#fff', sw: 8 });
   txt(ctx, prettyDate(cond.dayKey), 960, y + 126, { px: 32, color: '#6b6577', sw: 0 });
@@ -7505,6 +7539,10 @@ function keepFinishedShow() {
   }
 }
 function resultsPrimary() {
+  // a press while the podium (or the awards) is still being revealed finishes the reveal; the next one moves on. An
+  // eager host can't skip the Golden Loaf landing, the Good Sport Feather or the Team of the Day.
+  const settle = RS.page === 0 ? 3.75 : RS.page === 1 ? Math.max(0.4 + ((RS.aw || []).length - 1) * 0.25, 1.3 + ((RS.hl || []).length - 1) * 0.3) : 0;
+  if (RS.t < settle) { RS.t = settle; SFX.play('click'); return; }
   if (RS.page === 0) { RS.page = 1; RS.t = 0; Caps.reset(); setBig('PANORAMA', true); SFX.play('whoosh', 0.6); }
   else if (RS.page === 1) { RS.page = 2; RS.t = 0; Caps.reset(); setBig('DONE', true); SFX.play('whoosh', 0.6); }
   else { keepFinishedShow(); S.race = null; go('title'); }
@@ -7574,8 +7612,8 @@ function drawPodium(ctx, st) {
   const f = RS.feather;
   if (f && st.length > 3 || (f && st.length > 1 && !spots.some(sp => st[sp.i] && st[sp.i].pl.key === f.pl.key))) {
     const fk = easeBack(clamp((k - 2.6) / 0.5, 0, 1));
-    ctx.save(); ctx.translate(232, 600); ctx.scale(fk, fk);
-    rr(ctx, -192, -220, 384, 420, 30); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
+    ctx.save(); ctx.translate(232, 580); ctx.scale(fk, fk);   // (ends above Bill's caption bar)
+    rr(ctx, -192, -220, 384, 420, 30); fillStrokeLifted(ctx, 'rgba(255,248,230,0.95)', 5);
     txt(ctx, 'GOOD SPORT', 0, -186, { px: 30, color: '#3f8fd9', sw: 0 });
     txt(ctx, 'FEATHER', 0, -150, { px: 30, color: '#3f8fd9', sw: 0 });
     drawDuck(ctx, f.pl.duck, -40, 40, 130, duckDrawOpts(f.pl, { pose: 'happy' }));
@@ -7591,7 +7629,7 @@ function drawPodium(ctx, st) {
     const pages = Math.ceil(all.length / PER), pg = pages > 1 ? Math.floor(Math.max(0, k - 1.5) / 4) % pages : 0;
     const rest = all.slice(pg * PER, pg * PER + PER), rows = Math.min(PER, all.length);
     const x = 1500, y = 330;
-    rr(ctx, x, y, 400, 60 + rows * 44 + (pages > 1 ? 36 : 0), 24); fillStroke(ctx, 'rgba(255,248,230,0.95)', 5);
+    rr(ctx, x, y, 400, 60 + rows * 44 + (pages > 1 ? 36 : 0), 24); fillStrokeLifted(ctx, 'rgba(255,248,230,0.95)', 5);
     txt(ctx, 'ALSO FLEW', x + 200, y + 32, { px: 26, color: '#6b6577', sw: 0 });
     const fade = pages > 1 ? clamp(Math.min(((k - 1.5) % 4 + 4) % 4, 4 - ((k - 1.5) % 4 + 4) % 4) / 0.3, 0, 1) : 1;
     ctx.globalAlpha = k < 3 ? 1 : fade;
@@ -7666,7 +7704,7 @@ function drawAwards(ctx) {
     const k = easeBack(clamp((RS.t - i * 0.25) / 0.4, 0, 1));
     const x = 960 - tot / 2 + i * (w + gap), y = 120;
     ctx.save(); ctx.translate(x + w / 2, y + 220); ctx.scale(k, k); ctx.translate(-(x + w / 2), -(y + 220));
-    rr(ctx, x, y, w, 440, 28); fillStroke(ctx, '#fff8e6', 5);
+    rr(ctx, x, y, w, 440, 28); fillStrokeLifted(ctx, '#fff8e6', 5);
     circ(ctx, x + w / 2, y + 60, 42); fillStroke(ctx, '#ffd23f', 5); awardIcon(ctx, a.id, x + w / 2, y + 60, 56);
     ctx.font = font(30);
     wrapText(ctx, C.AWARDS[a.id].name, w - 30, 2).forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 130 + j * 34, { px: 30, color: '#c22f1f', sw: 0 }));
@@ -7682,7 +7720,7 @@ function drawAwards(ctx) {
   });
   // highlights
   const lay = layoutHighlights(ctx, RS.hl || []);
-  rr(ctx, 160, lay.y0, 1600, lay.boxH, 28); fillStroke(ctx, 'rgba(255,248,230,0.96)', 5);
+  rr(ctx, 160, lay.y0, 1600, lay.boxH, 28); fillStrokeLifted(ctx, 'rgba(255,248,230,0.96)', 5);
   txt(ctx, 'HIGHLIGHTS', 960, lay.y0 + 36, { px: 32, color: '#e8412c', sw: 0 });
   lay.rows.forEach((r, i) => {
     const k = clamp((RS.t - 1 - i * 0.3) / 0.3, 0, 1);
@@ -7717,7 +7755,7 @@ function drawPanorama(ctx, st) {
   // team chat, and people look for themselves
   for (const [sx, sy, h, e, rank] of labels) drawFlag(ctx, sx, sy, h, teamOf(e.pl), rank + '. ' + e.pl.name, { t, px: 26, maxW: 300, cloth: 74, labelOnly: true });
   // header strip for screenshots
-  rr(ctx, 60, 24, 1800, 110, 26); fillStroke(ctx, 'rgba(255,248,230,0.96)', 5);
+  rr(ctx, 60, 24, 1800, 110, 26); fillStrokeLifted(ctx, 'rgba(255,248,230,0.96)', 5);
   txt(ctx, 'Duck Duck BOOM!  ·  ' + shortDate(R.day) + '  ·  ' + st.length + ' duck' + (st.length === 1 ? '' : 's') + '  ·  ' + modName(S.cond), 960, 66, { px: 40, color: OUT, sw: 0, maxW: 1740 });
   txt(ctx, 'Race ID ' + R.id + (R.practice ? ' · Practice' : '') + (st[0] ? '  ·  Winner: ' + st[0].pl.name + ' · ' + st[0].pl.duck.name + ' · ' + fmtFt(st[0].dist) : ''), 960, 108, { px: 28, color: '#6b6577', sw: 0, maxW: 1740 });
   button(ctx, 'copy', 40, 948, 330, 76, 'Copy results', { bg: '#9be58b', fn: () => copyText(resultsText(R), 'Results for the team chat') });
@@ -7733,7 +7771,7 @@ function drawFame(ctx, dt) {
   ctx.fillStyle = 'rgba(31,26,46,0.45)'; ctx.fillRect(0, 0, 1920, 1080);
   txt(ctx, 'THE WADDLE OF FAME', 960, 66, { px: 66, color: '#ffd23f', sw: 10 });
   const F = computeFame(S.history, S.day);
-  const panel = (x, y, w, h, title) => { rr(ctx, x, y, w, h, 26); fillStroke(ctx, 'rgba(255,248,230,0.96)', 5); txt(ctx, title, x + w / 2, y + 36, { px: 32, color: '#e8412c', sw: 0 }); };
+  const panel = (x, y, w, h, title) => { rr(ctx, x, y, w, h, 26); fillStrokeLifted(ctx, 'rgba(255,248,230,0.96)', 5); txt(ctx, title, x + w / 2, y + 36, { px: 32, color: '#e8412c', sw: 0 }); };
   if (!F.races) {
     panel(460, 300, 1000, 300, 'NO RACES YET');
     txt(ctx, 'Finish a (non-practice) race and it lands here.', 960, 430, { px: 32, color: OUT, sw: 0 });
@@ -7932,7 +7970,7 @@ function draw(dt) {
   // Bill's lower third sits above the big button so the opened SAFETY lid never covers his words
   if (S.screen === 'launch' || S.screen === 'reveal' || S.screen === 'results') Caps.drawBar(ctx);
   // a photo finish gets one soft camera flash (a single quick fade, never repeated)
-  if (S.flashAt != null && S.rt - S.flashAt < 0.3) { ctx.fillStyle = 'rgba(255,255,255,' + (0.32 * (1 - (S.rt - S.flashAt) / 0.3)) + ')'; ctx.fillRect(0, 0, 1920, 1080); }
+  if (S.flashAt != null && S.rt - S.flashAt < 0.3 && !REDUCED_MOTION) { ctx.fillStyle = 'rgba(255,255,255,' + (0.32 * (1 - (S.rt - S.flashAt) / 0.3)) + ')'; ctx.fillRect(0, 0, 1920, 1080); }
   Iris.draw(ctx);
   if (S.paused) { ctx.fillStyle = 'rgba(31,26,46,0.3)'; ctx.fillRect(0, 0, 1920, 1080); }
 }
