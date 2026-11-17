@@ -232,7 +232,8 @@ function ordinal(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n 
 // normalized key for a person (case/space-insensitive)
 function personKey(name) { return String(name || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase(); }
 const NAME_MAX = 40;
-// tabs/newlines become spaces; cut by code point so an emoji is never split in half
+// tabs/newlines become spaces; cut by code point so an emoji is never split in half. (The cut stays exactly at the
+// limit: names saved that way must keep matching. < and > go: names also reach the settings' HTML.)
 function cleanName(name) { return Array.from(String(name || '').normalize('NFC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>]/g, '').trim().replace(/\s+/g, ' ')).slice(0, NAME_MAX).join('').trim(); }
 function firstWord(name) { return (cleanName(name).split(' ')[0] || '').toLowerCase(); }
 function deepClone(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
@@ -687,7 +688,7 @@ C.BLOCK_PHRASES_R13 = ['crney arpxynpr', 'ubbx hc', 'trg yhpxl', 'fyrrc jvgu'];
 const Store = (() => {
   const PREFIX = 'ddb.v1.';
   const SCHEMA = 1;
-  const KEYS = ['settings', 'roster', 'history', 'current', 'rerolls', 'recentNames'];
+  const KEYS = ['settings', 'roster', 'history', 'current', 'last', 'rerolls', 'recentNames'];   // last: the latest finished real show (Last results)
   const mem = Object.create(null);
   let ls = null;
   let full = false;
@@ -731,10 +732,15 @@ const Store = (() => {
     mem[key] = raw;
     if (!ls) return true;
     try { ls.setItem(PREFIX + key, raw); return true; } catch (e) {
-      // probably quota: trim history and retry once
+      // probably quota: the browser keeps only the newest races, and says so. This session keeps all of them (mem
+      // still holds the full copy), so an Export right now has everything.
       if (key === 'history' && data && Array.isArray(data.races) && data.races.length > 30) {
-        data.races = data.races.slice(-Math.floor(data.races.length * 0.7));
-        try { const r2 = JSON.stringify({ schema: SCHEMA, data }); ls.setItem(PREFIX + key, r2); mem[key] = r2; return true; } catch (e2) { /* ignore */ }
+        const keepN = Math.floor(data.races.length * 0.7);
+        try {
+          ls.setItem(PREFIX + key, JSON.stringify({ schema: SCHEMA, data: Object.assign({}, data, { races: data.races.slice(-keepN) }) }));
+          if (typeof Toast !== 'undefined') setTimeout(() => Toast.show('Browser storage is nearly full: only the newest ' + keepN + ' races are saved here. Export from Settings to keep all ' + data.races.length + '.', 7000), 0);
+          return true;
+        } catch (e2) { /* still full */ }
       }
       failed();
       return false;
@@ -757,7 +763,7 @@ const Store = (() => {
   }
   function exportAll() {
     const out = { app: 'duck-duck-boom', schema: SCHEMA, exportedAt: new Date().toString(), data: {} };
-    for (const k of KEYS) { const v = get(k, null); if (v != null) out.data[k] = v; }
+    for (const k of KEYS) { let v = get(k, null); if (k === 'history' && v && Array.isArray(v.races)) v = Object.assign({}, v, { races: v.races.filter(validRace) }); if (v != null) out.data[k] = v; }   // (the same races the game shows)
     return out;
   }
   function importAll(obj, dryRun) {
@@ -770,12 +776,14 @@ const Store = (() => {
       history: v => isObj(v) && Array.isArray(v.races),
       current: v => isObj(v) && Array.isArray(v.players) && Array.isArray(v.queue) && v.players.every(p => p && p.duck && p.name) && v.queue.every(q => q && v.players[q.p]),
     };
+    valid.last = valid.current;
     const bad = KEYS.filter(k => k in D && D[k] != null && !valid[k](D[k]));
     if (bad.length) throw new Error('The backup looks damaged (' + bad.join(', ') + ').');
     if (dryRun) return 0;
     // a backup is a full restore: our keys that aren't in it are cleared
     let n = 0;
-    for (const k of KEYS) { if (k in D && D[k] != null) { set(k, D[k]); n++; } else del(k); }
+    // a damaged race in the history (from an old bug or a hand edit) is left out; the rest of the backup comes in
+    for (const k of KEYS) { if (k in D && D[k] != null) { set(k, k === 'history' ? Object.assign({}, D[k], { races: D[k].races.filter(validRace) }) : D[k]); n++; } else del(k); }
     return n;
   }
   return { get, set, del, wipe, exportAll, importAll, persistent: !!ls, get full() { return full; }, SCHEMA, PREFIX };
@@ -814,9 +822,16 @@ function saveRoster(ticksChanged) {
 // the local date the ticks were last changed (to nudge the host to clear yesterday's ticks)
 function rosterDay() { const r = Store.get('roster', null); return r && typeof r.day === 'string' ? r.day : null; }
 
+// one saved race as the Waddle of Fame reads it: a date, and results that each have a player and a distance
+// (a damaged entry, from an old bug or a hand-edited backup, used to stop every show from starting)
+function validRace(r) {
+  return !!r && typeof r === 'object' && typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && Array.isArray(r.res) &&
+    r.res.every(e => e && typeof e === 'object' && typeof e.p === 'string' && e.p.trim() !== '' && Number.isFinite(e.dist)) &&
+    (r.legend == null || (Array.isArray(r.legend) && r.legend.every(L => L && typeof L === 'object')));
+}
 function loadHistory() {
   const h = Store.get('history', null);
-  return (h && Array.isArray(h.races)) ? h.races.filter(r => r && Array.isArray(r.res)) : [];
+  return (h && Array.isArray(h.races)) ? h.races.filter(validRace) : [];
 }
 function saveHistory(races) { Store.set('history', { races: races.slice(-400) }); }
 
@@ -848,7 +863,8 @@ function rememberNames(dayKey, names) {
 }
 
 /* ---------- Waddle of Fame (all derived from saved history) ---------- */
-function lastRealRace(races) { return races.length ? races[races.length - 1] : null; }
+// the last race with someone to beat: a solo run crowns no defending champion (and isn't a win in the Waddle of Fame)
+function lastRealRace(races) { for (let i = races.length - 1; i >= 0; i--) if (races[i].res.length > 1) return races[i]; return null; }
 function allTimeRecord(races) {
   let best = null;
   for (const r of races) for (const e of r.res) if (!best || e.dist > best.dist) best = { dist: e.dist, p: e.p, d: e.d, date: r.date };
@@ -866,21 +882,23 @@ function computeFame(races, todayKey) {
   for (const r of races) {
     if (r.pick) { picks.n++; if (r.pick.rank === 1) picks.hits++; }
     const sorted = r.res.slice().sort((a, b) => b.dist - a.dist);
+    // a solo run is a race and a launch, but not a win over anyone (the streak below already skips it): no wins,
+    // podiums, team win or month points
+    const contest = sorted.length > 1;
     sorted.forEach((e, i) => {
       const k = personKey(e.p);
       if (!players.has(k)) players.set(k, { name: e.p, wins: 0, races: 0, podiums: 0, best: -1e9 });
       const P = players.get(k);
-      P.name = e.p; P.races++; if (i === 0) P.wins++; if (i < 3) P.podiums++; P.best = Math.max(P.best, e.dist);
+      P.name = e.p; P.races++; if (i === 0 && contest) P.wins++; if (i < 3 && contest) P.podiums++; P.best = Math.max(P.best, e.dist);
       launches.push({ dist: e.dist, p: e.p, d: e.d, date: r.date });
       if (r.date && r.date.slice(0, 7) === month) {
         if (!monthly.has(k)) monthly.set(k, { name: e.p, pts: 0, wins: 0 });
         const M = monthly.get(k);
-        M.pts += [3, 2, 1][i] || 0;
-        if (i === 0) M.wins++;
+        if (contest) { M.pts += [3, 2, 1][i] || 0; if (i === 0) M.wins++; }
         if (!monthBest || e.dist > monthBest.dist) monthBest = { dist: e.dist, p: e.p, d: e.d, date: r.date };
       }
     });
-    if (sorted[0]) {
+    if (sorted[0] && contest) {
       // by team slot, so renaming a team in Settings keeps its wins
       const ti = clamp(sorted[0].t | 0, 0, 2);
       teams.set(ti, (teams.get(ti) || 0) + 1);
@@ -903,7 +921,7 @@ function computeFame(races, todayKey) {
     players: Array.from(players.values()).sort((a, b) => b.wins - a.wins || b.podiums - a.podiums || b.best - a.best),
     teams: Array.from(teams.entries()).map(([i, wins]) => ({ i, wins })).sort((a, b) => b.wins - a.wins),
     top10: launches.slice(0, 10),
-    monthly: Array.from(monthly.values()).sort((a, b) => b.pts - a.pts || b.wins - a.wins),
+    monthly: Array.from(monthly.values()).filter(m => m.pts > 0).sort((a, b) => b.pts - a.pts || b.wins - a.wins),
     monthBest,
     streak,
     picks,
@@ -2043,7 +2061,7 @@ function runSelfTest() {
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
   // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
-  const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
+  const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), last: Store.get('last', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
   try {
     const fakeTl = dist => ({ final: dist, maxAlt: 40, airtime: 2, nDist: 0, special: null, hat: null, events: [], gags: [] });
     const duck = (name) => ({ name, rarity: 'common', pitch: 1 });
@@ -2099,7 +2117,9 @@ function runSelfTest() {
     Store.set('current', prac);
     S.race = Store.get('current', null);
     keepFinishedShow();
-    check('DONE on a practice show does not leave Last results', !finishedShow() && !storedShow());
+    check('DONE on a practice show does not leave Last results', (finishedShow() || {}).id === 'self-last' && !storedShow());   // the real one stays
+    Store.set('current', Object.assign({}, prac, { stage: 'reveal', saved: false, id: 'self-next' }));
+    check('a new show in progress hides Last results; going back to Edit names brings it back', !!savedShow() && (Store.del('current'), (finishedShow() || {}).id === 'self-last'));
     // highlights: a set piece that caught several ducks is told once, and the winner's moment is always there
     const story = (name, dist, id) => ({ name, key: name.toLowerCase(), team: 0, duck: duck('Duck ' + name), r: { dist, sp: null, ev: [[id, 500, 0]] } });
     const cast = [story('Win', 900, 'cannonception'), story('Two', 800, 'cannonception'), story('Tri', 700, 'ufo'), story('Fou', 600, 'wormhole'), story('Fiv', 500, 'hammock'), story('Six', 400, 'bread'), story('Sev', 300, 'pelican')];
@@ -2129,11 +2149,12 @@ function runSelfTest() {
     Big.label = 'LOCK IN & SHUFFLE';
     const hitT = bigHitRect(mctx);
     check('the big button stays clear of the title-screen button', hitT.x + hitT.w <= 1450, Math.round(hitT.x + hitT.w) + '');
-    const longArrow = '▲ ' + 'M'.repeat(40) + ' · 1,234 ft up';
+    mctx.font = font(24);
+    const longArrow = fitTail(mctx, '▲ ' + 'M'.repeat(40), ' · 1,234 ft up', 320 - 24);   // built the way the salvo builds it
     const chipW = edgeChipWidth(mctx, longArrow);
     const stack = edgeChipFit(40, 190, 40, 800);
     const stackY = 190 + (stack.shown + (stack.more ? 1 : 0) - 1) * 40;
-    check('an off-screen arrow keeps a long name inside its chip', chipW <= 280 && chipW >= 36, chipW + 'px');
+    check('an off-screen arrow keeps a long name inside its chip, altitude whole', chipW <= 320 && chipW >= 36 && longArrow.endsWith(' · 1,234 ft up') && mctx.measureText(longArrow).width <= 296, chipW + 'px');
     check('a stack of off-screen arrows stops above the big button', stack.more > 0 && stackY < 800 && stackY < Big.y - 50, stack.shown + '+' + stack.more + ' at ' + stackY);
     const longHl = 'Admiral Breadcrumbs Quackington got caught by ANOTHER CANNON at 12,345 ft and fired again, then kept going past every flag on the pond.';
     const lay = layoutHighlights(mctx, [longHl, 'Ada flew 40 ft.', longHl, longHl, longHl]);
@@ -2154,6 +2175,7 @@ function runSelfTest() {
     L.phase = keep.phase; L.pl = keep.pl; L.q = keep.q; L.tl = keep.tl; L.pb = keep.pb; L.result = keep.result; L.replay = keep.replay; L.drum = keep.drum; L.photo = keep.photo; L.quietLand = keep.quietLand;
     SV.phase = keep.sv.phase; SV.fl = keep.sv.fl; SV.replay = keep.sv.replay; SV.pb = keep.sv.pb; SV.result = keep.sv.result; SV.drumOn = keep.sv.drumOn; SV.pt = keep.sv.pt;
     if (keep.current) Store.set('current', keep.current); else Store.del('current');
+    if (keep.last) Store.set('last', keep.last); else Store.del('last');
     Caps.reset();
   }
   return out;
@@ -2261,6 +2283,24 @@ function wrapText(ctx, str, maxW, maxLines) {
   if (cur) lines.push(cur);
   if (maxLines && lines.length > maxLines) { const keep = lines.slice(0, maxLines); keep[maxLines - 1] = ellipsize(ctx, lines.slice(maxLines - 1).join(' '), maxW); return keep; }
   return lines;
+}
+// wrap into at most maxLines, stepping the font down (to minPx) before anything gets cut with an ellipsis.
+// Memoized: a reveal screen fits 40 cards every frame.
+const WRAPFIT = new Map();
+function wrapFit(ctx, str, maxW, maxLines, px, minPx, weight) {
+  const key = str + '|' + Math.round(maxW) + '|' + maxLines + '|' + px + '|' + minPx + '|' + (weight || '');
+  const hit = WRAPFIT.get(key);
+  if (hit) return hit;
+  let out = null;
+  for (let p = px; p >= minPx && !out; p--) {
+    ctx.font = font(p, weight);
+    const lines = wrapText(ctx, str, maxW);
+    if (lines.length <= maxLines && lines.every(l => ctx.measureText(l).width <= maxW)) out = { lines, px: p };
+  }
+  if (!out) { ctx.font = font(minPx, weight); out = { lines: wrapText(ctx, str, maxW, maxLines), px: minPx }; }
+  if (WRAPFIT.size > 400) WRAPFIT.clear();
+  WRAPFIT.set(key, out);
+  return out;
 }
 
 /* ---------- duck geometry per base type (local units: ~95 tall, facing right) ---------- */
@@ -3325,19 +3365,21 @@ function drawBigButton(ctx, x, y, st, t) {
   ctx.fillRect(x - R * 0.86, y - 12 + press, R * 1.72, 12);
   ell(ctx, x, y - 12 + press, R * 0.86, R * 0.42); fillStroke(ctx, st.enabled ? (st.hover ? '#ff5a43' : '#e8412c') : '#9b5248', 5);
   ctx.fillStyle = 'rgba(255,255,255,0.45)'; ell(ctx, x - R * 0.3, y - 22 + press, R * 0.28, R * 0.1, -0.15); ctx.fill();
-  // safety cover (hinged at the top edge, flips up)
-  const open = clamp(st.open, 0, 1);
+  // safety cover (hinged at the top edge, flips up). st.lid is how tall the open cover stands (1 = straight up):
+  // on screens with Bill's caption bar it tips further back so it ends just under the bar instead of behind it
+  const open = clamp(st.open, 0, 1), lid = clamp(st.lid || 0.988, 0.3, 1);
   const cy = y - R * 0.5;
-  const k = Math.cos(open * Math.PI * 0.95);
+  const k = Math.cos(open * Math.acos(-lid));
   ctx.save(); ctx.translate(x, cy);
   if (k > -0.05) {
     ctx.scale(1, k);
     rr(ctx, -R - 4, 0, (R + 4) * 2, R * 1.0, 16); ctx.fillStyle = 'rgba(255,214,77,0.55)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-R + 8, 10, R * 0.6, 8);
   } else {
-    ctx.scale(1, -k);
-    rr(ctx, -R - 4, -R * 1.0, (R + 4) * 2, R * 1.0, 16); ctx.fillStyle = 'rgba(255,214,77,0.75)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.stroke();
-    ctx.fillStyle = OUT; ctx.font = font(26); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('SAFETY', 0, -R * 0.5);
+    // drawn at its foreshortened height (not scaled), so the outline stays an even width and the label upright
+    const lh = -k * R;
+    rr(ctx, -R - 4, -lh, (R + 4) * 2, lh, Math.min(16, lh / 2)); ctx.fillStyle = 'rgba(255,214,77,0.75)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.stroke();
+    if (lh > 14) { ctx.fillStyle = OUT; ctx.font = font(Math.min(26, Math.round(lh * 0.62))); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('SAFETY', 0, -lh * 0.5 + 1); }
   }
   ctx.restore();
   ctx.restore();
@@ -3624,11 +3666,23 @@ const SKY = {
   night: ['#0b1230', '#1d2a5c', '#3a4c86'],
 };
 function groundPalette(cond) {
-  if (cond.flags.snow) return { a: '#eef3f8', b: '#dfe8f1', edge: '#c9d6e3', dirt: '#b7c6d6' };
-  if (cond.mod === 'ice') return { a: '#d3ecf8', b: '#c2e3f4', edge: '#93c6e4', dirt: '#a9c9dc' };   // Ice Rink day: the field is a rink
-  if (cond.flags.beach) return { a: '#f3d59b', b: '#eccb88', edge: '#d9b36b', dirt: '#c99f5a' };
-  if (cond.flags.autumn) return { a: '#86bd4c', b: '#7bb244', edge: '#5f9636', dirt: '#8b6a3e' };
-  return { a: '#6cc04a', b: '#62b442', edge: '#4c9a35', dirt: '#8b6a3e' };
+  const P = cond.mod === 'ice' ? { a: '#d3ecf8', b: '#c2e3f4', edge: '#93c6e4', dirt: '#a9c9dc' }   // Ice Rink day: the field is a rink (snow or not)
+    : cond.flags.snow ? { a: '#eef3f8', b: '#dfe8f1', edge: '#c9d6e3', dirt: '#b7c6d6' }
+    : cond.flags.beach ? { a: '#f3d59b', b: '#eccb88', edge: '#d9b36b', dirt: '#c99f5a' }
+    : cond.flags.autumn ? { a: '#86bd4c', b: '#7bb244', edge: '#5f9636', dirt: '#8b6a3e' }
+    : { a: '#6cc04a', b: '#62b442', edge: '#4c9a35', dirt: '#8b6a3e' };
+  // the field follows the sky: dusky blue under the stars (it stayed daytime-bright), a little warmer at sunset
+  if (cond.sky === 'night') for (const k in P) P[k] = mix(P[k], '#1d2547', 0.42);
+  else if (cond.sky === 'sunset') for (const k in P) P[k] = mix(P[k], '#c8607a', 0.1);
+  return P;
+}
+// A season's own hill and tree colours win over the sky's (autumn stays autumn), so under a night or sunset sky
+// they get the sky's tint painted over them instead (only the drawn hills, not the empty canvas around them)
+function skyTint(c, cond, w, h) {
+  if (!(cond.flags.snow || cond.flags.autumn || cond.flags.beach)) return;
+  const tint = cond.sky === 'night' ? 'rgba(22,28,64,0.55)' : cond.sky === 'sunset' ? 'rgba(190,80,110,0.18)' : null;
+  if (!tint) return;
+  c.save(); c.globalCompositeOperation = 'source-atop'; c.fillStyle = tint; c.fillRect(0, 0, w, h); c.restore();
 }
 
 const Scenery = {
@@ -3665,6 +3719,7 @@ const Scenery = {
       ridge(330, 110, farCol[0], 11);
       if (cond.flags.snow) { c.fillStyle = '#ffffff'; for (let x = 120; x < 2400; x += 480) { c.beginPath(); c.moveTo(x - 60, 200); c.lineTo(x, 130); c.lineTo(x + 60, 200); c.closePath(); c.fill(); } }
     }
+    skyTint(c, cond, 2400, 460);
     // near layer
     const near = this.near = mkCanvas(2400, 300);
     c = near.getContext('2d');
@@ -3681,6 +3736,7 @@ const Scenery = {
       c.fillStyle = col; circ(c, x, y - 40, treeR.range(18, 28)); c.fill();
       if (cond.flags.snow) { c.fillStyle = '#ffffff'; ell(c, x, y - 58, 16, 6); c.fill(); }
     }
+    skyTint(c, cond, 2400, 300);
     // clouds
     this.clouds = [];
     const cloudCol = cond.sky === 'overcast' || cond.sky === 'drizzle' ? '#e2e7ee' : cond.sky === 'fog' ? '#f1f4f6' : cond.sky === 'night' ? '#4a5a8a' : cond.sky === 'sunset' ? '#ffd9c2' : '#ffffff';
@@ -3890,7 +3946,8 @@ function drawWorld(ctx, W) {
   }
   // near hills
   const nearY = GROUND_Y - 260 + (V.gy - GROUND_Y) * 0.85;
-  if (nearY < 1080) { const off = -((camPx * 0.32) % 2400 + 2400) % 2400; for (let x = off; x < 1920; x += 2400) ctx.drawImage(Scenery.near, x, nearY); }
+  // (on the way to space they fade with the far hills and the clouds: tree tops poked up into outer space)
+  if (nearY < 1080 && earth > 0) { ctx.globalAlpha = earth; const off = -((camPx * 0.32) % 2400 + 2400) % 2400; for (let x = off; x < 1920; x += 2400) ctx.drawImage(Scenery.near, x, nearY); ctx.globalAlpha = 1; }
   if (foggy && nearY < 1080) {
     const fg = ctx.createLinearGradient(0, nearY + 60, 0, nearY + 300); fg.addColorStop(0, 'rgba(238,242,245,0.38)'); fg.addColorStop(1, 'rgba(238,242,245,0.12)');
     ctx.fillStyle = fg; ctx.fillRect(0, nearY + 60, 1920, 240);
@@ -3915,9 +3972,10 @@ function drawWorld(ctx, W) {
     if (V.sx(-280) < 1920 && V.sx(80) > 0) {
       ctx.beginPath(); ctx.moveTo(V.sx(-280), gy);
       for (let x = -280; x <= 80; x += 6) ctx.lineTo(V.sx(x), V.sy(SIM.groundY(x)));
-      ctx.lineTo(V.sx(80), gy); ctx.closePath(); fillStroke(ctx, P.a, 5); ctx.fillStyle = P.b; ctx.beginPath(); ctx.moveTo(V.sx(-200), gy); for (let x = -200; x <= 40; x += 6) ctx.lineTo(V.sx(x), V.sy(SIM.groundY(x) * 0.6)); ctx.lineTo(V.sx(40), gy); ctx.closePath(); ctx.fill();
+      // the darker inner band follows the hill all the way down both slopes (it used to stop short with a hard edge)
+      ctx.lineTo(V.sx(80), gy); ctx.closePath(); fillStroke(ctx, P.a, 5); ctx.fillStyle = P.b; ctx.beginPath(); ctx.moveTo(V.sx(-260), gy); for (let x = -260; x <= 70; x += 5) ctx.lineTo(V.sx(x), V.sy(SIM.groundY(x) * 0.6)); ctx.lineTo(V.sx(70), gy); ctx.closePath(); ctx.fill();
     }
-    drawMarkers(ctx, V, cond);
+    if (W.markers !== false) drawMarkers(ctx, V, cond);   // a backdrop (reveal, podium, Waddle of Fame) has no distance signs poking out
     drawGroundDecor(ctx, V, cond, t);
   }
   // ground + tall pieces
@@ -3936,12 +3994,11 @@ function drawWorld(ctx, W) {
 function drawMarkers(ctx, V, cond) {
   const step = V.z * 100 >= 105 ? 100 : V.z * 500 >= 105 ? 500 : 1000;
   const a = Math.ceil(V.wx(-60) / step) * step, b = V.wx(1980);
-  for (let x = Math.max(0, a); x <= b; x += step) {
+  for (let x = Math.max(step, a); x <= b; x += step) {   // no post at 0 ft: the cannon's hill stands there
     const sx = V.sx(x), major = x % (step >= 500 ? step * 2 : 500) === 0;
     const h = major ? 54 : 34;
     ctx.fillStyle = OUT; ctx.fillRect(sx - 4, V.gy - h, 8, h + 4);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, V.gy - h + 2, 4, h);
-    if (x === 0) continue;
     const label = fmtInt(x);
     ctx.font = font(major ? 30 : 26);
     const w = ctx.measureText(label).width + 18, hh = major ? 40 : 34;
@@ -4057,7 +4114,7 @@ function button(ctx, id, x, y, w, h, label, o) {
 function hitButton(x, y) { for (let i = S.buttons.length - 1; i >= 0; i--) { const b = S.buttons[i]; if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b; } return null; }
 
 /* ---------- the big red button (primary action on every screen) ---------- */
-const Big = { open: 0, target: 0, label: '', enabled: false, press: 0, x: 960, y: 992, changedAt: -9, lastPress: -9 };
+const Big = { open: 0, target: 0, lid: 0.988, label: '', enabled: false, press: 0, x: 960, y: 992, changedAt: -9, lastPress: -9 };
 function setBig(label, enabled) { if (label !== Big.label || !!enabled !== Big.enabled) Big.changedAt = S.rt; Big.label = label; Big.enabled = !!enabled; Big.target = enabled ? 1 : 0; }
 // the title screen's right-hand button starts at x=1460; the label must not steal its clicks
 function bigHitLimit() { return S.screen === 'title' ? 1450 : 1912; }
@@ -4078,8 +4135,11 @@ function bigHitRect(ctx) {
 function drawBig(ctx, dt) {
   Big.open = approach(Big.open, Big.target, 9, dt);
   Big.press = Math.max(0, Big.press - dt);
+  // where Bill's caption bar can show, the open cover tips back to end just below it (0.59 of its height)
+  const barScreen = S.screen === 'launch' || S.screen === 'reveal' || (S.screen === 'results' && RS.page === 0);
+  Big.lid = approach(Big.lid, barScreen ? 0.59 : 0.988, 8, dt);
   const hov = S.hover === 'big';
-  drawBigButton(ctx, Big.x, Big.y, { open: Big.open, enabled: Big.enabled && Big.open > 0.8, hover: hov, press: Big.press > 0 }, S.rt);
+  drawBigButton(ctx, Big.x, Big.y, { open: Big.open, lid: Big.lid, enabled: Big.enabled && Big.open > 0.8, hover: hov, press: Big.press > 0 }, S.rt);
   const pill = bigLabelBox(ctx);
   if (pill) {
     ctx.globalAlpha = Big.enabled ? 1 : 0.85;
@@ -4096,7 +4156,7 @@ function drawBig(ctx, dt) {
 /* ---------- captions: Bill's lower third + big impact text + duck speech bubbles ---------- */
 const Caps = {
   queue: [], cur: null, curStart: 0, bigs: [], bubble: null, lastAt: 0,   // lastAt: when something new last appeared
-  reset() { this.queue = []; this.cur = null; this.bigs = []; this.bubble = null; this.side = null; },
+  reset() { this.queue = []; this.cur = null; this.bigs = []; this.bubble = null; this.side = null; this.sideHold = null; },
   // is Bill free to start a new line right now?
   free() { return !this.queue.length && (!this.cur || S.rt - this.curStart >= this.cur.min); },
   say(text, o) {
@@ -4158,9 +4218,10 @@ const Caps = {
     ctx.restore();
   },
   side: null,
-  drawBigs(ctx, avoidY, maxW) {
+  drawBigs(ctx, avoidY, maxW, avoid) {
     // keep impact captions on the far side of the duck (with hysteresis so they don't flip-flop)
-    if (avoidY != null) {
+    const held = this.sideHold && S.rt - this.sideHold.t0 < this.sideHold.dur;   // a caption that moved off the name tags stays put
+    if (avoidY != null && !held) {
       if (this.side == null) this.side = avoidY < 520 ? 'low' : 'high';
       else if (this.side === 'low' && avoidY > 610) this.side = 'high';
       else if (this.side === 'high' && avoidY < 430) this.side = 'low';
@@ -4171,7 +4232,16 @@ const Caps = {
       if (t < 0) continue;
       const hh = String(b.text).split('\n').length * b.px * 1.05;
       if (avoidY != null && !b.fixedY) {
-        if (!b.yset) this.side = avoidY < 520 ? 'low' : 'high';   // a new caption starts on the side away from the duck
+        if (!b.yset) {   // a new caption starts on the side away from the duck...
+          this.side = avoidY < 520 ? 'low' : 'high';
+          if (avoid && avoid.length) {   // ...or on the other side, if that covers fewer of the salvo's name tags
+            ctx.font = font(b.px);
+            const bw = Math.min(maxW || 1500, Math.max(...String(b.text).split('\n').map(l => ctx.measureText(l).width))) + 40;
+            const cover = side => { const ty = side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off; return avoid.filter(o => Math.abs(o.x - 960) < (o.w + bw) / 2 && Math.abs(o.y - ty) < (o.h + hh) / 2).length; };
+            const other = this.side === 'low' ? 'high' : 'low';
+            if (cover(other) < cover(this.side)) { this.side = other; this.sideHold = b; }
+          }
+        }
         const ty = this.side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off;
         b.y = b.yset ? approach(b.y, ty, 12, drawDt()) : ty; b.yset = true;
       }
@@ -4254,7 +4324,8 @@ const Iris = { t: -1, dur: 0.7, mid: null, fired: false, cx: 960, cy: 540,
 function setPaused(on) {
   on = !!on;
   if (on === S.paused) return;
-  if (on) { S.pauseAt = S.rt; if (S.screen === 'launch') { SFX.pause(true); Voice.pause(true); } }
+  // a show on screen (reveal, launch, results) goes silent with the picture; elsewhere sound stays on for the volume preview
+  if (on) { S.pauseAt = S.rt; S.pauseHush = S.screen === 'launch' || S.screen === 'reveal' || S.screen === 'results'; if (S.pauseHush) { SFX.pause(true); Voice.pause(true); } }
   else { Caps.shift(S.rt - (S.pauseAt || S.rt)); Big.changedAt = S.rt; SFX.pause(false); Voice.pause(false); if (S.previewVol) { S.previewVol = false; SFX.play('quack', 1.2); } }
   S.paused = on;
 }
@@ -4355,7 +4426,7 @@ function openSettings(fromPause) {
     (S.race && S.race.stage === 'launch' && S.race.players.some((p, i) => canRemoveNow(i)) ? '<details class="rmbox"><summary>Remove someone who hasn\'t launched yet</summary><div class="row">' + S.race.players.map((p, i) => canRemoveNow(i) ? '<button class="btn small ghost" data-rm="' + i + '">✕ ' + esc(p.name) + '</button>' : '').join('') + '</div></details>' : '') +
     '<h3>Data</h3><div class="row"><button class="btn small blue" id="dexport">Export everything (JSON)</button><button class="btn small blue" id="dimport">Import…</button><input type="file" id="dfile" accept=".json,application/json" class="hidden"><button class="btn small ghost" id="dpaste">Paste import text…</button>' +
     (S.race ? '<button class="btn small danger" id="dabandon">' + (S.race.saved ? 'Close these results' : 'Abandon current show') + '</button>' : '') + '<button class="btn small danger" id="dwipe">Reset all data…</button></div>' +
-    '<div class="note">Saved in this browser only (' + (Store.full ? '<b>browser storage is full, so new changes are not being saved: Export now, then clear some site data</b>' : Store.persistent ? 'localStorage, keys start with ddb.v1.' : 'storage is blocked here, so nothing persists after you close the tab: use Export') + '). ' + S.history.length + ' races in the Waddle of Fame.</div>' +
+    '<div class="note">Saved in this browser only (' + (Store.full ? '<b>browser storage is full, so new changes are not being saved: Export now, then clear some site data</b>' : Store.persistent ? 'localStorage, keys start with ddb.v1.' : 'storage is blocked here, so nothing persists after you close the tab: use Export') + '). ' + S.history.length + ' race' + (S.history.length === 1 ? '' : 's') + ' in the Waddle of Fame.</div>' +
     '<div class="note">Keys: Space = big red button · R replay · T turbo · S skip · M mute · F fullscreen · P pause</div>' +
     '<div class="row" style="justify-content:flex-end"><button class="btn" id="sclose">' + (fromPause ? 'Resume show' : 'Done') + '</button></div>',
     el => {
@@ -4364,7 +4435,7 @@ function openSettings(fromPause) {
       el.querySelectorAll('.sw').forEach(sw => sw.onclick = () => { const ti = +sw.dataset.ti, c = sw.dataset.c, other = st.teams.findIndex((t, j) => j !== ti && t.color.toLowerCase() === c.toLowerCase()); if (other >= 0) st.teams[other].color = st.teams[ti].color; st.teams[ti].color = c; saveSettings(); openSettings(fromPause); });
       el.querySelector('#svol').oninput = e => { st.volume = e.target.value / 100; el.querySelector('#svolv').textContent = e.target.value + '%'; SFX.setVolume(st.volume); saveSettings(); };
       // during a paused show the sound is held: the level check plays once the show resumes
-    el.querySelector('#svol').onchange = () => { if (S.paused && S.screen === 'launch') S.previewVol = true; else SFX.play('quack', 1.2); };
+    el.querySelector('#svol').onchange = () => { if (S.paused && S.pauseHush) S.previewVol = true; else SFX.play('quack', 1.2); };
       el.querySelector('#smute').onchange = e => { st.muted = e.target.checked; SFX.setMuted(st.muted); if (st.muted) Voice.stop(); saveSettings(); };
       el.querySelector('#sshake').onchange = e => { st.shake = e.target.checked; saveSettings(); };
       el.querySelector('#svoice').onchange = e => { st.voice = e.target.checked; saveSettings(); if (st.voice) { Voice.pause(false); Voice.speak('Bill Featherstone here. Testing, testing.'); } else Voice.stop(); };
@@ -4377,9 +4448,9 @@ function openSettings(fromPause) {
       el.querySelector('#dimport').onclick = () => file.click();
       file.onchange = () => { const f = file.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { if (importDataFromText(String(rd.result))) Modal.close(); }; rd.readAsText(f); };
       el.querySelector('#dpaste').onclick = () => Modal.open('<h2>Import from text</h2><div class="note">Paste the contents of a Duck Duck BOOM! backup file:</div><textarea class="out" id="ptext"></textarea><div class="row"><button class="btn green" id="pgo">Import</button><button class="btn ghost" id="pcancel">Cancel</button></div>', e2 => { e2.querySelector('#pgo').onclick = () => { if (importDataFromText(e2.querySelector('#ptext').value)) Modal.close(); }; e2.querySelector('#pcancel').onclick = () => Modal.close(); });
-      el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); S.roster = []; S.history = []; S.race = null; setPaused(false); go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
+      el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted); Voice.stop(); S.roster = []; S.history = []; S.race = null; setPaused(false); go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
       const ab = el.querySelector('#dabandon');
-      if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? (S.race.practice ? 'Close these practice results and go back to the title? (Practice races are not saved.)' : 'Close these results and go back to the title? They are already saved in the Waddle of Fame.') : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
+      if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? (S.race.practice ? 'Close these practice results and go back to the title? (Practice races are not saved.)' : 'Close these results and go back to the title? They are already saved in the Waddle of Fame.') : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { if (S.race && S.race.saved) keepFinishedShow(); else Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
       el.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => { const pi = +bt.dataset.rm; const nm = S.race.players[pi].name; confirmBox('Take ' + nm + "'s duck out of today's show?", 'Remove', () => { removePlayer(pi); setPaused(false); }, () => openSettings(fromPause)); });
       const la = el.querySelector('#lateadd');
       if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; const tm = +el.querySelector('#lateteam').value; addLatePlayer(nm, tm); openSettings(fromPause); const sel = document.querySelector('#lateteam'); if (sel) sel.value = tm; };
@@ -4403,7 +4474,8 @@ const Roster = {
     while (taken.has(personKey(n))) { const suf = ' (' + (i++) + ')'; n = Array.from(base).slice(0, NAME_MAX - suf.length).join('').trim() + suf; }
     return n;
   },
-  tick(p) { if (p) { if (!p.checked) p.td = localDayKey(); p.checked = true; } },
+  // a tick (new or confirmed again today) is dated today, so the 'ticks from an earlier day' banner lets it be
+  tick(p) { if (p) { p.td = localDayKey(); p.checked = true; } },
   add(name, team, checked) {
     name = cleanName(name);
     if (!name) return null;
@@ -4429,43 +4501,88 @@ const Roster = {
     p.name = this.uniqueName(nm, id);
     saveRoster();
   },
+  // One line of Today's list -> { names, tm }: the people on it (still to be cleaned) and an optional team, or null.
+  // Understands bullets and numbering, '"Name" <address>' attendee lists (Outlook, Teams, Gmail), bare addresses,
+  // 'Name, Team 2', 'Last, First', 'Jamie, Sam, Robin' and spreadsheet rows (tab-separated; only a cell that is just
+  // a team sets the team, the rest of the row is ignored).
+  parseListLine(raw) {
+    const ln = String(raw || '').replace(/^\s*(?:[-*•–—·◦‣]+|\d+[.)])\s*/, '');   // bullets first (Word and Outlook use dashes and dots too)
+    if (!ln.trim()) return null;
+    const known = n => S.roster.some(x => personKey(x.name) === personKey(cleanName(n)));
+    const isAddr = a => /^[^\s@,<>()]+@[^\s@,<>()]+$/.test(a);
+    const fromAddr = a => a.split('@')[0].replace(/[._+]+/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase());   // jamie.rivera@x -> Jamie Rivera
+    const unq = x => x.replace(/^[\s,;"']+|[\s,;"']+$/g, '');
+    // two comma-separated words or names -> the people they mean
+    const pair = (a, b) => {
+      if (isAddr(b) && !isAddr(a)) return [a];                  // "Jamie Rivera, jrivera@x.com": one person and their address
+      if (isAddr(a) || isAddr(b)) return [a, b];
+      const single = !/\s/.test(a) && /^[^\s\d]+$/.test(b) && !/^team$/i.test(b);
+      if (single && known(b + ' ' + a)) return [b + ' ' + a];   // "Rivera, Jamie" -> the known Jamie Rivera
+      if (known(a) && known(b)) return [a, b];                  // "Jamie, Sam" (or "Jamie Rivera, Sam Lee"): two people
+      if (!single) return [a];                                  // "Jamie Rivera, Marketing": the rest is a note
+      if (!known(a) && known(b)) return [b];                    // "Rivera, Jamie" with a first-name roster -> Jamie
+      if (!known(a)) return [b + ' ' + a];                      // two new words: assume Last, First
+      return [a];
+    };
+    let tm = null;
+    // comma-separated words or names -> the people they mean (a cell that is just a team sets the team instead).
+    // Three or more make a list only when they look like one: all one-word names or all longer ones ("Jamie, Sam,
+    // Robin"), or everyone already on the roster. "Jamie Rivera, Marketing, London" is one person and two notes.
+    const people = (parts, mayList) => {
+      const names = [];
+      parts.forEach((c, i) => { const t = i ? this.teamFromText(c) : null; if (t != null) { if (tm == null) tm = t; } else names.push(c); });
+      if (names.length >= 3 && mayList) {
+        const multi = names.map(x => /\s/.test(x));
+        if (names.every(isAddr) || names.every(known) || multi.every(Boolean) || !multi.some(Boolean)) return names;
+        return [names[0]];
+      }
+      if (names.length === 2) return pair(names[0], names[1]);
+      return mayList || names.length < 2 ? names : [names[0]];
+    };
+    const split = d => d.split(',').map(unq).filter(Boolean);
+    // an attendee list: every address closes one person ("Rivera, Jamie <j@x.com>; Sam Lee <s@x.com>, Robin (r@x.com)");
+    // a display name that is just an address becomes a name, and a team written after the last address still counts
+    const att = /([^<>()]*)[<(]\s*([^<>()\s]+@[^<>()\s]+)\s*[>)]/g;
+    if (att.test(ln)) {
+      att.lastIndex = 0;
+      const names = [];
+      let m, end = 0;
+      while ((m = att.exec(ln))) { const d = unq(m[1]); names.push(...(d && !isAddr(d) ? people(split(d), false) : [fromAddr(m[2])])); end = m.index + m[0].length; }
+      for (const c of split(ln.slice(end))) { const t = this.teamFromText(c); if (t != null && tm == null) tm = t; }
+      return { names: names.map(n => isAddr(n) ? fromAddr(n) : n), tm };
+    }
+    const tabbed = ln.includes('\t');
+    const cells = ln.split(tabbed ? '\t' : ',').map(unq).filter(Boolean);
+    if (!cells.length) return null;
+    // a spreadsheet's header row is not a person
+    if (tabbed && /^(?:(?:full |display |first )?name|names|attendees?|people|person|who)$/i.test(cells[0])) return null;
+    let out;
+    if (tabbed) {   // the first cell is the name (it may be "Rivera, Jamie"); a later cell that is just a team sets it
+      for (const c of cells.slice(1)) { const t = this.teamFromText(c); if (t != null) { tm = t; break; } }
+      out = people(split(cells[0]), false);
+    } else out = people(cells, true);   // "Doe, Jane, Team 3" -> Jane Doe on Team 3
+    return { names: out.map(n => isAddr(n) ? fromAddr(n) : n), tm };
+  },
   // "Today's list": tick exactly these people (adding anyone new), untick everyone else
   applyList(text, only) {
     const lines = String(text || '').split(/\r?\n|;/);
     const addTeam = +this.el.querySelector('#addteam').value;
     const keep = new Set();
-    const extra = [];
     let added = 0, ticked = 0;
-    for (let ln of lines.concat([extra])) {
-      if (Array.isArray(ln)) { if (!ln.length) continue; for (const nm of ln) { const p = S.roster.find(x => personKey(x.name) === personKey(nm)); if (p) { this.tick(p); ticked++; keep.add(p.id); } } continue; }
-      // Outlook / Teams attendee lists: "Jamie Rivera <jamie@x.com>" or a bare address
-      ln = ln.replace(/<[^>]*@[^>]*>/g, ' ').replace(/\(([^)]*@[^)]*)\)/g, ' ');
-      ln = ln.replace(/^\s*["']\s*|\s*["']\s*$/g, '');   // "Display Name" <address>
-      if (/^\s*[^\s@,]+@[^\s@,]+\s*$/.test(ln)) ln = ln.trim().split('@')[0].replace(/[._]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      if (!ln.trim()) continue;
-      // spreadsheet columns arrive tab-separated; "Name, Team 2" uses a comma
-      const parts = ln.split(/\t|,/).map(x => x.trim()).filter(Boolean);
-      if (!parts.length) continue;
-      let first = parts[0].replace(/^[\s\-*•]+|^\d+[.)]\s*/g, '');
-      let tm = null;
-      for (const c of parts.slice(1)) { const t = this.teamFromText(c); if (t != null) { tm = t; break; } }
-      // "Smith, John" (no team after the comma, one word each side) -> John Smith
-      // "Smith, John" -> John Smith, but only when nothing says otherwise: a known "John Smith", or two names nobody has yet
-      if (tm == null && parts.length === 2 && !/\t/.test(ln) && !/\s/.test(first) && /^[^\s\d]+$/.test(parts[1]) && !/^team$/i.test(parts[1])) {
-        const known = n => S.roster.some(x => personKey(x.name) === personKey(cleanName(n)));
-        const swapped = parts[1] + ' ' + first;
-        if (known(swapped)) first = swapped;                                    // "Rivera, Jamie" -> the known Jamie Rivera
-        else if (known(first) && known(parts[1])) { if (!extra.includes(parts[1])) extra.push(parts[1]); }   // "Jamie, Sam": two people
-        else if (!known(first) && known(parts[1])) first = parts[1];            // "Rivera, Jamie" with a first-name roster -> Jamie
-        else if (!known(first)) first = swapped;                                // two new words: assume Last, First
+    for (const raw of lines) {
+      const r = this.parseListLine(raw);
+      if (!r) continue;
+      for (const name of r.names) {
+        const nm = cleanName(name);
+        if (!nm) continue;
+        let p = S.roster.find(x => personKey(x.name) === personKey(nm));
+        if (p) { if (r.tm != null) p.team = r.tm; this.tick(p); ticked++; }
+        else { p = this.add(nm, r.tm == null ? addTeam : r.tm); if (p) added++; }
+        if (p) keep.add(p.id);
       }
-      const nm = cleanName(first);
-      if (!nm) continue;
-      let p = S.roster.find(x => personKey(x.name) === personKey(nm));
-      if (p) { if (tm != null) p.team = tm; this.tick(p); ticked++; }
-      else { p = this.add(nm, tm == null ? addTeam : tm); if (p) added++; }
-      if (p) keep.add(p.id);
     }
+    // nothing usable in the box: change nothing (it used to untick everyone, then say "type some names first")
+    if (!keep.size) return { added: 0, ticked: 0, total: 0 };
     if (only) S.roster.forEach(p => { if (!keep.has(p.id)) p.checked = false; });
     saveRoster(true);
     return { added, ticked, total: keep.size };
@@ -4475,11 +4592,17 @@ const Roster = {
     // keep anything half-typed in the side boxes across re-renders
     const keepIds = ['paste', 'addname', 'addteam', 'rfind'];
     const kept = {};
-    let focusId = null, selS = 0, selE = 0;
+    let focusId = null, selS = 0, selE = 0, refocus = null;
     if (this.el) {
       for (const id of keepIds) { const e = this.el.querySelector('#' + id); if (e) kept[id] = e.value; }
       const a = document.activeElement;
       if (a && this.el.contains(a) && keepIds.includes(a.id)) { focusId = a.id; try { selS = a.selectionStart; selE = a.selectionEnd; } catch (e) { /* select */ } }
+      // a tick box or button worked from the keyboard keeps the focus through the re-render (otherwise focus fell to
+      // the page and the next Space started the show). After a mouse click nothing changes: Space is the big button.
+      else if (a && this.el.contains(a) && a !== this.el && a.matches(':focus-visible')) {
+        if (a.id) refocus = '#' + a.id;
+        else { const at = ['data-chk', 'data-all', 'data-none', 'data-ammo', 'data-move'].find(n => a.hasAttribute(n)); if (at) refocus = '[' + at + '="' + a.getAttribute(at) + '"]' + (at === 'data-move' ? '[data-to="' + a.dataset.to + '"]' : ''); }
+      }
     }
     const T = S.settings.teams;
     const checked = S.roster.filter(p => p.checked).length;
@@ -4488,7 +4611,8 @@ const Roster = {
     const col = i => {
       const people = S.roster.filter(p => p.team === i).sort(byName);
       const shown = people;
-      return '<div class="team"><div class="team-head" style="background:' + T[i].color + '"><span class="tname">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
+      const tl = Array.from(T[i].name).length, tfs = tl > 16 ? 19 : tl > 12 ? 22 : tl > 8 ? 26 : 30;   // a long team name gets smaller type before an ellipsis
+      return '<div class="team"><div class="team-head" style="background:' + T[i].color + '"><span class="tname" style="font-size:' + tfs + 'px" title="' + esc(T[i].name) + '">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
         '<button class="btn small ghost" data-all="' + i + '">All</button><button class="btn small ghost" data-none="' + i + '">None</button></div><div class="list">' +
         (shown.length ? '<div class="row nomatch" style="opacity:.6;display:' + (f && !shown.some(p => personKey(p.name).includes(f)) ? 'flex' : 'none') + '">No match</div>' + shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '" data-key="' + esc(personKey(p.name)) + '"' + (f && !personKey(p.name).includes(f) ? ' style="display:none"' : '') + '><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
           (S.settings.bonusAmmo ? '<select class="ammo" data-ammo="' + p.id + '" title="Bonus Ammo: extra shots, best counts">' + [0, 1, 2, 3].map(n => '<option value="' + n + '"' + (p.ammo === n ? ' selected' : '') + '>' + '+' + n + '</option>').join('') + '</select>' : '') +
@@ -4504,10 +4628,12 @@ const Roster = {
     const stale = oldTicks.length > 0;
     const oldDay = stale ? oldTicks.map(p => p.td || lastDay).sort()[oldTicks.length - 1] : null;
     const over = checked > 40 ? S.roster.filter(p => p.checked).sort((a, b) => a.team - b.team || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(40).map(p => p.name) : [];
-    const warnText = over.length ? 'Only 40 fit. Sitting out: ' + over.join(', ') : checked === 1 ? 'Solo run: one duck versus the record!' : '';
+    // the count leads and only the first few names show (a long list was clipped mid-name); hover has everyone
+    const warnText = over.length ? 'Only 40 fit, so ' + over.length + ' sit' + (over.length === 1 ? 's' : '') + ' out: ' + over.slice(0, 3).join(', ') + (over.length > 3 ? ' +' + (over.length - 3) + ' more' : '') : checked === 1 ? 'Solo run: one duck versus the record!' : '';
+    const warnFull = over.length ? 'Sitting out: ' + over.join(', ') : warnText;
     this.el.innerHTML =
       '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick who booked · click a name to fix it · dots move teams · up to 40 ducks</div></div>' +
-      '<div style="text-align:right;flex:none"><div class="bar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap">' + (this.undo ? '<button class="btn small" id="rundo" title="Put this person back on the roster">↶ Undo: put ' + esc(this.undo.p.name) + ' back</button>' : '') + '<button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn"' + (warnText ? ' title="' + esc(warnText) + '"' : '') + '>' + esc(warnText) + '</div></div></div>' +
+      '<div style="text-align:right;flex:none"><div class="bar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap">' + (this.undo ? '<button class="btn small" id="rundo" title="Put this person back on the roster">↶ Undo: put ' + esc(this.undo.p.name) + ' back</button>' : '') + '<button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn"' + (warnText ? ' title="' + esc(warnFull) + '"' : '') + '>' + esc(warnText) + '</div></div></div>' +
       (stale ? '<div class="stale">' + (oldTicks.length === checked ? 'These ticks are' : oldTicks.length + ' of the ticks are') + ' from ' + esc(prettyDate(oldDay)) + '. New day? <button class="btn small" id="rfresh">' + (oldTicks.length === checked ? 'Untick everyone' : 'Untick those ' + oldTicks.length) + '</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
@@ -4521,11 +4647,12 @@ const Roster = {
     const $ = s => this.el.querySelector(s);
     for (const id in kept) { const e = $('#' + id); if (e) e.value = kept[id]; }
     if (focusId) { const e = $('#' + focusId); if (e) { e.focus(); try { e.setSelectionRange(selS, selE); } catch (er) { /* select */ } } }
+    else if (refocus) { try { const e = $(refocus); if (e) e.focus(); } catch (er) { /* gone */ } }
     const save = ticks => { saveRoster(!!ticks); this.render(); };
     this.el.querySelectorAll('[data-chk]').forEach(cb => cb.onchange = () => { const p = S.roster.find(x => x.id === cb.dataset.chk); if (p) { if (cb.checked) this.tick(p); else p.checked = false; } save(true); });
     this.el.querySelectorAll('[data-name]').forEach(inp => {
       inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { const p = S.roster.find(x => x.id === inp.dataset.name); inp.value = p ? p.name : inp.value; inp.blur(); } };
-      inp.onblur = () => { const p = S.roster.find(x => x.id === inp.dataset.name); if (!p) return; const before = p.name; this.rename(p.id, inp.value); if (p.name !== before) Toast.show('Renamed to ' + p.name); inp.value = p.name; };
+      inp.onblur = () => { const p = S.roster.find(x => x.id === inp.dataset.name); if (!p) return; const before = p.name; this.rename(p.id, inp.value); if (p.name !== before) Toast.show('Renamed to ' + p.name); inp.value = p.name; const row = inp.closest('.row'); if (row) row.dataset.key = personKey(p.name); };   // Find goes by the new name
     });
     // each row has one chip per other team, so the host picks the destination directly (no cycling, no shifting rows)
     this.el.querySelectorAll('[data-move]').forEach(b => b.onclick = () => { if (performance.now() - (this._mvAt || 0) < 450) return; this._mvAt = performance.now(); const p = S.roster.find(x => x.id === b.dataset.move); if (p) { p.team = +b.dataset.to; Toast.show(p.name + ' → ' + T[p.team].name); } save(); });
@@ -4536,13 +4663,23 @@ const Roster = {
       S.roster.splice(idx, 1);
       // a slip of the mouse is easy to take back for the next 10 seconds
       const u = this.undo = { p, idx };
-      clearTimeout(this.undoTimer); this.undoTimer = setTimeout(() => { if (this.undo === u) { this.undo = null; if (S.screen === 'roster') this.render(); } }, 10000);
+      // when the offer runs out only its button goes (a re-render would wipe out a name being typed right then)
+      clearTimeout(this.undoTimer); this.undoTimer = setTimeout(() => { if (this.undo === u) { this.undo = null; const b = this.el && this.el.querySelector('#rundo'); if (b) b.remove(); } }, 10000);
       save(); Toast.show('Removed ' + p.name);
     });
     const ru = $('#rundo'); if (ru) ru.onclick = () => { const u = this.undo; if (!u) return; this.undo = null; clearTimeout(this.undoTimer); S.roster.splice(Math.min(u.idx, S.roster.length), 0, u.p); save(); Toast.show(u.p.name + ' is back'); };
     this.el.querySelectorAll('[data-all]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.all) this.tick(p); }); save(true); });
     this.el.querySelectorAll('[data-none]').forEach(b => b.onclick = () => { S.roster.forEach(p => { if (p.team === +b.dataset.none) p.checked = false; }); save(true); });
-    const addOne = () => { const nm = $('#addname').value; const p = this.add(nm, +$('#addteam').value); if (p) { $('#addname').value = ''; save(true); Toast.show('Added ' + p.name); setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0); } };
+    const addOne = () => {
+      const nm = cleanName($('#addname').value);
+      // someone already on the roster is ticked, not added a second time as "Bob (2)" with a second duck
+      const had = nm && S.roster.find(x => personKey(x.name) === personKey(nm));
+      const p = had || this.add(nm, +$('#addteam').value);
+      if (!p) return;
+      if (had) this.tick(had);
+      $('#addname').value = ''; save(true); Toast.show(had ? had.name + ' is already on the roster: ticked' : 'Added ' + p.name);
+      setTimeout(() => { const i = this.el.querySelector('#addname'); if (i) i.focus(); }, 0);
+    };
     $('#addbtn').onclick = addOne;
     $('#addname').onkeydown = e => { if (e.key === 'Enter') addOne(); };
     const useList = only => {
@@ -4694,7 +4831,7 @@ function addLatePlayer(name, team) {
   saveRace();
   refreshIdleBig();
   const salvoNow = R.mode === 'salvo' && S.screen === 'launch' && L.phase === 'salvo';
-  Toast.show(nm + "'s duck " + pl.duck.name + (R.mode !== 'salvo' ? ' will launch last!' : !salvoNow || SV.phase === 'load' || SV.phase === 'armed' ? ' is in the cannon!' : ' goes in the next volley!'), 2600);
+  Toast.show(nm + "'s duck " + pl.duck.name + (R.mode !== 'salvo' ? ' will launch last!' : !salvoNow || SV.phase === 'load' || SV.phase === 'armed' || SV.phase === 'loading' ? ' is in the cannon!' : ' goes in the next volley!'), 2600);
   if (salvoNow) salvoQueueChanged();
 }
 // Take someone out of a show in progress (ticked by mistake). Only ducks that haven't launched yet.
@@ -4703,7 +4840,7 @@ function canRemoveNow(pi) {
   if (!R || R.stage !== 'launch') return false;
   const cur = R.queue[R.idx];
   const inSalvo = S.screen === 'launch' && L.phase === 'salvo';
-  const launching = inSalvo ? (SV.phase === 'countdown' || SV.phase === 'flight') && SV.fl.some(f => f.q.p === pi) : cur && cur.p === pi && S.screen === 'launch' && (L.phase === 'countdown' || L.phase === 'flight');
+  const launching = inSalvo ? (SV.phase === 'countdown' || SV.phase === 'flight') && SV.fl.some(f => f.q.p === pi) : cur && cur.p === pi && S.screen === 'launch' && !L.replay && (L.phase === 'countdown' || L.phase === 'flight');   // (a replay is the duck before)
   return !R.players[pi].out && !R.results[R.players[pi].key] && !launching && R.queue.slice(R.idx).some(q => q.p === pi);
 }
 function removePlayer(pi) {
@@ -4731,8 +4868,13 @@ function removePlayer(pi) {
 // the queue changed while waiting between ducks: keep the big button's label honest
 function refreshIdleBig() {
   const R = S.race;
-  if (!R || S.screen !== 'launch' || L.phase !== 'idle') return;
+  if (!R || S.screen !== 'launch') return;
   const last = R.idx >= R.queue.length;
+  // while a result card is up the button is still off, but its label already follows the queue (a late player added
+  // right then used to leave it reading SEE RESULTS until it flipped)
+  if (L.phase === 'salvo' && SV.phase === 'result') { setBig(last ? 'SEE RESULTS' : 'NEXT VOLLEY', false); return; }
+  if (L.phase === 'result') { setBig(last ? 'SEE RESULTS' : 'NEXT DUCK', false); return; }
+  if (L.phase !== 'idle') return;
   setBig(last ? 'SEE RESULTS' : (R.queue[R.idx].bonus ? 'BONUS SHOT' : 'NEXT DUCK'), true);
 }
 // standings distance: a tenth of a foot is shown only when two neighbours would otherwise look tied
@@ -4819,6 +4961,9 @@ function teamOfDay(R) {
   const st = standings();
   const by = new Map();
   for (const e of st) { const t = e.pl.team; if (!by.has(t)) by.set(t, []); by.get(t).push(e.dist); }
+  // a team needs at least two ducks to have an average worth crowning (one duck alone just repeats the podium),
+  // and at least two such teams make it a contest
+  for (const [t, ds] of by) if (ds.length < 2) by.delete(t);
   if (by.size < 2) return null;
   let best = null;
   for (const [t, ds] of by) { const avg = ds.reduce((a, c) => a + c, 0) / ds.length; if (!best || avg > best.avg) best = { team: t, avg, n: ds.length }; }
@@ -4827,7 +4972,7 @@ function teamOfDay(R) {
 // Past shows and wins for one person (counted the way the Waddle of Fame counts them), or null for a newcomer.
 function careerOf(key, races) {
   let c = null;
-  for (const r of races) { const w = r.res.slice().sort((a, b) => b.dist - a.dist)[0]; for (const e of r.res) { if (personKey(e.p) !== key) continue; c = c || { races: 0, wins: 0 }; c.races++; if (e === w) c.wins++; } }
+  for (const r of races) { const w = r.res.slice().sort((a, b) => b.dist - a.dist)[0]; for (const e of r.res) { if (personKey(e.p) !== key) continue; c = c || { races: 0, wins: 0 }; c.races++; if (e === w && r.res.length > 1) c.wins++; } }   // (a solo run is not a win)
   return c;
 }
 function billPickKey(R) {
@@ -4932,6 +5077,7 @@ function finalizeRace() {
   }
   R.saved = true;
   saveRace();
+  rememberLast(R);
 }
 
 
@@ -5288,7 +5434,7 @@ function boomFX(misfire) {
   burst('feather', 12, { x: m.x, y: m.y, a0: -a, spread: 1.2, sp0: 20, sp1: 70, l0: 1.2, l1: 2.2, r0: 8, r1: 14, colors: [C.COLORS[L.pl.duck.color].c, '#ffffff'], extra: { ws: true, g: -12, drag: 1.2 } });
   // up top, so Ol' Thunderbill's big moment stays in view
   Caps.big('FIRE IN THE DUCK!', { px: 86, dur: 2, y: 250 });
-  if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 330 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }
+  if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 410 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }   // (below FIRE IN THE DUCK!, which is still up)
   else if (L.fuseOut) { /* the fake-out has its own punchline */ }
   else { say('launch', { duck: L.pl.duck.name }, { delay: 0.5 }); if (!L.tl.gags.some(g => g.id === 'scream')) quip('launch', { delay: 2.1 }); }   // once the big caption has cleared
   L.boomed = true;
@@ -5454,8 +5600,10 @@ function updateFlightCamera(dt, s, t) {
   const sy = GROUND_Y - s.y * cam.z;
   if (sy < 230) gyT = GROUND_Y + (230 - sy);
   cam.gy = approach(cam.gy, gyT, 4, dt);
+  // a fast climb (a space trip, a second cannon) outruns the easing: the duck is never allowed up behind the distance
+  // counter and its chip (they end at about y 170)
   const syNow = cam.gy - s.y * cam.z;
-  if (syNow < 150) cam.gy += 150 - syNow;
+  if (syNow < 215) cam.gy += 215 - syNow;
 }
 function onAntic(e) {
   const map = { geese: 'honk', pelican: 'pelican', drone: 'buzz', ufo: 'zap', ooo: 'envelopes', migration: 'honk', glider: 'whoosh' };
@@ -5959,7 +6107,7 @@ function drawScream(ctx, x, y, text, rt) {
   ctx.save();
   ctx.font = font(34);
   const w = ctx.measureText(text).width + 40, h = 58;
-  const bx = clamp(x + 40, 20, 1480 - w), by = clamp(y - 120, 130, 760);
+  const bx = clamp(x + 40, 20, 1480 - w), by = clamp(y - 120, 185, 760);   // never up behind the distance counter's chip
   ctx.beginPath(); ctx.moveTo(bx + 30, by + h - 4); ctx.lineTo(clamp(x + 10, bx, bx + w), by + h + 30); ctx.lineTo(bx + 60, by + h - 4); ctx.closePath(); fillStroke(ctx, '#fff', 5);
   // a shouty bubble: small spikes along the edges, red outline
   ctx.beginPath();
@@ -6284,7 +6432,7 @@ function salvoLoad(first) {
     const vol = salvoVolley();
     L.phase = 'salvo'; L.pt = 0; L.pl = null; L.q = null; L.tl = null; L.pb = null; L.result = null; L.drum = false; L.replay = false; L.photo = false; L.duckScreen = null; L.curLabel = null;
     L.barrel = 45; L.squash = 0;
-    SV.replay = false; SV.result = null; SV.tags = []; SV.pb = null; SV.lead = null; SV.drumOn = false; SV.ticks = -1; SV.sndAt = {};
+    SV.replay = false; SV.result = null; SV.tags = []; SV.pb = null; SV.lead = null; SV.front = null; SV.drumOn = false; SV.ticks = -1; SV.sndAt = {};
     SV.bonus = false; SV.late = false;
     if (!vol.length) { SV.fl = []; SV.phase = 'idle'; SV.pt = 0; if (standings().length) setBig('SEE RESULTS', true); else { Store.del('current'); S.race = null; go('title'); } return; }
     SV.fl = vol.map((q, i) => ({ q, i, pl: R.players[q.p], tl: null, fired: new Set(), hideGag: new Set(), gagOn: {}, prevY: 0, landed: false, squash: 0, done: false, x: 0, y: 0, vis: 1, lastSmoke: 0, doneAt: -1 }));
@@ -6441,7 +6589,7 @@ function salvoFire(replay) {
   SV.pb = { simT: 0, rate: 1, T: 0, segs: plan.segs, P: plan.P, endT: plan.endT, dur: plan.dur, drumAt: plan.drumAt, photoAt: plan.photoAt, photo: photoT > 0, fired: new Set(), done: false, brake: null };
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
-  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.leadSince = 0; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false;
+  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false;
   if (!replay) SV.result = null;   // after a replay the winner card comes back
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
@@ -6625,9 +6773,10 @@ function updateSalvoFlight(dt) {
       const def = C.EVENTS[g.id];
       if (!f.fired.has('g' + i) && t >= g.t - (def.antic || 0)) {
         f.fired.add('g' + i);
-        // the screen-filling gags take turns: one plane, one balloon, two screams at a time across the whole flock
-        const lim = { plane: 1, balloon: 1, scream: 1 }[g.id];
-        if (lim) { const busy = SV.fl.filter(o => o !== f && o.gagOn && o.gagOn[g.id] > t).length; if (busy >= lim) { f.hideGag.add(i); return; } f.gagOn[g.id] = g.tEnd + 0.3; }
+        // the screen-filling gags (a plane, a balloon, a scream) take turns: one of them at a time across the whole flock
+        // (a plane's banner over someone else's scream was two jokes shouting over each other)
+        const BIG = ['plane', 'balloon', 'scream'];
+        if (BIG.includes(g.id)) { const busy = SV.fl.some(o => o !== f && o.gagOn && BIG.some(id => o.gagOn[id] > t)); if (busy) { f.hideGag.add(i); return; } f.gagOn[g.id] = g.tEnd + 0.3; }
         if (g.id === 'scream') salvoSnd('scream', 0.5, (g.tEnd - g.t) / Math.max(1, pb.rate));
         else if (g.id === 'wave') salvoSnd('quack', 0.15, d.pitch, 1);
         else if (def.sfx) salvoSnd(def.sfx, 0.5);
@@ -6658,6 +6807,7 @@ function updateSalvoFlight(dt) {
   live.sort((a, b) => b.x - a.x);
   live.forEach((f, i) => { f.rank = i + 1; });
   const front = live[0] || null;
+  if (front) SV.front = front;   // the distance counter follows it even when a duck flies alone (no race, no lead changes)
   if (front && n > 1) {
     if (!SV.lead) { SV.lead = front; SV.leadSince = pb.T; }
     else if (front !== SV.lead) {
@@ -6906,9 +7056,15 @@ function drawSalvoActors(ctx, V, t) {
 }
 // name tags over the ducks (stacked where they would overlap), event call-outs, arrows for ducks out of the picture
 // an off-screen arrow stays inside a chip, and a stack of them stops before y=limit
+// a label whose tail (a distance, an altitude) must survive whole: only the name part in front of it gets cut
+// (uses the current ctx.font)
+function fitTail(ctx, head, tail, maxW) {
+  if (ctx.measureText(head + tail).width <= maxW) return head + tail;
+  return ellipsize(ctx, head, Math.max(24, maxW - ctx.measureText(tail).width)) + tail;
+}
 function edgeChipWidth(ctx, label) {
   ctx.font = font(24);
-  return Math.min(280, Math.ceil(ctx.measureText(label).width) + 24);
+  return Math.min(320, Math.ceil(ctx.measureText(label).width) + 24);
 }
 function edgeChipFit(n, y0, step, limit) {
   if (n <= 0 || !step) return { shown: 0, more: 0 };
@@ -6938,8 +7094,8 @@ function drawSalvoTags(ctx, V) {
     // a duck out of the picture (or behind the board) gets an arrow on the edge instead (below), not a squeezed-in tag too
     if (!g.done && g.s && g.s.vis) { const ax = V.sx(g.s.x), ay = V.sy(g.s.y); if (ay < 96 || ax < 20 || ax > 1470) continue; }
     const f = g.f, tm = teamOf(f.pl), isLead = f.pl.key === leadKey && n > 1;
-    const label = (f.pl.key === pick ? '★ ' : '') + f.pl.name + (g.done && f.tl ? ' · ' + fmtFt(f.tl.final) : '');
     ctx.font = font(fpx);
+    const label = fitTail(ctx, (f.pl.key === pick ? '★ ' : '') + f.pl.name, g.done && f.tl ? ' · ' + fmtFt(f.tl.final) : '', 300 - 22);   // a long name gives way, never the distance
     const w = Math.min(300, ctx.measureText(label).width + 22), h = fpx + 12;
     let x = clamp(g.sx, w / 2 + 6, 1480 - w / 2), y = g.sy - px * 0.62 - h / 2, lvl = 0;
     while (lvl < 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) { y -= h + 3; lvl++; }
@@ -6947,21 +7103,45 @@ function drawSalvoTags(ctx, V) {
     const drop = () => { f.tagOffAt = S.rt; };
     if (lvl >= 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) { drop(); continue; }   // a crowd with no room left: the board has everybody
     if (!keep && f.tagOffAt != null && S.rt - f.tagOffAt < 0.4) continue;   // once dropped, stays off a moment (no flicker)
-    if (inHud(x, y, w, h)) { drop(); continue; }
+    let below = false;
+    if (inHud(x, y, w, h)) {
+      // up there it would sit under the HUD: the tag hangs below its duck instead (stacking downwards), so a duck
+      // flying high beside another no longer loses its name
+      const hits = yy => placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - yy) < (p.h + h) / 2 + 2);
+      let yb = g.sy + px * 0.42 + h / 2, lb = 0;
+      while (lb < 4 && hits(yb)) { yb += h + 3; lb++; }
+      if (inHud(x, yb, w, h) || yb + h / 2 > 800 || (!keep && hits(yb))) { drop(); continue; }
+      y = yb; lvl = lb; below = true;
+    }
     // a big flock packed together: a tag that would have to stack is shown only for the leaders (the rest are on the
     // board, and their own tags come back as soon as the pack spreads out)
     if (n > 14 && lvl > 0 && !keep && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) { drop(); continue; }
-    placed.push({ x, y, w, h, label });
-    const dark = tm.color === '#F0E442' || tm.color === '#ffffff';
+    placed.push({ x, y, w, h, label, tm, lvl, g, isLead, below });
+    f.tagY = below ? null : y - h / 2;   // (a call-out rises from the tag, or from the duck when its tag hangs below)
+  }
+  // two passes: every stacked tag's line down to its duck first, then all the tags on top (a line drawn after a
+  // neighbouring tag used to cut straight through its name)
+  for (const p of placed) if (p.lvl > 0) { ctx.beginPath(); ctx.moveTo(p.x, p.below ? p.y - p.h / 2 : p.y + p.h / 2); ctx.lineTo(p.g.sx, p.below ? p.g.sy + px * 0.35 : p.g.sy - px * 0.5); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke(); }
+  for (const p of placed) {
+    const { x, y, w, h, tm } = p, dark = tm.color === '#F0E442' || tm.color === '#ffffff';
     rr(ctx, x - w / 2, y - h / 2, w, h, 9); fillStroke(ctx, tm.color, 3);
-    txt(ctx, label, x, y + 1, { px: fpx, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 });
-    if (lvl > 0) { ctx.beginPath(); ctx.moveTo(x, y + h / 2); ctx.lineTo(g.sx, g.sy - px * 0.5); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke(); }
-    if (isLead) { const cy = y - h / 2 - 16; ctx.save(); ctx.translate(x, cy + Math.sin(S.time * 5) * 2); ctx.beginPath(); ctx.moveTo(-17, 9); ctx.lineTo(-19, -9); ctx.lineTo(-8, 0); ctx.lineTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(19, -9); ctx.lineTo(17, 9); ctx.closePath(); fillStroke(ctx, '#ffd23f', 3.5); ctx.restore(); }
-    f.tagY = y - h / 2;
+    txt(ctx, p.label, x, y + 1, { px: fpx, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 });
+    if (p.isLead) { const cy = p.below ? y : y - h / 2 - 16; ctx.save(); ctx.translate(p.below ? x - w / 2 - 24 : x, cy + Math.sin(S.time * 5) * 2); ctx.beginPath(); ctx.moveTo(-17, 9); ctx.lineTo(-19, -9); ctx.lineTo(-8, 0); ctx.lineTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(19, -9); ctx.lineTo(17, 9); ctx.closePath(); fillStroke(ctx, '#ffd23f', 3.5); ctx.restore(); }   // (beside a tag that hangs below the duck)
   }
   // event call-outs float up from the duck; each one moves up until it is clear of the name tags and the call-outs
   // already placed
-  const cps = placed.slice().concat(hud);
+  // ...and clear of the big impact captions (drawn after this): a call-out that only repeats one is left out
+  const bigRects = [], bigNow = [];
+  for (const b of Caps.bigs) {
+    const bt = S.rt - b.t0;
+    if (bt < 0 || bt > b.dur) continue;
+    const lines = String(b.text).split('\n');
+    ctx.font = font(b.px);
+    const bw = Math.min(1040, Math.max(...lines.map(l => ctx.measureText(l).width)));
+    bigRects.push({ x: 960, y: b.y, w: bw + 40, h: lines.length * b.px * 1.05 + 12 });
+    bigNow.push(lines[0].trim().toUpperCase());
+  }
+  const cps = placed.map(p => ({ x: p.x, y: p.y, w: p.w, h: p.h, label: p.label })).concat(hud, bigRects);
   // a big flock gets a handful of call-outs at a time (the oldest keep their spot); the board and Bill have the rest
   const maxCalls = n > 24 ? 4 : n > 12 ? 6 : 99;
   let calls = 0;
@@ -6969,6 +7149,7 @@ function drawSalvoTags(ctx, V) {
     const f = g.f;
     if (f.sx == null) continue;
     if (calls >= maxCalls) break;
+    if (bigNow.includes(String(g.text).trim().toUpperCase())) continue;
     const k = (S.rt - g.t0) / g.dur;
     if (k < 0 || k > 1) continue;
     const a = k < 0.12 ? k / 0.12 : k > 0.75 ? (1 - k) / 0.25 : 1;
@@ -6984,7 +7165,7 @@ function drawSalvoTags(ctx, V) {
     txt(ctx, g.text, 0, 0, { px: g.px, color: g.color, sw: g.px * 0.22, maxW: 420 });
     ctx.restore();
   }
-  SV.drawnTags = cps.filter(o => !hud.includes(o));   // what went on screen this frame (name tags first, then call-outs): for the tests
+  SV.drawnTags = cps.filter(o => !hud.includes(o) && !bigRects.includes(o));   // what went on screen this frame (name tags first, then call-outs): for the tests
   // ducks that are out of the picture: an arrow on the edge says who and where. A long name stays inside the
   // chip, and a tall stack stops above Bill and the big button; the last chip says how many did not fit.
   const off = [];
@@ -6995,7 +7176,9 @@ function drawSalvoTags(ctx, V) {
     const up = sy < 96, left = sx < 20, right = sx > 1470;
     if (!up && !left && !right) continue;
     const tm = teamOf(f.pl);
-    const label = (up ? '▲ ' : left ? '◀ ' : '') + f.pl.name + (up ? ' · ' + fmtInt(Math.max(0, s.y)) + ' ft up' : '') + (right ? ' ▶' : '');
+    ctx.font = font(24);   // (edgeChipWidth's font) the altitude and the arrow stay whole; a long name gives way
+    // (a chip up top already sits at the right-hand end when its duck is off to the right: no ▶ needed there)
+    const label = fitTail(ctx, (up ? '▲ ' : left ? '◀ ' : '') + f.pl.name, up ? ' · ' + fmtInt(Math.max(0, s.y)) + ' ft up' : right ? ' ▶' : '', 320 - 24);
     off.push({ up, left, sx, sy, label, tm, dark: tm.color === '#F0E442' || tm.color === '#ffffff' });
   }
   const drawChip = (label, x, y, fill, dark) => {
@@ -7049,8 +7232,8 @@ function drawSalvoHUD(ctx, V, t) {
   }
   // who is in front, live
   if (ph === 'flight' && pb) {
-    const lead = SV.lead && t > 1.2 ? SV.lead : null;
-    drawOdometer(ctx, lead ? Math.max(0, lead.x) : 0);
+    const lead = SV.lead && t > 1.2 ? SV.lead : null, ahead = lead || (n === 1 && t > 1.2 ? SV.front : null);
+    drawOdometer(ctx, ahead ? Math.max(0, ahead.x) : 0);
     if (lead && n > 1) { ctx.font = font(26); let label = 'IN FRONT: ' + lead.pl.name + ' · ' + lead.pl.duck.name; if (ctx.measureText(label).width > 700) label = 'IN FRONT: ' + lead.pl.name;   /* a long name keeps its size; the duck is on the board */ const w = Math.min(760, ctx.measureText(label).width + 36); rr(ctx, 960 - w / 2, 126, w, 40, 14); fillStrokeLifted(ctx, '#fff8e6', 4, 4); txt(ctx, label, 960, 147, { px: 26, color: OUT, sw: 0, maxW: w - 24 }); }
   }
   // countdown numbers
@@ -7078,7 +7261,7 @@ function drawSalvoHUD(ctx, V, t) {
   // in the air), and a caption with a long player name stays clear of the leaderboard
   let flockY = null;
   if (ph === 'flight') { const ys = SV.fl.filter(f => !f.done && f.sy != null && f.vis).map(f => f.sy).sort((a, b) => a - b); if (ys.length) flockY = ys[ys.length >> 1]; }
-  Caps.drawBigs(ctx, flockY, 1040);
+  Caps.drawBigs(ctx, flockY, 1040, SV.drawnTags);
   const w = SV.result && SV.result.best;
   if ((ph === 'result' || ph === 'idle') && w && w.sx != null) Caps.drawBubble(ctx, w.sx, w.sy - (SV.px || 80) * 0.5, false);
   else if (ph === 'armed' || ph === 'countdown') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
@@ -7177,7 +7360,7 @@ function drawSalvoBoard(ctx) {
     ctx.font = font(npx); const dw = dtxt ? ctx.measureText(dtxt).width + 14 : 0;
     if (two) {
       txt(ctx, (pl.key === pick ? '★ ' : '') + pl.name, nx + 24, cy - 13, { px: npx, color: OUT, sw: 0, align: 'left', maxW: w - (nx - x) - 40 });
-      txt(ctx, pl.duck.name, nx, cy + 15, { px: 22, color: '#6b6577', sw: 0, align: 'left', maxW: w - (nx - x) - dw - 24, weight: 800 });
+      txt(ctx, pl.duck.name, nx, cy + 15, { px: 22, minPx: 18, color: '#6b6577', sw: 0, align: 'left', maxW: w - (nx - x) - dw - 24, weight: 800 });
       if (dtxt) txt(ctx, dtxt, x + w - 18, cy + 15, { px: npx, color: e.live ? '#c22f1f' : OUT, sw: 0, align: 'right' });
     } else {
       txt(ctx, (pl.key === pick ? '★ ' : '') + pl.name, nx + 22, cy + 1, { px: npx, color: OUT, sw: 0, align: 'left', maxW: w - (nx - x) - dw - 44 });
@@ -7213,7 +7396,12 @@ function go(screen) {
 function storedShow() { const c = Store.get('current', null); return c && c.stage && c.stage !== 'done' && Array.isArray(c.players) && c.players.length && Array.isArray(c.queue) ? c : null; }
 // a show that's still going (one already on the podium is finished: it's in the Waddle of Fame)
 function savedShow() { const c = storedShow(); return c && !(c.stage === 'results' && c.saved) ? c : null; }
-function finishedShow() { const c = storedShow(); return c && c.stage === 'results' && c.saved ? c : null; }
+function finishedShow() {
+  const c = storedShow();
+  if (c && c.stage === 'results' && c.saved && !c.practice) return c;   // a reload on the podium: that show
+  const l = Store.get('last', null);
+  return l && l.saved && !l.practice && Array.isArray(l.players) && l.players.length && Array.isArray(l.queue) ? l : null;
+}
 function showLabel(c) { return (c.day === todayKey() ? "Today's show" : 'Unfinished show from ' + shortDate(c.day)) + ' · ' + c.players.length + ' duck' + (c.players.length === 1 ? '' : 's') + ' · ' + (c.stage === 'launch' ? Math.min(c.idx, c.queue.length) + ' of ' + c.queue.length + ' launched' : c.stage === 'results' ? 'results' : 'reveal'); }
 function viewLastResults(c) { S.race = c; refreshWorld(); RS.back = true; RS.page = 2; RS.t = 0; go('results'); }
 function stopShowAudio() { SFX.stopLong(0.08); Voice.stop(); }
@@ -7263,7 +7451,7 @@ function titleStory() {
     const sn = s => s.length > 22 ? s.slice(0, 21).trimEnd() + '…' : s;   // long names never push the end of a line off the card
     if (w) out.push('Defending champion: ' + sn(w.p) + (F.streak && F.streak.n > 1 && F.streak.key === personKey(w.p) ? ' (' + F.streak.n + ' in a row)' : ''));
     if (F.top10[0]) out.push('Pond record: ' + fmtFt(F.top10[0].dist) + ' by ' + sn(F.top10[0].d) + ' (' + sn(F.top10[0].p) + ')');
-    if (F.monthly.length > 1 && F.monthly[0].pts > 0) out.push('Duck of the Month race: ' + F.monthly.slice(0, 2).map(m => sn(m.name) + ' ' + m.pts + ' pts').join(', '));
+    if (F.monthly.length > 1 && F.monthly[0].pts > 0) out.push('Duck of the Month race: ' + F.monthly.slice(0, 2).map(m => sn(m.name) + ' ' + m.pts + (m.pts === 1 ? ' pt' : ' pts')).join(', '));
     if (F.picks.n >= 3) out.push("Bill's picks to win: " + F.picks.hits + ' right out of ' + F.picks.n);
     if (F.races >= 2 && F.races < 400 && !(last && last.date === S.day)) out.push('Show number ' + (F.races + 1) + ' today');
   }
@@ -7313,7 +7501,10 @@ function drawTitle(ctx, dt) {
   }
   const fin = c ? null : finishedShow();
   if (c) txt(ctx, showLabel(c), px, py + 186 + sh, { px: 28, color: '#fff', sw: 6, maxW: 900 });
-  if (Store.full) txt(ctx, 'Browser storage is full: changes aren\'t being saved. Export from Settings.', px, py + 226 + sh, { px: 24, color: '#ffd23f', sw: 5, maxW: 900 });
+  if (Store.full) {   // on a dark plate: it lands over the field's distance signs
+    const fy = py + 226 + sh; rr(ctx, px - 470, fy - 22, 940, 44, 14); ctx.fillStyle = 'rgba(31,26,46,0.82)'; ctx.fill();
+    txt(ctx, 'Browser storage is full: changes aren\'t being saved. Export from Settings.', px, fy, { px: 24, color: '#ffd23f', sw: 0, maxW: 900 });
+  }
   if (S.screen !== 'title') return;
   button(ctx, 'fame', 40, 948, 330, 76, 'Waddle of Fame', { fn: () => { FM.back = 'title'; go('fame'); } });
   button(ctx, 'settings', 390, 948, 210, 76, 'Settings', { fn: () => openSettings(false) });
@@ -7321,7 +7512,11 @@ function drawTitle(ctx, dt) {
   if (c && today) button(ctx, 'newshow', 1460, 948, 420, 76, 'Start a new show instead', { px: 26, bg: '#fff8e6', fn: () => confirmBox('Start over? The show in progress will be discarded.', 'Start a new show', () => { Store.del('current'); setPaused(false); setBig('START', true); go('roster'); }) });
   if (c && !today) button(ctx, 'oldshow', 1460, 948, 420, 76, 'Resume ' + shortDate(c.day) + ' show', { px: 26, bg: '#fff8e6', fn: () => resumeRace(c) });
   if (fin) button(ctx, 'lastres', 1460, 948, 420, 76, 'Last results (' + shortDate(fin.day) + ')', { px: 26, bg: '#fff8e6', fn: () => viewLastResults(fin) });
-  if (!SFX.ready) txt(ctx, 'Click anywhere to turn on sound', px, py + 186 + sh + (c ? 40 : 0) + (Store.full ? 40 : 0), { px: 26, color: '#fff', sw: 6 });
+  if (!SFX.ready) {
+    const hy = py + 186 + sh + (c ? 40 : 0) + (Store.full ? 40 : 0);
+    if (hy > 730) { rr(ctx, px - 250, hy - 21, 500, 42, 14); ctx.fillStyle = 'rgba(31,26,46,0.7)'; ctx.fill(); }   // down among the distance signs: on a plate
+    txt(ctx, 'Click anywhere to turn on sound', px, hy, { px: 26, color: '#fff', sw: hy > 730 ? 0 : 6 });
+  }
 }
 
 /* ---------- reveal: cards flip in a cascade, then the launch order shuffles, then the Pond Forecast ---------- */
@@ -7391,7 +7586,7 @@ function drawReveal(ctx, dt) {
   const R = S.race, t = S.time;
   const V = makeView(1400, GROUND_Y + 40, 2.2);
   // no set pieces behind the cards: today's hazards stay a surprise
-  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0 });
+  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0, markers: false });
   ctx.fillStyle = 'rgba(31,26,46,0.35)'; ctx.fillRect(0, 0, 1920, 1080);
   txt(ctx, RV.shuf >= 0 ? (R.mode === 'salvo' ? 'INTO THE CANNON!' : 'LAUNCH ORDER') : "TODAY'S DUCKS", 960, 62, { px: 60, color: '#ffd23f', sw: 10 });
   const n = R.players.length;
@@ -7443,9 +7638,8 @@ function drawCard(ctx, rc, pl, flipK, num, pick) {
     const ps = Math.min(artH * 0.72, w * 0.62);
     drawDuck(ctx, d, x + w / 2, y + 8 + artH * 0.56, ps, { pose: 'stand', t: S.time, aura: true, crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
     const top = y + 8 + artH + 4, room = yb - top;
-    const npx = clamp(Math.round(Math.min(h * 0.13, w * 0.11)), 19, 30);
-    ctx.font = font(npx);
-    const lines = room >= npx * 2.2 ? wrapText(ctx, d.name, w - 20, 2) : [d.name];
+    let npx = clamp(Math.round(Math.min(h * 0.13, w * 0.11)), 19, 30), lines = [d.name];
+    if (room >= npx * 2.2) ({ lines, px: npx } = wrapFit(ctx, d.name, w - 20, 2, npx, Math.max(16, Math.round(npx * 0.72))));   // shrink a little before cutting a long name short
     const mid = top + room / 2;
     lines.forEach((ln, i) => txt(ctx, ln, x + w / 2, mid + (i - (lines.length - 1) / 2) * npx * 1.05, { px: npx, minPx: 16, color: OUT, sw: 0, maxW: w - 16 }));
     if (pick) { ctx.save(); ctx.translate(x + w - 10, y + 22); ctx.rotate(0.12); const tw = Math.min(150, w * 0.7); rr(ctx, -tw, -16, tw + 6, 32, 10); fillStroke(ctx, '#e8412c', 4); txt(ctx, "BILL'S PICK", -tw / 2 + 3, 1, { px: 20, minPx: 14, color: '#fff', sw: 0, maxW: tw - 8 }); ctx.restore(); }
@@ -7527,16 +7721,17 @@ function startResults() {
   RS.tod = teamOfDay(R);
   RS.conf = 0;
 }
-// DONE on a real show leaves it in storage so Last results can reopen the panorama. A practice show is discarded.
+// A finished real show is kept under its own key, so Last results can reopen its panorama until another show
+// finishes. 'current' only ever holds a show in progress: going back to Edit names, abandoning a show or a practice
+// show can't take Last results away (they used to, as they all shared one slot).
+function rememberLast(R) { if (R && R.saved && !R.practice) Store.set('last', Object.assign({}, R, { stage: 'results' })); }
+// DONE (or Close these results): a real show stays as Last results; a practice show is discarded
 function keepFinishedShow() {
   const R = S.race;
   if (!R) return;
-  if (R.saved && !R.practice) {
-    if (R.stage !== 'results') { R.stage = 'results'; saveRace(); }
-  } else {
-    const c = Store.get('current', null);
-    if (!c || c.id === R.id) Store.del('current');
-  }
+  rememberLast(R);
+  const c = Store.get('current', null);
+  if (!c || c.id === R.id) Store.del('current');
 }
 function resultsPrimary() {
   // a press while the podium (or the awards) is still being revealed finishes the reveal; the next one moves on. An
@@ -7560,7 +7755,7 @@ function drawResults(ctx, dt) {
   const st = standings();
   const V = makeView(600, GROUND_Y + 60, 2.5);
   if (RS.page < 2) {
-    drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0 });
+    drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0, markers: false });
     ctx.fillStyle = 'rgba(31,26,46,0.25)'; ctx.fillRect(0, 0, 1920, 1080);
   }
   if (RS.page === 0) drawPodium(ctx, st);
@@ -7588,7 +7783,8 @@ function drawPodium(ctx, st) {
     if (!win) {
       const ty = top - sz - 125;   // clear of tall hats and ears
       txt(ctx, e.pl.duck.name, sp.x, ty, { px: 32, color: '#fff', sw: 6, maxW: 330 });
-      txt(ctx, e.pl.name + ' · ' + fmtDist(st, sp.i), sp.x, ty + 38, { px: 28, color: '#ffd23f', sw: 5, maxW: 330 });
+      ctx.font = font(20);   // at the smallest size it may shrink to, a long name gives way and the distance stays whole
+      txt(ctx, fitTail(ctx, e.pl.name, ' · ' + fmtDist(st, sp.i), 330), sp.x, ty + 38, { px: 28, color: '#ffd23f', sw: 5, maxW: 330 });
     }
   }
   const w = st[0];
@@ -7709,7 +7905,7 @@ function drawAwards(ctx) {
     ctx.font = font(30);
     wrapText(ctx, C.AWARDS[a.id].name, w - 30, 2).forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 130 + j * 34, { px: 30, color: '#c22f1f', sw: 0 }));
     drawDuck(ctx, a.e.pl.duck, x + w / 2, y + 250, 110, duckDrawOpts(a.e.pl, { pose: 'stand' }));
-    txt(ctx, a.e.pl.duck.name, x + w / 2, y + 326, { px: 28, color: OUT, sw: 0, maxW: w - 24 });
+    txt(ctx, a.e.pl.duck.name, x + w / 2, y + 326, { px: 28, minPx: 18, color: OUT, sw: 0, maxW: w - 24 });
     txt(ctx, a.e.pl.name, x + w / 2, y + 358, { px: 26, color: '#6b6577', sw: 0, maxW: w - 24, weight: 800 });
     // a long duck name in the description gets smaller type before it gets cut off
     let dpx = 24, dl;
@@ -7767,7 +7963,7 @@ const FM = { page: 0, t: 0, back: 'title' };
 function drawFame(ctx, dt) {
   const t = S.time;
   const V = makeView(900, GROUND_Y + 80, 2);
-  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0 });
+  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0, markers: false });
   ctx.fillStyle = 'rgba(31,26,46,0.45)'; ctx.fillRect(0, 0, 1920, 1080);
   txt(ctx, 'THE WADDLE OF FAME', 960, 66, { px: 66, color: '#ffd23f', sw: 10 });
   const F = computeFame(S.history, S.day);
@@ -7789,7 +7985,7 @@ function drawFame(ctx, dt) {
     if (F.picks.n) txt(ctx, "Bill's picks to win: " + F.picks.hits + ' right out of ' + F.picks.n, 1430, 496, { px: 24, color: '#6b6577', sw: 0, maxW: 840, weight: 800 });
     panel(980, 540, 900, 340, 'DUCK OF THE MONTH · ' + MONTHS[parseDayKey(S.day).getMonth()].toUpperCase());
     if (F.monthBest) { txt(ctx, F.monthBest.d, 1430, 624, { px: 34, color: OUT, sw: 0, maxW: 840 }); txt(ctx, F.monthBest.p + ' · ' + fmtFt(F.monthBest.dist) + ' · longest launch this month', 1430, 664, { px: 26, color: '#6b6577', sw: 0, maxW: 840, weight: 800 }); }
-    F.monthly.slice(0, 4).forEach((m, i) => { const y = 724 + i * 40; txt(ctx, (i + 1) + '. ' + m.name, 1020, y, { px: 28, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, m.pts + ' pts · ' + m.wins + ' W', 1840, y, { px: 28, color: '#4a4458', sw: 0, align: 'right' }); });
+    F.monthly.slice(0, 4).forEach((m, i) => { const y = 724 + i * 40; txt(ctx, (i + 1) + '. ' + m.name, 1020, y, { px: 28, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, m.pts + (m.pts === 1 ? ' pt · ' : ' pts · ') + m.wins + ' W', 1840, y, { px: 28, color: '#4a4458', sw: 0, align: 'right' }); });
     txt(ctx, F.races + ' race' + (F.races === 1 ? '' : 's') + ' on record · podium points 3/2/1', 300, 986, { px: 26, color: '#fff', sw: 5, align: 'left', maxW: 540 });
   } else {
     panel(40, 120, 1060, 760, 'TOP 10 LONGEST LAUNCHES');
@@ -7892,7 +8088,7 @@ function resize() {
   const ox = (w - 1920 * scale) / 2, oy = (h - 1080 * scale) / 2;
   STAGE.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
   const dpr = window.devicePixelRatio || 1;
-  const k = Math.max(0.42, clamp(scale * dpr, 0.5, 1.25) * QUAL.k);
+  const k = Math.max(0.42, clamp(scale * dpr, 0.5, 1.5) * QUAL.k);   // up to 1.5x on a sharp screen (a Retina laptop, 1440p); slow frames step it down
   const bw = Math.round(1920 * k), bh = Math.round(1080 * k);
   if (CV.width !== bw || CV.height !== bh) { CV.width = bw; CV.height = bh; }
   VIEW = { scale, ox, oy, k: bw / 1920 };
