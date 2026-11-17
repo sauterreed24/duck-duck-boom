@@ -3667,11 +3667,23 @@ const SKY = {
   night: ['#0b1230', '#1d2a5c', '#3a4c86'],
 };
 function groundPalette(cond) {
-  if (cond.flags.snow) return { a: '#eef3f8', b: '#dfe8f1', edge: '#c9d6e3', dirt: '#b7c6d6' };
-  if (cond.mod === 'ice') return { a: '#d3ecf8', b: '#c2e3f4', edge: '#93c6e4', dirt: '#a9c9dc' };   // Ice Rink day: the field is a rink
-  if (cond.flags.beach) return { a: '#f3d59b', b: '#eccb88', edge: '#d9b36b', dirt: '#c99f5a' };
-  if (cond.flags.autumn) return { a: '#86bd4c', b: '#7bb244', edge: '#5f9636', dirt: '#8b6a3e' };
-  return { a: '#6cc04a', b: '#62b442', edge: '#4c9a35', dirt: '#8b6a3e' };
+  const P = cond.mod === 'ice' ? { a: '#d3ecf8', b: '#c2e3f4', edge: '#93c6e4', dirt: '#a9c9dc' }   // Ice Rink day: the field is a rink (snow or not)
+    : cond.flags.snow ? { a: '#eef3f8', b: '#dfe8f1', edge: '#c9d6e3', dirt: '#b7c6d6' }
+    : cond.flags.beach ? { a: '#f3d59b', b: '#eccb88', edge: '#d9b36b', dirt: '#c99f5a' }
+    : cond.flags.autumn ? { a: '#86bd4c', b: '#7bb244', edge: '#5f9636', dirt: '#8b6a3e' }
+    : { a: '#6cc04a', b: '#62b442', edge: '#4c9a35', dirt: '#8b6a3e' };
+  // the field follows the sky: dusky blue under the stars (it stayed daytime-bright), a little warmer at sunset
+  if (cond.sky === 'night') for (const k in P) P[k] = mix(P[k], '#1d2547', 0.42);
+  else if (cond.sky === 'sunset') for (const k in P) P[k] = mix(P[k], '#c8607a', 0.1);
+  return P;
+}
+// A season's own hill and tree colours win over the sky's (autumn stays autumn), so under a night or sunset sky
+// they get the sky's tint painted over them instead (only the drawn hills, not the empty canvas around them)
+function skyTint(c, cond, w, h) {
+  if (!(cond.flags.snow || cond.flags.autumn || cond.flags.beach)) return;
+  const tint = cond.sky === 'night' ? 'rgba(22,28,64,0.55)' : cond.sky === 'sunset' ? 'rgba(190,80,110,0.18)' : null;
+  if (!tint) return;
+  c.save(); c.globalCompositeOperation = 'source-atop'; c.fillStyle = tint; c.fillRect(0, 0, w, h); c.restore();
 }
 
 const Scenery = {
@@ -3708,6 +3720,7 @@ const Scenery = {
       ridge(330, 110, farCol[0], 11);
       if (cond.flags.snow) { c.fillStyle = '#ffffff'; for (let x = 120; x < 2400; x += 480) { c.beginPath(); c.moveTo(x - 60, 200); c.lineTo(x, 130); c.lineTo(x + 60, 200); c.closePath(); c.fill(); } }
     }
+    skyTint(c, cond, 2400, 460);
     // near layer
     const near = this.near = mkCanvas(2400, 300);
     c = near.getContext('2d');
@@ -3724,6 +3737,7 @@ const Scenery = {
       c.fillStyle = col; circ(c, x, y - 40, treeR.range(18, 28)); c.fill();
       if (cond.flags.snow) { c.fillStyle = '#ffffff'; ell(c, x, y - 58, 16, 6); c.fill(); }
     }
+    skyTint(c, cond, 2400, 300);
     // clouds
     this.clouds = [];
     const cloudCol = cond.sky === 'overcast' || cond.sky === 'drizzle' ? '#e2e7ee' : cond.sky === 'fog' ? '#f1f4f6' : cond.sky === 'night' ? '#4a5a8a' : cond.sky === 'sunset' ? '#ffd9c2' : '#ffffff';
@@ -3933,7 +3947,8 @@ function drawWorld(ctx, W) {
   }
   // near hills
   const nearY = GROUND_Y - 260 + (V.gy - GROUND_Y) * 0.85;
-  if (nearY < 1080) { const off = -((camPx * 0.32) % 2400 + 2400) % 2400; for (let x = off; x < 1920; x += 2400) ctx.drawImage(Scenery.near, x, nearY); }
+  // (on the way to space they fade with the far hills and the clouds: tree tops poked up into outer space)
+  if (nearY < 1080 && earth > 0) { ctx.globalAlpha = earth; const off = -((camPx * 0.32) % 2400 + 2400) % 2400; for (let x = off; x < 1920; x += 2400) ctx.drawImage(Scenery.near, x, nearY); ctx.globalAlpha = 1; }
   if (foggy && nearY < 1080) {
     const fg = ctx.createLinearGradient(0, nearY + 60, 0, nearY + 300); fg.addColorStop(0, 'rgba(238,242,245,0.38)'); fg.addColorStop(1, 'rgba(238,242,245,0.12)');
     ctx.fillStyle = fg; ctx.fillRect(0, nearY + 60, 1920, 240);
@@ -4204,7 +4219,7 @@ const Caps = {
     ctx.restore();
   },
   side: null,
-  drawBigs(ctx, avoidY, maxW) {
+  drawBigs(ctx, avoidY, maxW, avoid) {
     // keep impact captions on the far side of the duck (with hysteresis so they don't flip-flop)
     if (avoidY != null) {
       if (this.side == null) this.side = avoidY < 520 ? 'low' : 'high';
@@ -4217,7 +4232,16 @@ const Caps = {
       if (t < 0) continue;
       const hh = String(b.text).split('\n').length * b.px * 1.05;
       if (avoidY != null && !b.fixedY) {
-        if (!b.yset) this.side = avoidY < 520 ? 'low' : 'high';   // a new caption starts on the side away from the duck
+        if (!b.yset) {   // a new caption starts on the side away from the duck...
+          this.side = avoidY < 520 ? 'low' : 'high';
+          if (avoid && avoid.length) {   // ...or on the other side, if that covers fewer of the salvo's name tags
+            ctx.font = font(b.px);
+            const bw = Math.min(maxW || 1500, Math.max(...String(b.text).split('\n').map(l => ctx.measureText(l).width))) + 40;
+            const cover = side => { const ty = side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off; return avoid.filter(o => Math.abs(o.x - 960) < (o.w + bw) / 2 && Math.abs(o.y - ty) < (o.h + hh) / 2).length; };
+            const other = this.side === 'low' ? 'high' : 'low';
+            if (cover(other) < cover(this.side)) this.side = other;
+          }
+        }
         const ty = this.side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off;
         b.y = b.yset ? approach(b.y, ty, 12, drawDt()) : ty; b.yset = true;
       }
@@ -5388,7 +5412,7 @@ function boomFX(misfire) {
   burst('feather', 12, { x: m.x, y: m.y, a0: -a, spread: 1.2, sp0: 20, sp1: 70, l0: 1.2, l1: 2.2, r0: 8, r1: 14, colors: [C.COLORS[L.pl.duck.color].c, '#ffffff'], extra: { ws: true, g: -12, drag: 1.2 } });
   // up top, so Ol' Thunderbill's big moment stays in view
   Caps.big('FIRE IN THE DUCK!', { px: 86, dur: 2, y: 250 });
-  if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 330 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }
+  if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 410 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }   // (below FIRE IN THE DUCK!, which is still up)
   else if (L.fuseOut) { /* the fake-out has its own punchline */ }
   else { say('launch', { duck: L.pl.duck.name }, { delay: 0.5 }); if (!L.tl.gags.some(g => g.id === 'scream')) quip('launch', { delay: 2.1 }); }   // once the big caption has cleared
   L.boomed = true;
@@ -5554,8 +5578,10 @@ function updateFlightCamera(dt, s, t) {
   const sy = GROUND_Y - s.y * cam.z;
   if (sy < 230) gyT = GROUND_Y + (230 - sy);
   cam.gy = approach(cam.gy, gyT, 4, dt);
+  // a fast climb (a space trip, a second cannon) outruns the easing: the duck is never allowed up behind the distance
+  // counter and its chip (they end at about y 170)
   const syNow = cam.gy - s.y * cam.z;
-  if (syNow < 150) cam.gy += 150 - syNow;
+  if (syNow < 215) cam.gy += 215 - syNow;
 }
 function onAntic(e) {
   const map = { geese: 'honk', pelican: 'pelican', drone: 'buzz', ufo: 'zap', ooo: 'envelopes', migration: 'honk', glider: 'whoosh' };
@@ -6059,7 +6085,7 @@ function drawScream(ctx, x, y, text, rt) {
   ctx.save();
   ctx.font = font(34);
   const w = ctx.measureText(text).width + 40, h = 58;
-  const bx = clamp(x + 40, 20, 1480 - w), by = clamp(y - 120, 130, 760);
+  const bx = clamp(x + 40, 20, 1480 - w), by = clamp(y - 120, 185, 760);   // never up behind the distance counter's chip
   ctx.beginPath(); ctx.moveTo(bx + 30, by + h - 4); ctx.lineTo(clamp(x + 10, bx, bx + w), by + h + 30); ctx.lineTo(bx + 60, by + h - 4); ctx.closePath(); fillStroke(ctx, '#fff', 5);
   // a shouty bubble: small spikes along the edges, red outline
   ctx.beginPath();
@@ -7055,21 +7081,30 @@ function drawSalvoTags(ctx, V) {
     const drop = () => { f.tagOffAt = S.rt; };
     if (lvl >= 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) { drop(); continue; }   // a crowd with no room left: the board has everybody
     if (!keep && f.tagOffAt != null && S.rt - f.tagOffAt < 0.4) continue;   // once dropped, stays off a moment (no flicker)
-    if (inHud(x, y, w, h)) { drop(); continue; }
+    let below = false;
+    if (inHud(x, y, w, h)) {
+      // up there it would sit under the HUD: the tag hangs below its duck instead (stacking downwards), so a duck
+      // flying high beside another no longer loses its name
+      const hits = yy => placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - yy) < (p.h + h) / 2 + 2);
+      let yb = g.sy + px * 0.42 + h / 2, lb = 0;
+      while (lb < 4 && hits(yb)) { yb += h + 3; lb++; }
+      if (inHud(x, yb, w, h) || yb + h / 2 > 800 || (!keep && hits(yb))) { drop(); continue; }
+      y = yb; lvl = lb; below = true;
+    }
     // a big flock packed together: a tag that would have to stack is shown only for the leaders (the rest are on the
     // board, and their own tags come back as soon as the pack spreads out)
     if (n > 14 && lvl > 0 && !keep && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) { drop(); continue; }
-    placed.push({ x, y, w, h, label, tm, lvl, g, isLead });
-    f.tagY = y - h / 2;
+    placed.push({ x, y, w, h, label, tm, lvl, g, isLead, below });
+    f.tagY = below ? null : y - h / 2;   // (a call-out rises from the tag, or from the duck when its tag hangs below)
   }
   // two passes: every stacked tag's line down to its duck first, then all the tags on top (a line drawn after a
   // neighbouring tag used to cut straight through its name)
-  for (const p of placed) if (p.lvl > 0) { ctx.beginPath(); ctx.moveTo(p.x, p.y + p.h / 2); ctx.lineTo(p.g.sx, p.g.sy - px * 0.5); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke(); }
+  for (const p of placed) if (p.lvl > 0) { ctx.beginPath(); ctx.moveTo(p.x, p.below ? p.y - p.h / 2 : p.y + p.h / 2); ctx.lineTo(p.g.sx, p.below ? p.g.sy + px * 0.35 : p.g.sy - px * 0.5); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke(); }
   for (const p of placed) {
     const { x, y, w, h, tm } = p, dark = tm.color === '#F0E442' || tm.color === '#ffffff';
     rr(ctx, x - w / 2, y - h / 2, w, h, 9); fillStroke(ctx, tm.color, 3);
     txt(ctx, p.label, x, y + 1, { px: fpx, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 });
-    if (p.isLead) { const cy = y - h / 2 - 16; ctx.save(); ctx.translate(x, cy + Math.sin(S.time * 5) * 2); ctx.beginPath(); ctx.moveTo(-17, 9); ctx.lineTo(-19, -9); ctx.lineTo(-8, 0); ctx.lineTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(19, -9); ctx.lineTo(17, 9); ctx.closePath(); fillStroke(ctx, '#ffd23f', 3.5); ctx.restore(); }
+    if (p.isLead) { const cy = p.below ? y : y - h / 2 - 16; ctx.save(); ctx.translate(p.below ? x - w / 2 - 24 : x, cy + Math.sin(S.time * 5) * 2); ctx.beginPath(); ctx.moveTo(-17, 9); ctx.lineTo(-19, -9); ctx.lineTo(-8, 0); ctx.lineTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(19, -9); ctx.lineTo(17, 9); ctx.closePath(); fillStroke(ctx, '#ffd23f', 3.5); ctx.restore(); }   // (beside a tag that hangs below the duck)
   }
   // event call-outs float up from the duck; each one moves up until it is clear of the name tags and the call-outs
   // already placed
@@ -7204,7 +7239,7 @@ function drawSalvoHUD(ctx, V, t) {
   // in the air), and a caption with a long player name stays clear of the leaderboard
   let flockY = null;
   if (ph === 'flight') { const ys = SV.fl.filter(f => !f.done && f.sy != null && f.vis).map(f => f.sy).sort((a, b) => a - b); if (ys.length) flockY = ys[ys.length >> 1]; }
-  Caps.drawBigs(ctx, flockY, 1040);
+  Caps.drawBigs(ctx, flockY, 1040, SV.drawnTags);
   const w = SV.result && SV.result.best;
   if ((ph === 'result' || ph === 'idle') && w && w.sx != null) Caps.drawBubble(ctx, w.sx, w.sy - (SV.px || 80) * 0.5, false);
   else if (ph === 'armed' || ph === 'countdown') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
@@ -8020,7 +8055,7 @@ function resize() {
   const ox = (w - 1920 * scale) / 2, oy = (h - 1080 * scale) / 2;
   STAGE.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
   const dpr = window.devicePixelRatio || 1;
-  const k = Math.max(0.42, clamp(scale * dpr, 0.5, 1.25) * QUAL.k);
+  const k = Math.max(0.42, clamp(scale * dpr, 0.5, 1.5) * QUAL.k);   // up to 1.5x on a sharp screen (a Retina laptop, 1440p); slow frames step it down
   const bw = Math.round(1920 * k), bh = Math.round(1080 * k);
   if (CV.width !== bw || CV.height !== bh) { CV.width = bw; CV.height = bh; }
   VIEW = { scale, ox, oy, k: bw / 1920 };
