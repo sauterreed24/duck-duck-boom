@@ -384,6 +384,21 @@ C.SEASONS = {
   summer: { name: 'Summer Beach', blurb: 'Sand, sun and beach umbrellas.' },
 };
 C.FRIYAY = { name: 'Fri-Yay!', blurb: 'Party hats, disco sky, extra confetti.' };
+// Bill's outlook on the Pond Forecast card: one line about the day's sky or wind, one general one (both seeded by the
+// date, so everyone on the call sees the same forecast)
+C.OUTLOOK_SKY = {
+  sunny: ['Sunscreen recommended for beaks.', 'Clear skies. No excuses.'],
+  overcast: ['Clouds: still deciding.', 'Grey, with a chance of glory.'],
+  drizzle: ['Light drizzle. The ducks are fine with this.', 'Damp, which is how ducks like it.'],
+  fog: ['Visibility: about one duck.', 'Fog advisory: listen for the quack.'],
+  sunset: ['Golden hour. Every duck looks great.', 'Sunset launch. Very cinematic.'],
+  night: ['Moon: present. Bread: unconfirmed.', 'Stars out. Ducks too.'],
+  head: ['Headwind advisory: flap harder.', 'The wind is not on our side today.'],
+  tail: ['Tailwind: free feet for everyone.', 'The wind is with us. Do not waste it.'],
+};
+C.OUTLOOK = ['Chance of geese: {p}%.', 'Bread index: {lvl}.', 'Hat-loss advisory in effect.', 'Squirrel activity: moderate.', 'Expect scattered landings.',
+  'Local cows: alert.', 'Mostly airborne, with periods of pond.', 'Chance of a reply-all storm: {p}%.', 'Humidity: pond-adjacent.', 'Ground: still there. Probably.',
+  'Low chance of meetings, high chance of ducks.', 'Air quality: quacky.', 'Feather forecast: plenty.', 'Odds of a photo finish: {p}%.'];
 
 /* ---------- world flavor ---------- */
 C.BILLBOARDS = ['LOST: Sense of Direction', 'PONDS: Now 20% Wetter', 'BREAD: Now With More Bread.', 'THIS SIGN IS A SIGN', 'YOU ARE HERE (Probably)', 'Now Hiring: Puddle Inspector', 'Honk If You Can Read This', 'Caution: Low-Flying Ducks', 'Did You Remember Your Hat?', 'Bread Sale: Today Only', 'Puddles Ahead: Jump Anyway', 'Clouds: Fluffy Since Forever'];
@@ -495,6 +510,7 @@ C.LINES = {
   salvoPickLead: ["My pick! {duck} takes the lead! I said this! I said this on air!", "Bill's pick is out in front! Nobody act surprised.", "{player}'s duck, my pick, takes the lead! Vindication!", "That's my pick in front! Write it down. Somebody write it down!", "{duck} leads! I would like the minutes to show I called this."],
   salvoRecord: ['{duck} is past the pond record line and still going!', "That's record country! {player}'s duck is out there!", '{duck} just flew past the all-time record!', "{duck} is past the record line! Somebody wake the pond historian!", "Uncharted pond! {duck} is out beyond the record!"],
   salvoWin: ['{duck} is the farthest duck out there: {distance}!', 'Nobody went farther than {duck}! {distance}!', "It's {duck} out in front when the feathers settle: {distance}!", '{duck} takes it by {margin}!', "{duck} flew farthest! {distance}! Put it in the newsletter!", "When the feathers settle, it's {duck} at {distance}!", "{distance}! {duck} has done it, and is being very humble about it. Not really."],
+  signoff: ['Same pond, same time, next show.', 'No ducks were harmed. Several hats are still missing.', "That's a wrap. Somebody go and find the hats.", 'The cannon needs a nap. So do I.', 'See you next show. Bring bread.', 'Thank you, pond. You have been a wonderful audience.', 'The ducks will be available for autographs in the pond.'],
   salvoNoCatch: ['Nobody caught {duck}. Still {distance} to beat.', '{duck} is still out in front at {distance}. Next volley, bring your best.', 'That volley came up short. {duck} keeps the lead at {distance}.', 'Close, but {duck} is still the duck to beat: {distance}.'],
   debutIntro: ['A first ever launch for {player}! Be gentle, Thunderbill.', 'Welcome to the cannon, {player}! First time in the barrel.', "{player}'s very first duck. Everybody remembers their first."],
   firstWin: ['{duck} wins it, and that is a FIRST Golden Loaf for {player}!', 'A first ever Golden Loaf for {player}! {duck} did it!', "A Golden Loaf for {player}, thanks to {duck}! The very first one!"],
@@ -2018,7 +2034,7 @@ function runSelfTest() {
   for (let i = 0; i < 400; i++) { const tl = SIM.simulate(hash('selftest', i), ice, iceCourse, null, {}); if (tl.endT >= 69.9) capped++; const k = tl.n - 1; if (tl.y[k] > SIM.groundY(tl.x[k]) + 1) aloft++; }
   check('no flight runs into the time cap or ends in mid-air', capped === 0 && aloft === 0, capped + ' capped, ' + aloft + ' aloft of 400 Ice Rink flights');
   // content lint: nothing Bill or a duck says trips the blocklist
-  const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]));
+  const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]), ...Object.values(C.OUTLOOK_SKY), C.OUTLOOK);
   const holes = [].concat(...[C.LINES, C.DUCK_LINES].map(T => Object.entries(T).filter(([k, a]) => Object.keys(a).length !== a.length || a.some(x => typeof x !== 'string' || !x.trim())).map(([k]) => k)));
   check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
@@ -3820,7 +3836,7 @@ function drawWorld(ctx, W) {
     ctx.globalAlpha = 0.55 + 0.45 * k; starPath(ctx, st.x, st.y, st.s * (0.8 + 0.3 * k), 0); ctx.fillStyle = '#fff6c8'; ctx.fill();
   }
   ctx.globalAlpha = 1;
-  if (Scenery.orb) { const o = Scenery.orb; ctx.drawImage(o.cv, o.x - o.cv.width / 2, o.y + lift * 0.05 - o.cv.height / 2); }
+  if (Scenery.orb) { const o = Scenery.orb; ctx.drawImage(o.cv, (W.orbX || o.x) - o.cv.width / 2, o.y + lift * 0.05 - o.cv.height / 2); }
   // space darkening (only during a space trip)
   if (W.space > 0) {
     ctx.fillStyle = 'rgba(8,6,28,' + (0.92 * W.space) + ')'; ctx.fillRect(0, 0, 1920, 1080);
@@ -4859,6 +4875,8 @@ function resultsText(R) {
   const tod = teamOfDay(R);
   if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
   if (hl.length) lines.push('Highlight: ' + hl[0]);
+  const so = C.LINES.signoff;   // Bill signs off (the same line every time this show is copied)
+  lines.push('Bill says: ' + so[hash(R.seed >>> 0, 'signoff') % so.length]);
   return lines.join('\n');
 }
 function finalizeRace() {
@@ -5273,7 +5291,7 @@ function updateFlight(dt) {
   // crossings
   const cross = x => prev < x && t >= x;
   // photo finish: the shutter clicks the moment the picture starts to slow down
-  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 1 }); }
+  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); S.flashAt = S.rt; Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 1 }); }
   // impact freeze: 0.3 s, but never two in quick succession (that reads as a stutter)
   const freeze = () => { if (pb.T - pb.holdEnd >= 0.7) { pb.hold = 0.3; pb.holdEnd = pb.T + 0.3; } };
   if (tl.special === 'misfire' && cross(tl.launchT)) { const savedBarrel = L.barrel; boomFX(false); L.barrel = savedBarrel; say('misfireBoom', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); freeze(); }
@@ -6527,7 +6545,7 @@ function updateSalvoFlight(dt) {
   const t = pb.simT, n = SV.fl.length;
   // the drumroll builds over the last seconds and lands on the result
   if (!SV.replay && n > 1 && !SV.drumOn && t >= pb.drumAt && pb.dur - pb.T > 1.2) { SV.drumOn = true; SFX.startDrum(Math.max(1.2, pb.dur - pb.T)); }
-  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
+  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); S.flashAt = S.rt; Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
   let moving = 0, lastMover = null;
   for (const f of SV.fl) {
     const tl = f.tl, d = f.pl.duck, vars = { duck: d.name, player: f.pl.name };
@@ -7081,7 +7099,7 @@ function drawSalvoBoard(ctx) {
   // sliding cannot be read). Between re-deals the distances keep counting.
   if (flying) {
     const key = rows.map(e => e.pl.key).join();
-    if (!SVB.order || S.rt - SVB.orderAt > 0.5 || SVB.order.length !== rows.length) { SVB.order = rows.map(e => e.pl.key); SVB.orderAt = S.rt; }
+    if (!SVB.order || S.rt - SVB.orderAt > (rows.length > 20 ? 0.8 : 0.5) || SVB.order.length !== rows.length) { SVB.order = rows.map(e => e.pl.key); SVB.orderAt = S.rt; }
     else if (key !== SVB.order.join()) { const pos = new Map(SVB.order.map((k, i) => [k, i])); rows.sort((a, b) => (pos.has(a.pl.key) ? pos.get(a.pl.key) : 999) - (pos.has(b.pl.key) ? pos.get(b.pl.key) : 999)); }
   } else SVB.order = null;
   const x = 1500, y = 14, w = 404, total = rows.length;
@@ -7155,7 +7173,7 @@ function go(screen) {
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
   if (screen === 'results') { if (RS.back) { RS.back = false; setBig('DONE', true); } else startResults(); }
-  if (screen === 'fame') { Particles.clear(); FM.page = 0; FM.t = 0; setBig('NEXT PAGE', true); }
+  if (screen === 'fame') { Particles.clear(); FM.t = 0; const any = computeFame(S.history, S.day).races > 0; FM.page = any ? 0 : 1; setBig(any ? 'NEXT PAGE' : 'BACK', true); }   // nothing on record: there is no next page
   if (screen === 'gallery') { GL.seed = freshSeed(); setBig('NEW BATCH', true); }
 }
 function storedShow() { const c = Store.get('current', null); return c && c.stage && c.stage !== 'done' && Array.isArray(c.players) && c.players.length && Array.isArray(c.queue) ? c : null; }
@@ -7224,7 +7242,7 @@ function drawTitle(ctx, dt) {
   if (S.screen === 'title' && !S.race && !S.dbg.day && !Modal.isOpen && Iris.t < 0 && localDayKey() !== S.day) go('title');
   const t = S.time;
   const V = makeView(150, GROUND_Y + 30, 4.2);
-  drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0 });
+  drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0, orbX: 1765 });   // the sun or moon clear of the logo
   // attract mode: every few seconds Thunderbill lobs a demo duck off into the distance
   const ang = 40, CYC = 6.5, u = t % CYC, cyc = Math.floor(t / CYC);
   const mz = cannonMuzzle(ang);
@@ -7406,6 +7424,12 @@ function drawCard(ctx, rc, pl, flipK, num, pick) {
   ctx.restore();
   if (num != null) { circ(ctx, x + 6, y + 6, 26); fillStroke(ctx, '#ffd23f', 5); txt(ctx, String(num), x + 6, y + 7, { px: 28, color: OUT, sw: 0 }); }
 }
+function forecastOutlook(cond) {
+  const h = hash('outlook', cond.dayKey);
+  const skyKey = cond.wind.kind !== 'calm' && cond.wind.mph >= 12 && h % 2 ? cond.wind.kind : cond.sky;
+  const a = C.OUTLOOK_SKY[skyKey] || C.OUTLOOK_SKY.sunny, b = C.OUTLOOK;
+  return a[(h >>> 3) % a.length] + ' ' + Lines.fill(b[(h >>> 7) % b.length], { p: 10 + (h >>> 11) % 80, lvl: ['low', 'moderate', 'high', 'VERY high'][(h >>> 17) % 4] });
+}
 function drawForecast(ctx, k) {
   const cond = S.cond;
   ctx.save(); ctx.translate(960, 470); ctx.scale(k, k); ctx.translate(-960, -470);
@@ -7413,7 +7437,8 @@ function drawForecast(ctx, k) {
   rr(ctx, x, y, w, h, 36); fillStroke(ctx, '#fff8e6', 6);
   rr(ctx, x, y, w, 96, 36); ctx.fillStyle = '#3f8fd9'; ctx.fill(); ctx.fillRect(x, y + 60, w, 36); rr(ctx, x, y, w, h, 36); ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.stroke();
   txt(ctx, 'POND FORECAST', 960, y + 50, { px: 54, color: '#fff', sw: 8 });
-  txt(ctx, prettyDate(cond.dayKey), 960, y + 132, { px: 32, color: '#6b6577', sw: 0 });
+  txt(ctx, prettyDate(cond.dayKey), 960, y + 126, { px: 32, color: '#6b6577', sw: 0 });
+  txt(ctx, "Bill's outlook: " + forecastOutlook(cond), 960, y + 170, { px: 26, color: '#2a6cbf', sw: 0, maxW: w - 80, weight: 800 });
   // windsock + arrow
   const wx = x + 200, wy = y + 300;
   ctx.lineWidth = 8; ctx.strokeStyle = OUT; ctx.beginPath(); ctx.moveTo(wx - 60, wy + 120); ctx.lineTo(wx - 60, wy - 40); ctx.stroke();
@@ -7906,6 +7931,8 @@ function draw(dt) {
   drawBig(ctx, dt);
   // Bill's lower third sits above the big button so the opened SAFETY lid never covers his words
   if (S.screen === 'launch' || S.screen === 'reveal' || S.screen === 'results') Caps.drawBar(ctx);
+  // a photo finish gets one soft camera flash (a single quick fade, never repeated)
+  if (S.flashAt != null && S.rt - S.flashAt < 0.3) { ctx.fillStyle = 'rgba(255,255,255,' + (0.32 * (1 - (S.rt - S.flashAt) / 0.3)) + ')'; ctx.fillRect(0, 0, 1920, 1080); }
   Iris.draw(ctx);
   if (S.paused) { ctx.fillStyle = 'rgba(31,26,46,0.3)'; ctx.fillRect(0, 0, 1920, 1080); }
 }
