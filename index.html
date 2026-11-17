@@ -232,16 +232,9 @@ function ordinal(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n 
 // normalized key for a person (case/space-insensitive)
 function personKey(name) { return String(name || '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase(); }
 const NAME_MAX = 40;
-// tabs/newlines become spaces; cut by code point so an emoji is never split in half. A name past the limit (only a
-// paste or an import can do that) is cut at a space or hyphen near the end rather than mid-word. (< and > go:
-// names also reach the settings' HTML, and a backup from someone else could carry markup.)
-function cleanName(name) {
-  const cs = Array.from(String(name || '').normalize('NFC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>]/g, '').trim().replace(/\s+/g, ' '));
-  if (cs.length <= NAME_MAX) return cs.join('');
-  let cut = NAME_MAX;
-  for (let i = NAME_MAX; i >= 20; i--) if (cs[i] === ' ' || cs[i] === '-') { cut = i; break; }
-  return cs.slice(0, cut).join('').trim();
-}
+// tabs/newlines become spaces; cut by code point so an emoji is never split in half. (The cut stays exactly at the
+// limit: names saved that way must keep matching. < and > go: names also reach the settings' HTML.)
+function cleanName(name) { return Array.from(String(name || '').normalize('NFC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>]/g, '').trim().replace(/\s+/g, ' ')).slice(0, NAME_MAX).join('').trim(); }
 function firstWord(name) { return (cleanName(name).split(' ')[0] || '').toLowerCase(); }
 function deepClone(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
 
@@ -770,7 +763,7 @@ const Store = (() => {
   }
   function exportAll() {
     const out = { app: 'duck-duck-boom', schema: SCHEMA, exportedAt: new Date().toString(), data: {} };
-    for (const k of KEYS) { const v = get(k, null); if (v != null) out.data[k] = v; }
+    for (const k of KEYS) { let v = get(k, null); if (k === 'history' && v && Array.isArray(v.races)) v = Object.assign({}, v, { races: v.races.filter(validRace) }); if (v != null) out.data[k] = v; }   // (the same races the game shows)
     return out;
   }
   function importAll(obj, dryRun) {
@@ -780,7 +773,7 @@ const Store = (() => {
     const valid = {
       settings: isObj, rerolls: isObj, recentNames: isObj,
       roster: v => isObj(v) && Array.isArray(v.people),
-      history: v => isObj(v) && Array.isArray(v.races) && v.races.every(validRace),
+      history: v => isObj(v) && Array.isArray(v.races),
       current: v => isObj(v) && Array.isArray(v.players) && Array.isArray(v.queue) && v.players.every(p => p && p.duck && p.name) && v.queue.every(q => q && v.players[q.p]),
     };
     valid.last = valid.current;
@@ -789,7 +782,8 @@ const Store = (() => {
     if (dryRun) return 0;
     // a backup is a full restore: our keys that aren't in it are cleared
     let n = 0;
-    for (const k of KEYS) { if (k in D && D[k] != null) { set(k, D[k]); n++; } else del(k); }
+    // a damaged race in the history (from an old bug or a hand edit) is left out; the rest of the backup comes in
+    for (const k of KEYS) { if (k in D && D[k] != null) { set(k, k === 'history' ? Object.assign({}, D[k], { races: D[k].races.filter(validRace) }) : D[k]); n++; } else del(k); }
     return n;
   }
   return { get, set, del, wipe, exportAll, importAll, persistent: !!ls, get full() { return full; }, SCHEMA, PREFIX };
@@ -869,7 +863,8 @@ function rememberNames(dayKey, names) {
 }
 
 /* ---------- Waddle of Fame (all derived from saved history) ---------- */
-function lastRealRace(races) { return races.length ? races[races.length - 1] : null; }
+// the last race with someone to beat: a solo run crowns no defending champion (and isn't a win in the Waddle of Fame)
+function lastRealRace(races) { for (let i = races.length - 1; i >= 0; i--) if (races[i].res.length > 1) return races[i]; return null; }
 function allTimeRecord(races) {
   let best = null;
   for (const r of races) for (const e of r.res) if (!best || e.dist > best.dist) best = { dist: e.dist, p: e.p, d: e.d, date: r.date };
@@ -4161,7 +4156,7 @@ function drawBig(ctx, dt) {
 /* ---------- captions: Bill's lower third + big impact text + duck speech bubbles ---------- */
 const Caps = {
   queue: [], cur: null, curStart: 0, bigs: [], bubble: null, lastAt: 0,   // lastAt: when something new last appeared
-  reset() { this.queue = []; this.cur = null; this.bigs = []; this.bubble = null; this.side = null; },
+  reset() { this.queue = []; this.cur = null; this.bigs = []; this.bubble = null; this.side = null; this.sideHold = null; },
   // is Bill free to start a new line right now?
   free() { return !this.queue.length && (!this.cur || S.rt - this.curStart >= this.cur.min); },
   say(text, o) {
@@ -4225,7 +4220,8 @@ const Caps = {
   side: null,
   drawBigs(ctx, avoidY, maxW, avoid) {
     // keep impact captions on the far side of the duck (with hysteresis so they don't flip-flop)
-    if (avoidY != null) {
+    const held = this.sideHold && S.rt - this.sideHold.t0 < this.sideHold.dur;   // a caption that moved off the name tags stays put
+    if (avoidY != null && !held) {
       if (this.side == null) this.side = avoidY < 520 ? 'low' : 'high';
       else if (this.side === 'low' && avoidY > 610) this.side = 'high';
       else if (this.side === 'high' && avoidY < 430) this.side = 'low';
@@ -4243,7 +4239,7 @@ const Caps = {
             const bw = Math.min(maxW || 1500, Math.max(...String(b.text).split('\n').map(l => ctx.measureText(l).width))) + 40;
             const cover = side => { const ty = side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off; return avoid.filter(o => Math.abs(o.x - 960) < (o.w + bw) / 2 && Math.abs(o.y - ty) < (o.h + hh) / 2).length; };
             const other = this.side === 'low' ? 'high' : 'low';
-            if (cover(other) < cover(this.side)) this.side = other;
+            if (cover(other) < cover(this.side)) { this.side = other; this.sideHold = b; }
           }
         }
         const ty = this.side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off;
@@ -4518,6 +4514,7 @@ const Roster = {
     const unq = x => x.replace(/^[\s,;"']+|[\s,;"']+$/g, '');
     // two comma-separated words or names -> the people they mean
     const pair = (a, b) => {
+      if (isAddr(b) && !isAddr(a)) return [a];                  // "Jamie Rivera, jrivera@x.com": one person and their address
       if (isAddr(a) || isAddr(b)) return [a, b];
       const single = !/\s/.test(a) && /^[^\s\d]+$/.test(b) && !/^team$/i.test(b);
       if (single && known(b + ' ' + a)) return [b + ' ' + a];   // "Rivera, Jamie" -> the known Jamie Rivera
@@ -4527,30 +4524,44 @@ const Roster = {
       if (!known(a)) return [b + ' ' + a];                      // two new words: assume Last, First
       return [a];
     };
-    const one = d => { const c = d.split(',').map(unq).filter(Boolean); return c.length === 2 ? pair(c[0], c[1]) : c.length ? [c.join(' ')] : []; };
-    // an attendee list: every address closes one person ("Rivera, Jamie <j@x.com>; Sam Lee <s@x.com>, Robin (r@x.com)")
+    let tm = null;
+    // comma-separated words or names -> the people they mean (a cell that is just a team sets the team instead).
+    // Three or more make a list only when they look like one: all one-word names or all longer ones ("Jamie, Sam,
+    // Robin"), or everyone already on the roster. "Jamie Rivera, Marketing, London" is one person and two notes.
+    const people = (parts, mayList) => {
+      const names = [];
+      parts.forEach((c, i) => { const t = i ? this.teamFromText(c) : null; if (t != null) { if (tm == null) tm = t; } else names.push(c); });
+      if (names.length >= 3 && mayList) {
+        const multi = names.map(x => /\s/.test(x));
+        if (names.every(isAddr) || names.every(known) || multi.every(Boolean) || !multi.some(Boolean)) return names;
+        return [names[0]];
+      }
+      if (names.length === 2) return pair(names[0], names[1]);
+      return mayList || names.length < 2 ? names : [names[0]];
+    };
+    const split = d => d.split(',').map(unq).filter(Boolean);
+    // an attendee list: every address closes one person ("Rivera, Jamie <j@x.com>; Sam Lee <s@x.com>, Robin (r@x.com)");
+    // a display name that is just an address becomes a name, and a team written after the last address still counts
     const att = /([^<>()]*)[<(]\s*([^<>()\s]+@[^<>()\s]+)\s*[>)]/g;
     if (att.test(ln)) {
       att.lastIndex = 0;
       const names = [];
-      let m;
-      while ((m = att.exec(ln))) { const d = unq(m[1]); names.push(...(d ? one(d) : [fromAddr(m[2])])); }
-      return { names, tm: null };
+      let m, end = 0;
+      while ((m = att.exec(ln))) { const d = unq(m[1]); names.push(...(d && !isAddr(d) ? people(split(d), false) : [fromAddr(m[2])])); end = m.index + m[0].length; }
+      for (const c of split(ln.slice(end))) { const t = this.teamFromText(c); if (t != null && tm == null) tm = t; }
+      return { names: names.map(n => isAddr(n) ? fromAddr(n) : n), tm };
     }
     const tabbed = ln.includes('\t');
     const cells = ln.split(tabbed ? '\t' : ',').map(unq).filter(Boolean);
     if (!cells.length) return null;
     // a spreadsheet's header row is not a person
     if (tabbed && /^(?:(?:full |display |first )?name|names|attendees?|people|person|who)$/i.test(cells[0])) return null;
-    let tm = null;
-    const names = [];
-    cells.forEach((c, i) => { const t = i ? this.teamFromText(c) : null; if (t != null) { if (tm == null) tm = t; } else if (!tabbed || i === 0) names.push(c); });
-    let people;
-    if (tabbed) people = one(names[0]);                                         // the name cell may be "Rivera, Jamie"
-    else if (names.length >= 3 || names.every(isAddr)) people = names;          // "Jamie, Sam, Robin" or a list of addresses
-    else if (names.length === 2) people = pair(names[0], names[1]);             // "Doe, Jane, Team 3" -> Jane Doe on Team 3
-    else people = names;
-    return { names: people.map(n => isAddr(n) ? fromAddr(n) : n), tm };
+    let out;
+    if (tabbed) {   // the first cell is the name (it may be "Rivera, Jamie"); a later cell that is just a team sets it
+      for (const c of cells.slice(1)) { const t = this.teamFromText(c); if (t != null) { tm = t; break; } }
+      out = people(split(cells[0]), false);
+    } else out = people(cells, true);   // "Doe, Jane, Team 3" -> Jane Doe on Team 3
+    return { names: out.map(n => isAddr(n) ? fromAddr(n) : n), tm };
   },
   // "Today's list": tick exactly these people (adding anyone new), untick everyone else
   applyList(text, only) {
