@@ -695,7 +695,7 @@ C.BLOCK_PHRASES_R13 = ['crney arpxynpr', 'ubbx hc', 'trg yhpxl', 'fyrrc jvgu'];
 const Store = (() => {
   const PREFIX = 'ddb.v1.';
   const SCHEMA = 1;
-  const KEYS = ['settings', 'roster', 'history', 'current', 'rerolls', 'recentNames'];
+  const KEYS = ['settings', 'roster', 'history', 'current', 'last', 'rerolls', 'recentNames'];   // last: the latest finished real show (Last results)
   const mem = Object.create(null);
   let ls = null;
   let full = false;
@@ -783,6 +783,7 @@ const Store = (() => {
       history: v => isObj(v) && Array.isArray(v.races) && v.races.every(validRace),
       current: v => isObj(v) && Array.isArray(v.players) && Array.isArray(v.queue) && v.players.every(p => p && p.duck && p.name) && v.queue.every(q => q && v.players[q.p]),
     };
+    valid.last = valid.current;
     const bad = KEYS.filter(k => k in D && D[k] != null && !valid[k](D[k]));
     if (bad.length) throw new Error('The backup looks damaged (' + bad.join(', ') + ').');
     if (dryRun) return 0;
@@ -2065,7 +2066,7 @@ function runSelfTest() {
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
   // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
-  const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
+  const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), last: Store.get('last', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
   try {
     const fakeTl = dist => ({ final: dist, maxAlt: 40, airtime: 2, nDist: 0, special: null, hat: null, events: [], gags: [] });
     const duck = (name) => ({ name, rarity: 'common', pitch: 1 });
@@ -2121,7 +2122,9 @@ function runSelfTest() {
     Store.set('current', prac);
     S.race = Store.get('current', null);
     keepFinishedShow();
-    check('DONE on a practice show does not leave Last results', !finishedShow() && !storedShow());
+    check('DONE on a practice show does not leave Last results', (finishedShow() || {}).id === 'self-last' && !storedShow());   // the real one stays
+    Store.set('current', Object.assign({}, prac, { stage: 'reveal', saved: false, id: 'self-next' }));
+    check('a new show in progress hides Last results; going back to Edit names brings it back', !!savedShow() && (Store.del('current'), (finishedShow() || {}).id === 'self-last'));
     // highlights: a set piece that caught several ducks is told once, and the winner's moment is always there
     const story = (name, dist, id) => ({ name, key: name.toLowerCase(), team: 0, duck: duck('Duck ' + name), r: { dist, sp: null, ev: [[id, 500, 0]] } });
     const cast = [story('Win', 900, 'cannonception'), story('Two', 800, 'cannonception'), story('Tri', 700, 'ufo'), story('Fou', 600, 'wormhole'), story('Fiv', 500, 'hammock'), story('Six', 400, 'bread'), story('Sev', 300, 'pelican')];
@@ -2177,6 +2180,7 @@ function runSelfTest() {
     L.phase = keep.phase; L.pl = keep.pl; L.q = keep.q; L.tl = keep.tl; L.pb = keep.pb; L.result = keep.result; L.replay = keep.replay; L.drum = keep.drum; L.photo = keep.photo; L.quietLand = keep.quietLand;
     SV.phase = keep.sv.phase; SV.fl = keep.sv.fl; SV.replay = keep.sv.replay; SV.pb = keep.sv.pb; SV.result = keep.sv.result; SV.drumOn = keep.sv.drumOn; SV.pt = keep.sv.pt;
     if (keep.current) Store.set('current', keep.current); else Store.del('current');
+    if (keep.last) Store.set('last', keep.last); else Store.del('last');
     Caps.reset();
   }
   return out;
@@ -4324,7 +4328,8 @@ const Iris = { t: -1, dur: 0.7, mid: null, fired: false, cx: 960, cy: 540,
 function setPaused(on) {
   on = !!on;
   if (on === S.paused) return;
-  if (on) { S.pauseAt = S.rt; if (S.screen === 'launch') { SFX.pause(true); Voice.pause(true); } }
+  // a show on screen (reveal, launch, results) goes silent with the picture; elsewhere sound stays on for the volume preview
+  if (on) { S.pauseAt = S.rt; S.pauseHush = S.screen === 'launch' || S.screen === 'reveal' || S.screen === 'results'; if (S.pauseHush) { SFX.pause(true); Voice.pause(true); } }
   else { Caps.shift(S.rt - (S.pauseAt || S.rt)); Big.changedAt = S.rt; SFX.pause(false); Voice.pause(false); if (S.previewVol) { S.previewVol = false; SFX.play('quack', 1.2); } }
   S.paused = on;
 }
@@ -4434,7 +4439,7 @@ function openSettings(fromPause) {
       el.querySelectorAll('.sw').forEach(sw => sw.onclick = () => { const ti = +sw.dataset.ti, c = sw.dataset.c, other = st.teams.findIndex((t, j) => j !== ti && t.color.toLowerCase() === c.toLowerCase()); if (other >= 0) st.teams[other].color = st.teams[ti].color; st.teams[ti].color = c; saveSettings(); openSettings(fromPause); });
       el.querySelector('#svol').oninput = e => { st.volume = e.target.value / 100; el.querySelector('#svolv').textContent = e.target.value + '%'; SFX.setVolume(st.volume); saveSettings(); };
       // during a paused show the sound is held: the level check plays once the show resumes
-    el.querySelector('#svol').onchange = () => { if (S.paused && S.screen === 'launch') S.previewVol = true; else SFX.play('quack', 1.2); };
+    el.querySelector('#svol').onchange = () => { if (S.paused && S.pauseHush) S.previewVol = true; else SFX.play('quack', 1.2); };
       el.querySelector('#smute').onchange = e => { st.muted = e.target.checked; SFX.setMuted(st.muted); if (st.muted) Voice.stop(); saveSettings(); };
       el.querySelector('#sshake').onchange = e => { st.shake = e.target.checked; saveSettings(); };
       el.querySelector('#svoice').onchange = e => { st.voice = e.target.checked; saveSettings(); if (st.voice) { Voice.pause(false); Voice.speak('Bill Featherstone here. Testing, testing.'); } else Voice.stop(); };
@@ -4449,7 +4454,7 @@ function openSettings(fromPause) {
       el.querySelector('#dpaste').onclick = () => Modal.open('<h2>Import from text</h2><div class="note">Paste the contents of a Duck Duck BOOM! backup file:</div><textarea class="out" id="ptext"></textarea><div class="row"><button class="btn green" id="pgo">Import</button><button class="btn ghost" id="pcancel">Cancel</button></div>', e2 => { e2.querySelector('#pgo').onclick = () => { if (importDataFromText(e2.querySelector('#ptext').value)) Modal.close(); }; e2.querySelector('#pcancel').onclick = () => Modal.close(); });
       el.querySelector('#dwipe').onclick = () => confirmBox('Erase the roster, settings and the whole Waddle of Fame from this browser? Export first if you want a backup.', 'Erase everything', () => { Store.wipe(); S.settings = loadSettings(); SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted); Voice.stop(); S.roster = []; S.history = []; S.race = null; setPaused(false); go('title'); Toast.show('All Duck Duck BOOM! data erased.'); }, () => openSettings(fromPause));
       const ab = el.querySelector('#dabandon');
-      if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? (S.race.practice ? 'Close these practice results and go back to the title? (Practice races are not saved.)' : 'Close these results and go back to the title? They are already saved in the Waddle of Fame.') : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
+      if (ab) ab.onclick = () => confirmBox(S.race && S.race.saved ? (S.race.practice ? 'Close these practice results and go back to the title? (Practice races are not saved.)' : 'Close these results and go back to the title? They are already saved in the Waddle of Fame.') : 'Abandon the current show? Nothing from it will be saved.', S.race && S.race.saved ? 'Close results' : 'Abandon show', () => { if (S.race && S.race.saved) keepFinishedShow(); else Store.del('current'); S.race = null; setPaused(false); go('title'); }, () => openSettings(fromPause));
       el.querySelectorAll('[data-rm]').forEach(bt => bt.onclick = () => { const pi = +bt.dataset.rm; const nm = S.race.players[pi].name; confirmBox('Take ' + nm + "'s duck out of today's show?", 'Remove', () => { removePlayer(pi); setPaused(false); }, () => openSettings(fromPause)); });
       const la = el.querySelector('#lateadd');
       if (la) la.onclick = () => { const nm = cleanName(el.querySelector('#latename').value); if (!nm) return; const tm = +el.querySelector('#lateteam').value; addLatePlayer(nm, tm); openSettings(fromPause); const sel = document.querySelector('#lateteam'); if (sel) sel.value = tm; };
@@ -4815,7 +4820,7 @@ function addLatePlayer(name, team) {
   saveRace();
   refreshIdleBig();
   const salvoNow = R.mode === 'salvo' && S.screen === 'launch' && L.phase === 'salvo';
-  Toast.show(nm + "'s duck " + pl.duck.name + (R.mode !== 'salvo' ? ' will launch last!' : !salvoNow || SV.phase === 'load' || SV.phase === 'armed' ? ' is in the cannon!' : ' goes in the next volley!'), 2600);
+  Toast.show(nm + "'s duck " + pl.duck.name + (R.mode !== 'salvo' ? ' will launch last!' : !salvoNow || SV.phase === 'load' || SV.phase === 'armed' || SV.phase === 'loading' ? ' is in the cannon!' : ' goes in the next volley!'), 2600);
   if (salvoNow) salvoQueueChanged();
 }
 // Take someone out of a show in progress (ticked by mistake). Only ducks that haven't launched yet.
@@ -4824,7 +4829,7 @@ function canRemoveNow(pi) {
   if (!R || R.stage !== 'launch') return false;
   const cur = R.queue[R.idx];
   const inSalvo = S.screen === 'launch' && L.phase === 'salvo';
-  const launching = inSalvo ? (SV.phase === 'countdown' || SV.phase === 'flight') && SV.fl.some(f => f.q.p === pi) : cur && cur.p === pi && S.screen === 'launch' && (L.phase === 'countdown' || L.phase === 'flight');
+  const launching = inSalvo ? (SV.phase === 'countdown' || SV.phase === 'flight') && SV.fl.some(f => f.q.p === pi) : cur && cur.p === pi && S.screen === 'launch' && !L.replay && (L.phase === 'countdown' || L.phase === 'flight');   // (a replay is the duck before)
   return !R.players[pi].out && !R.results[R.players[pi].key] && !launching && R.queue.slice(R.idx).some(q => q.p === pi);
 }
 function removePlayer(pi) {
@@ -4852,8 +4857,13 @@ function removePlayer(pi) {
 // the queue changed while waiting between ducks: keep the big button's label honest
 function refreshIdleBig() {
   const R = S.race;
-  if (!R || S.screen !== 'launch' || L.phase !== 'idle') return;
+  if (!R || S.screen !== 'launch') return;
   const last = R.idx >= R.queue.length;
+  // while a result card is up the button is still off, but its label already follows the queue (a late player added
+  // right then used to leave it reading SEE RESULTS until it flipped)
+  if (L.phase === 'salvo' && SV.phase === 'result') { setBig(last ? 'SEE RESULTS' : 'NEXT VOLLEY', false); return; }
+  if (L.phase === 'result') { setBig(last ? 'SEE RESULTS' : 'NEXT DUCK', false); return; }
+  if (L.phase !== 'idle') return;
   setBig(last ? 'SEE RESULTS' : (R.queue[R.idx].bonus ? 'BONUS SHOT' : 'NEXT DUCK'), true);
 }
 // standings distance: a tenth of a foot is shown only when two neighbours would otherwise look tied
@@ -5056,6 +5066,7 @@ function finalizeRace() {
   }
   R.saved = true;
   saveRace();
+  rememberLast(R);
 }
 
 
@@ -7374,7 +7385,12 @@ function go(screen) {
 function storedShow() { const c = Store.get('current', null); return c && c.stage && c.stage !== 'done' && Array.isArray(c.players) && c.players.length && Array.isArray(c.queue) ? c : null; }
 // a show that's still going (one already on the podium is finished: it's in the Waddle of Fame)
 function savedShow() { const c = storedShow(); return c && !(c.stage === 'results' && c.saved) ? c : null; }
-function finishedShow() { const c = storedShow(); return c && c.stage === 'results' && c.saved ? c : null; }
+function finishedShow() {
+  const c = storedShow();
+  if (c && c.stage === 'results' && c.saved && !c.practice) return c;   // a reload on the podium: that show
+  const l = Store.get('last', null);
+  return l && l.saved && !l.practice && Array.isArray(l.players) && l.players.length && Array.isArray(l.queue) ? l : null;
+}
 function showLabel(c) { return (c.day === todayKey() ? "Today's show" : 'Unfinished show from ' + shortDate(c.day)) + ' · ' + c.players.length + ' duck' + (c.players.length === 1 ? '' : 's') + ' · ' + (c.stage === 'launch' ? Math.min(c.idx, c.queue.length) + ' of ' + c.queue.length + ' launched' : c.stage === 'results' ? 'results' : 'reveal'); }
 function viewLastResults(c) { S.race = c; refreshWorld(); RS.back = true; RS.page = 2; RS.t = 0; go('results'); }
 function stopShowAudio() { SFX.stopLong(0.08); Voice.stop(); }
@@ -7485,7 +7501,11 @@ function drawTitle(ctx, dt) {
   if (c && today) button(ctx, 'newshow', 1460, 948, 420, 76, 'Start a new show instead', { px: 26, bg: '#fff8e6', fn: () => confirmBox('Start over? The show in progress will be discarded.', 'Start a new show', () => { Store.del('current'); setPaused(false); setBig('START', true); go('roster'); }) });
   if (c && !today) button(ctx, 'oldshow', 1460, 948, 420, 76, 'Resume ' + shortDate(c.day) + ' show', { px: 26, bg: '#fff8e6', fn: () => resumeRace(c) });
   if (fin) button(ctx, 'lastres', 1460, 948, 420, 76, 'Last results (' + shortDate(fin.day) + ')', { px: 26, bg: '#fff8e6', fn: () => viewLastResults(fin) });
-  if (!SFX.ready) txt(ctx, 'Click anywhere to turn on sound', px, py + 186 + sh + (c ? 40 : 0) + (Store.full ? 40 : 0), { px: 26, color: '#fff', sw: 6 });
+  if (!SFX.ready) {
+    const hy = py + 186 + sh + (c ? 40 : 0) + (Store.full ? 40 : 0);
+    if (hy > 730) { rr(ctx, px - 250, hy - 21, 500, 42, 14); ctx.fillStyle = 'rgba(31,26,46,0.7)'; ctx.fill(); }   // down among the distance signs: on a plate
+    txt(ctx, 'Click anywhere to turn on sound', px, hy, { px: 26, color: '#fff', sw: hy > 730 ? 0 : 6 });
+  }
 }
 
 /* ---------- reveal: cards flip in a cascade, then the launch order shuffles, then the Pond Forecast ---------- */
@@ -7690,16 +7710,17 @@ function startResults() {
   RS.tod = teamOfDay(R);
   RS.conf = 0;
 }
-// DONE on a real show leaves it in storage so Last results can reopen the panorama. A practice show is discarded.
+// A finished real show is kept under its own key, so Last results can reopen its panorama until another show
+// finishes. 'current' only ever holds a show in progress: going back to Edit names, abandoning a show or a practice
+// show can't take Last results away (they used to, as they all shared one slot).
+function rememberLast(R) { if (R && R.saved && !R.practice) Store.set('last', Object.assign({}, R, { stage: 'results' })); }
+// DONE (or Close these results): a real show stays as Last results; a practice show is discarded
 function keepFinishedShow() {
   const R = S.race;
   if (!R) return;
-  if (R.saved && !R.practice) {
-    if (R.stage !== 'results') { R.stage = 'results'; saveRace(); }
-  } else {
-    const c = Store.get('current', null);
-    if (!c || c.id === R.id) Store.del('current');
-  }
+  rememberLast(R);
+  const c = Store.get('current', null);
+  if (!c || c.id === R.id) Store.del('current');
 }
 function resultsPrimary() {
   // a press while the podium (or the awards) is still being revealed finishes the reveal; the next one moves on. An
