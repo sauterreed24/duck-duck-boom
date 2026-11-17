@@ -7772,7 +7772,8 @@ function drawPodium(ctx, st) {
     if (!win) {
       const ty = top - sz - 125;   // clear of tall hats and ears
       txt(ctx, e.pl.duck.name, sp.x, ty, { px: 32, color: '#fff', sw: 6, maxW: 330 });
-      txt(ctx, e.pl.name + ' · ' + fmtDist(st, sp.i), sp.x, ty + 38, { px: 28, color: '#ffd23f', sw: 5, maxW: 330 });
+      ctx.font = font(20);   // at the smallest size it may shrink to, a long name gives way and the distance stays whole
+      txt(ctx, fitTail(ctx, e.pl.name, ' · ' + fmtDist(st, sp.i), 330), sp.x, ty + 38, { px: 28, color: '#ffd23f', sw: 5, maxW: 330 });
     }
   }
   const w = st[0];
