@@ -2262,6 +2262,24 @@ function wrapText(ctx, str, maxW, maxLines) {
   if (maxLines && lines.length > maxLines) { const keep = lines.slice(0, maxLines); keep[maxLines - 1] = ellipsize(ctx, lines.slice(maxLines - 1).join(' '), maxW); return keep; }
   return lines;
 }
+// wrap into at most maxLines, stepping the font down (to minPx) before anything gets cut with an ellipsis.
+// Memoized: a reveal screen fits 40 cards every frame.
+const WRAPFIT = new Map();
+function wrapFit(ctx, str, maxW, maxLines, px, minPx, weight) {
+  const key = str + '|' + Math.round(maxW) + '|' + maxLines + '|' + px + '|' + minPx + '|' + (weight || '');
+  const hit = WRAPFIT.get(key);
+  if (hit) return hit;
+  let out = null;
+  for (let p = px; p >= minPx && !out; p--) {
+    ctx.font = font(p, weight);
+    const lines = wrapText(ctx, str, maxW);
+    if (lines.length <= maxLines && lines.every(l => ctx.measureText(l).width <= maxW)) out = { lines, px: p };
+  }
+  if (!out) { ctx.font = font(minPx, weight); out = { lines: wrapText(ctx, str, maxW, maxLines), px: minPx }; }
+  if (WRAPFIT.size > 400) WRAPFIT.clear();
+  WRAPFIT.set(key, out);
+  return out;
+}
 
 /* ---------- duck geometry per base type (local units: ~95 tall, facing right) ---------- */
 const DUCK_GEO = {
@@ -3325,19 +3343,21 @@ function drawBigButton(ctx, x, y, st, t) {
   ctx.fillRect(x - R * 0.86, y - 12 + press, R * 1.72, 12);
   ell(ctx, x, y - 12 + press, R * 0.86, R * 0.42); fillStroke(ctx, st.enabled ? (st.hover ? '#ff5a43' : '#e8412c') : '#9b5248', 5);
   ctx.fillStyle = 'rgba(255,255,255,0.45)'; ell(ctx, x - R * 0.3, y - 22 + press, R * 0.28, R * 0.1, -0.15); ctx.fill();
-  // safety cover (hinged at the top edge, flips up)
-  const open = clamp(st.open, 0, 1);
+  // safety cover (hinged at the top edge, flips up). st.lid is how tall the open cover stands (1 = straight up):
+  // on screens with Bill's caption bar it tips further back so it ends just under the bar instead of behind it
+  const open = clamp(st.open, 0, 1), lid = clamp(st.lid || 0.988, 0.3, 1);
   const cy = y - R * 0.5;
-  const k = Math.cos(open * Math.PI * 0.95);
+  const k = Math.cos(open * Math.acos(-lid));
   ctx.save(); ctx.translate(x, cy);
   if (k > -0.05) {
     ctx.scale(1, k);
     rr(ctx, -R - 4, 0, (R + 4) * 2, R * 1.0, 16); ctx.fillStyle = 'rgba(255,214,77,0.55)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(-R + 8, 10, R * 0.6, 8);
   } else {
-    ctx.scale(1, -k);
-    rr(ctx, -R - 4, -R * 1.0, (R + 4) * 2, R * 1.0, 16); ctx.fillStyle = 'rgba(255,214,77,0.75)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.stroke();
-    ctx.fillStyle = OUT; ctx.font = font(26); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('SAFETY', 0, -R * 0.5);
+    // drawn at its foreshortened height (not scaled), so the outline stays an even width and the label upright
+    const lh = -k * R;
+    rr(ctx, -R - 4, -lh, (R + 4) * 2, lh, Math.min(16, lh / 2)); ctx.fillStyle = 'rgba(255,214,77,0.75)'; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.stroke();
+    if (lh > 14) { ctx.fillStyle = OUT; ctx.font = font(Math.min(26, Math.round(lh * 0.62))); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('SAFETY', 0, -lh * 0.5 + 1); }
   }
   ctx.restore();
   ctx.restore();
@@ -3915,9 +3935,10 @@ function drawWorld(ctx, W) {
     if (V.sx(-280) < 1920 && V.sx(80) > 0) {
       ctx.beginPath(); ctx.moveTo(V.sx(-280), gy);
       for (let x = -280; x <= 80; x += 6) ctx.lineTo(V.sx(x), V.sy(SIM.groundY(x)));
-      ctx.lineTo(V.sx(80), gy); ctx.closePath(); fillStroke(ctx, P.a, 5); ctx.fillStyle = P.b; ctx.beginPath(); ctx.moveTo(V.sx(-200), gy); for (let x = -200; x <= 40; x += 6) ctx.lineTo(V.sx(x), V.sy(SIM.groundY(x) * 0.6)); ctx.lineTo(V.sx(40), gy); ctx.closePath(); ctx.fill();
+      // the darker inner band follows the hill all the way down both slopes (it used to stop short with a hard edge)
+      ctx.lineTo(V.sx(80), gy); ctx.closePath(); fillStroke(ctx, P.a, 5); ctx.fillStyle = P.b; ctx.beginPath(); ctx.moveTo(V.sx(-260), gy); for (let x = -260; x <= 70; x += 5) ctx.lineTo(V.sx(x), V.sy(SIM.groundY(x) * 0.6)); ctx.lineTo(V.sx(70), gy); ctx.closePath(); ctx.fill();
     }
-    drawMarkers(ctx, V, cond);
+    if (W.markers !== false) drawMarkers(ctx, V, cond);   // a backdrop (reveal, podium, Waddle of Fame) has no distance signs poking out
     drawGroundDecor(ctx, V, cond, t);
   }
   // ground + tall pieces
@@ -3936,12 +3957,11 @@ function drawWorld(ctx, W) {
 function drawMarkers(ctx, V, cond) {
   const step = V.z * 100 >= 105 ? 100 : V.z * 500 >= 105 ? 500 : 1000;
   const a = Math.ceil(V.wx(-60) / step) * step, b = V.wx(1980);
-  for (let x = Math.max(0, a); x <= b; x += step) {
+  for (let x = Math.max(step, a); x <= b; x += step) {   // no post at 0 ft: the cannon's hill stands there
     const sx = V.sx(x), major = x % (step >= 500 ? step * 2 : 500) === 0;
     const h = major ? 54 : 34;
     ctx.fillStyle = OUT; ctx.fillRect(sx - 4, V.gy - h, 8, h + 4);
     ctx.fillStyle = '#ffffff'; ctx.fillRect(sx - 2, V.gy - h + 2, 4, h);
-    if (x === 0) continue;
     const label = fmtInt(x);
     ctx.font = font(major ? 30 : 26);
     const w = ctx.measureText(label).width + 18, hh = major ? 40 : 34;
@@ -4057,7 +4077,7 @@ function button(ctx, id, x, y, w, h, label, o) {
 function hitButton(x, y) { for (let i = S.buttons.length - 1; i >= 0; i--) { const b = S.buttons[i]; if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b; } return null; }
 
 /* ---------- the big red button (primary action on every screen) ---------- */
-const Big = { open: 0, target: 0, label: '', enabled: false, press: 0, x: 960, y: 992, changedAt: -9, lastPress: -9 };
+const Big = { open: 0, target: 0, lid: 0.988, label: '', enabled: false, press: 0, x: 960, y: 992, changedAt: -9, lastPress: -9 };
 function setBig(label, enabled) { if (label !== Big.label || !!enabled !== Big.enabled) Big.changedAt = S.rt; Big.label = label; Big.enabled = !!enabled; Big.target = enabled ? 1 : 0; }
 // the title screen's right-hand button starts at x=1460; the label must not steal its clicks
 function bigHitLimit() { return S.screen === 'title' ? 1450 : 1912; }
@@ -4078,8 +4098,11 @@ function bigHitRect(ctx) {
 function drawBig(ctx, dt) {
   Big.open = approach(Big.open, Big.target, 9, dt);
   Big.press = Math.max(0, Big.press - dt);
+  // where Bill's caption bar can show, the open cover tips back to end just below it (0.59 of its height)
+  const barScreen = S.screen === 'launch' || S.screen === 'reveal' || (S.screen === 'results' && RS.page === 0);
+  Big.lid = approach(Big.lid, barScreen ? 0.59 : 0.988, 8, dt);
   const hov = S.hover === 'big';
-  drawBigButton(ctx, Big.x, Big.y, { open: Big.open, enabled: Big.enabled && Big.open > 0.8, hover: hov, press: Big.press > 0 }, S.rt);
+  drawBigButton(ctx, Big.x, Big.y, { open: Big.open, lid: Big.lid, enabled: Big.enabled && Big.open > 0.8, hover: hov, press: Big.press > 0 }, S.rt);
   const pill = bigLabelBox(ctx);
   if (pill) {
     ctx.globalAlpha = Big.enabled ? 1 : 0.85;
@@ -6625,9 +6648,10 @@ function updateSalvoFlight(dt) {
       const def = C.EVENTS[g.id];
       if (!f.fired.has('g' + i) && t >= g.t - (def.antic || 0)) {
         f.fired.add('g' + i);
-        // the screen-filling gags take turns: one plane, one balloon, two screams at a time across the whole flock
-        const lim = { plane: 1, balloon: 1, scream: 1 }[g.id];
-        if (lim) { const busy = SV.fl.filter(o => o !== f && o.gagOn && o.gagOn[g.id] > t).length; if (busy >= lim) { f.hideGag.add(i); return; } f.gagOn[g.id] = g.tEnd + 0.3; }
+        // the screen-filling gags (a plane, a balloon, a scream) take turns: one of them at a time across the whole flock
+        // (a plane's banner over someone else's scream was two jokes shouting over each other)
+        const BIG = ['plane', 'balloon', 'scream'];
+        if (BIG.includes(g.id)) { const busy = SV.fl.some(o => o !== f && o.gagOn && BIG.some(id => o.gagOn[id] > t)); if (busy) { f.hideGag.add(i); return; } f.gagOn[g.id] = g.tEnd + 0.3; }
         if (g.id === 'scream') salvoSnd('scream', 0.5, (g.tEnd - g.t) / Math.max(1, pb.rate));
         else if (g.id === 'wave') salvoSnd('quack', 0.15, d.pitch, 1);
         else if (def.sfx) salvoSnd(def.sfx, 0.5);
@@ -7391,7 +7415,7 @@ function drawReveal(ctx, dt) {
   const R = S.race, t = S.time;
   const V = makeView(1400, GROUND_Y + 40, 2.2);
   // no set pieces behind the cards: today's hazards stay a surprise
-  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0 });
+  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0, markers: false });
   ctx.fillStyle = 'rgba(31,26,46,0.35)'; ctx.fillRect(0, 0, 1920, 1080);
   txt(ctx, RV.shuf >= 0 ? (R.mode === 'salvo' ? 'INTO THE CANNON!' : 'LAUNCH ORDER') : "TODAY'S DUCKS", 960, 62, { px: 60, color: '#ffd23f', sw: 10 });
   const n = R.players.length;
@@ -7443,9 +7467,8 @@ function drawCard(ctx, rc, pl, flipK, num, pick) {
     const ps = Math.min(artH * 0.72, w * 0.62);
     drawDuck(ctx, d, x + w / 2, y + 8 + artH * 0.56, ps, { pose: 'stand', t: S.time, aura: true, crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
     const top = y + 8 + artH + 4, room = yb - top;
-    const npx = clamp(Math.round(Math.min(h * 0.13, w * 0.11)), 19, 30);
-    ctx.font = font(npx);
-    const lines = room >= npx * 2.2 ? wrapText(ctx, d.name, w - 20, 2) : [d.name];
+    let npx = clamp(Math.round(Math.min(h * 0.13, w * 0.11)), 19, 30), lines = [d.name];
+    if (room >= npx * 2.2) ({ lines, px: npx } = wrapFit(ctx, d.name, w - 20, 2, npx, Math.max(16, Math.round(npx * 0.72))));   // shrink a little before cutting a long name short
     const mid = top + room / 2;
     lines.forEach((ln, i) => txt(ctx, ln, x + w / 2, mid + (i - (lines.length - 1) / 2) * npx * 1.05, { px: npx, minPx: 16, color: OUT, sw: 0, maxW: w - 16 }));
     if (pick) { ctx.save(); ctx.translate(x + w - 10, y + 22); ctx.rotate(0.12); const tw = Math.min(150, w * 0.7); rr(ctx, -tw, -16, tw + 6, 32, 10); fillStroke(ctx, '#e8412c', 4); txt(ctx, "BILL'S PICK", -tw / 2 + 3, 1, { px: 20, minPx: 14, color: '#fff', sw: 0, maxW: tw - 8 }); ctx.restore(); }
@@ -7560,7 +7583,7 @@ function drawResults(ctx, dt) {
   const st = standings();
   const V = makeView(600, GROUND_Y + 60, 2.5);
   if (RS.page < 2) {
-    drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0 });
+    drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0, markers: false });
     ctx.fillStyle = 'rgba(31,26,46,0.25)'; ctx.fillRect(0, 0, 1920, 1080);
   }
   if (RS.page === 0) drawPodium(ctx, st);
@@ -7709,7 +7732,7 @@ function drawAwards(ctx) {
     ctx.font = font(30);
     wrapText(ctx, C.AWARDS[a.id].name, w - 30, 2).forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 130 + j * 34, { px: 30, color: '#c22f1f', sw: 0 }));
     drawDuck(ctx, a.e.pl.duck, x + w / 2, y + 250, 110, duckDrawOpts(a.e.pl, { pose: 'stand' }));
-    txt(ctx, a.e.pl.duck.name, x + w / 2, y + 326, { px: 28, color: OUT, sw: 0, maxW: w - 24 });
+    txt(ctx, a.e.pl.duck.name, x + w / 2, y + 326, { px: 28, minPx: 18, color: OUT, sw: 0, maxW: w - 24 });
     txt(ctx, a.e.pl.name, x + w / 2, y + 358, { px: 26, color: '#6b6577', sw: 0, maxW: w - 24, weight: 800 });
     // a long duck name in the description gets smaller type before it gets cut off
     let dpx = 24, dl;
@@ -7767,7 +7790,7 @@ const FM = { page: 0, t: 0, back: 'title' };
 function drawFame(ctx, dt) {
   const t = S.time;
   const V = makeView(900, GROUND_Y + 80, 2);
-  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0 });
+  drawWorld(ctx, { cond: S.cond, course: { pieces: [] }, V, t, pieceState: () => ({ time: t }), space: 0, markers: false });
   ctx.fillStyle = 'rgba(31,26,46,0.45)'; ctx.fillRect(0, 0, 1920, 1080);
   txt(ctx, 'THE WADDLE OF FAME', 960, 66, { px: 66, color: '#ffd23f', sw: 10 });
   const F = computeFame(S.history, S.day);
