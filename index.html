@@ -214,6 +214,7 @@ const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
 // approach: exponential smoothing that is frame-rate independent
 const approach = (cur, target, rate, dt) => target + (cur - target) * Math.exp(-rate * dt);
+const drawDt = () => (S.fdt != null ? S.fdt : 1 / 60);
 
 function pad2(n) { return String(n).padStart(2, '0'); }
 // Local calendar date as YYYY-MM-DD (never toISOString, which is UTC)
@@ -383,6 +384,21 @@ C.SEASONS = {
   summer: { name: 'Summer Beach', blurb: 'Sand, sun and beach umbrellas.' },
 };
 C.FRIYAY = { name: 'Fri-Yay!', blurb: 'Party hats, disco sky, extra confetti.' };
+// Bill's outlook on the Pond Forecast card: one line about the day's sky or wind, one general one (both seeded by the
+// date, so everyone on the call sees the same forecast)
+C.OUTLOOK_SKY = {
+  sunny: ['Sunscreen recommended for beaks.', 'Clear skies. No excuses.'],
+  overcast: ['Clouds: still deciding.', 'Grey, with a chance of glory.'],
+  drizzle: ['Light drizzle. The ducks are fine with this.', 'Damp, which is how ducks like it.'],
+  fog: ['Visibility: about one duck.', 'Fog advisory: listen for the quack.'],
+  sunset: ['Golden hour. Every duck looks great.', 'Sunset launch. Very cinematic.'],
+  night: ['Moon: present. Bread: unconfirmed.', 'Stars out. Ducks too.'],
+  head: ['Headwind advisory: flap harder.', 'The wind is not on our side today.'],
+  tail: ['Tailwind: free feet for everyone.', 'The wind is with us. Do not waste it.'],
+};
+C.OUTLOOK = ['Chance of geese: {p}%.', 'Bread index: {lvl}.', 'Hat-loss advisory in effect.', 'Squirrel activity: moderate.', 'Expect scattered landings.',
+  'Local cows: alert.', 'Mostly airborne, with periods of pond.', 'Chance of a reply-all storm: {p}%.', 'Humidity: pond-adjacent.', 'Ground: still there. Probably.',
+  'Low chance of meetings, high chance of ducks.', 'Air quality: quacky.', 'Feather forecast: plenty.', 'Odds of a photo finish: {p}%.'];
 
 /* ---------- world flavor ---------- */
 C.BILLBOARDS = ['LOST: Sense of Direction', 'PONDS: Now 20% Wetter', 'BREAD: Now With More Bread.', 'THIS SIGN IS A SIGN', 'YOU ARE HERE (Probably)', 'Now Hiring: Puddle Inspector', 'Honk If You Can Read This', 'Caution: Low-Flying Ducks', 'Did You Remember Your Hat?', 'Bread Sale: Today Only', 'Puddles Ahead: Jump Anyway', 'Clouds: Fluffy Since Forever'];
@@ -485,15 +501,17 @@ C.LINES = {
   sky_fog: ['Foggy out there. We will find the ducks eventually.', "It's a pea-souper today. Listen for the quack."],
   sky_night: ['A night launch today. The stars are out for it.', 'Launching under the stars tonight. Very romantic.'],
   // the salvo: every duck in the cannon at once
-  salvoLoad: ['All {n} of them. In one cannon. What could possibly go wrong?', '{n} ducks, one barrel. Squeeze in, everybody!', "Ol' Thunderbill is taking all {n} at once today. Mind the elbows.", 'Everybody in! {n} ducks and not a seatbelt between them.', "That is {n} ducks in one cannon. The manual says four. We don't have the manual."],
-  salvoCount: ['Count it down with me, folks!', 'Everybody together now: three, two, one!', 'The fuse is ready. Help me count!', 'All aboard? Then count with me!', 'Big breath, everybody. Count it down!'],
-  salvoLaunch: ['THERE THEY GO! All {n} of them!', '{n} ducks in the air! Keep your eye on yours!', 'What a sight! The whole flock is away!', 'BOOM! Find your duck, folks, find your duck!', "That's {n} ducks airborne and nobody steering!"],
-  salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!'],
-  salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!"],
-  salvoCall: ['{duck} is out in front at {distance}!', 'Still {n} ducks on the move out there!', "{player}'s duck leads the way: {distance} and counting.", '{n} of them still going. Do not blink!', 'Out in front right now: {duck}!', "It's {duck} at the front of the flock. {n} ducks still moving!", 'Anybody could still win this. {n} ducks left out there!'],
-  salvoPickLead: ["My pick! {duck} takes the lead! I said this! I said this on air!", "Bill's pick is out in front! Nobody act surprised.", "{player}'s duck, my pick, takes the lead! Vindication!"],
-  salvoRecord: ['{duck} is past the pond record line and still going!', "That's record country! {player}'s duck is out there!", '{duck} just flew past the all-time record!'],
-  salvoWin: ['{duck} is the farthest duck out there: {distance}!', 'Nobody went farther than {duck}! {distance}!', "It's {duck} out in front when the feathers settle: {distance}!", '{duck} takes it by {margin}!'],
+  salvoLoad: ['All {n} of them. In one cannon. What could possibly go wrong?', '{n} ducks, one barrel. Squeeze in, everybody!', "Ol' Thunderbill is taking all {n} at once today. Mind the elbows.", 'Everybody in! {n} ducks and not a seatbelt between them.', "That is {n} ducks in one cannon. The manual says four. We don't have the manual.", "{n} ducks, one barrel. This is either a launch or a very full elevator.", "Loading {n} ducks. Please hold your questions until after the boom.", "Wings tucked, beaks forward, and absolutely no reply-all.", "{n} passengers and zero emergency exits. Lovely.", "Squeeze in, everyone. It is a cannon, not a conference room.", "Thunderbill is officially at capacity. Thunderbill does not care."],
+  salvoCount: ['Count it down with me, folks!', 'Everybody together now: three, two, one!', 'The fuse is ready. Help me count!', 'All aboard? Then count with me!', 'Big breath, everybody. Count it down!', "Unmute yourselves for this one! Three! Two! One!", "Count it down, everybody. Yes, the camera-off crowd too!", "Fingers off the mute button. Count it with me!", "This is the only countdown today that ends well. Count it!"],
+  salvoLaunch: ['THERE THEY GO! All {n} of them!', '{n} ducks in the air! Keep your eye on yours!', 'What a sight! The whole flock is away!', 'BOOM! Find your duck, folks, find your duck!', "That's {n} ducks airborne and nobody steering!", "And the flock is AWAY! Air traffic control has questions.", "{n} ducks in the air and not one flight plan between them!", "Liftoff! Somewhere, a goose is filing a complaint.", "Look at them go! The most aligned this flock has ever been!", "BOOM! {n} ducks, one direction. Mostly one direction."],
+  salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!', "{duck} has the lead and is not giving it back!", "{player}'s duck is out in front! Somebody update the slide!", "{duck} moves to the front of the flock. Big move. Huge.", "New name at the top: {duck}!", "{duck} takes the lead with a move I can only describe as aerodynamic."],
+  salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!", "Everybody else has landed. {duck} is working late.", "{duck} did not get the memo. The meeting is over. Still going!", "Just {duck} left out there, taking the scenic route!"],
+  salvoCall: ['{duck} is out in front at {distance}!', 'Still {n} ducks on the move out there!', "{player}'s duck leads the way: {distance} and counting.", '{n} of them still going. Do not blink!', 'Out in front right now: {duck}!', "It's {duck} at the front of the flock. {n} ducks still moving!", 'Anybody could still win this. {n} ducks left out there!', "{duck} is at {distance} and looking very pleased about it.", "{n} ducks still moving. Best meeting of the week, folks.", "{player}'s duck is setting the pace at {distance}!", "It's {duck}'s race to lose right now. {n} still moving!", "Still {n} in motion. Nobody has called a hard stop yet!"],
+  salvoPickLead: ["My pick! {duck} takes the lead! I said this! I said this on air!", "Bill's pick is out in front! Nobody act surprised.", "{player}'s duck, my pick, takes the lead! Vindication!", "That's my pick in front! Write it down. Somebody write it down!", "{duck} leads! I would like the minutes to show I called this."],
+  salvoRecord: ['{duck} is past the pond record line and still going!', "That's record country! {player}'s duck is out there!", '{duck} just flew past the all-time record!', "{duck} is past the record line! Somebody wake the pond historian!", "Uncharted pond! {duck} is out beyond the record!"],
+  salvoWin: ['{duck} is the farthest duck out there: {distance}!', 'Nobody went farther than {duck}! {distance}!', "It's {duck} out in front when the feathers settle: {distance}!", '{duck} takes it by {margin}!', "{duck} flew farthest! {distance}! Put it in the newsletter!", "When the feathers settle, it's {duck} at {distance}!", "{distance}! {duck} has done it, and is being very humble about it. Not really."],
+  signoff: ['Same pond, same time, next show.', 'No ducks were harmed. Several hats are still missing.', "That's a wrap. Somebody go and find the hats.", 'The cannon needs a nap. So do I.', 'See you next show. Bring bread.', 'Thank you, pond. You have been a wonderful audience.', 'The ducks will be available for autographs in the pond.'],
+  salvoNoCatch: ['Nobody caught {duck}. Still {distance} to beat.', '{duck} is still out in front at {distance}. Next volley, bring your best.', 'That volley came up short. {duck} keeps the lead at {distance}.', 'Close, but {duck} is still the duck to beat: {distance}.'],
   debutIntro: ['A first ever launch for {player}! Be gentle, Thunderbill.', 'Welcome to the cannon, {player}! First time in the barrel.', "{player}'s very first duck. Everybody remembers their first."],
   firstWin: ['{duck} wins it, and that is a FIRST Golden Loaf for {player}!', 'A first ever Golden Loaf for {player}! {duck} did it!', "A Golden Loaf for {player}, thanks to {duck}! The very first one!"],
   ladder: [
@@ -519,9 +537,9 @@ C.LINES = {
   passLeader: ['{duck} just passed the leader flag!', 'Past the leader! Past the leader!', '{duck} is in uncharted pond!', '{duck} is out past the leader!', 'Look out, leader! {duck} is coming through!', 'Past the flag and STILL GOING!'],
   newLeader: ['New leader! {duck} takes the top spot!', "We've got a new leader, folks!", '{duck} is on top of the pond!', '{duck} grabs the lead!', 'Top of the leaderboard: {duck}!', 'Make way! {duck} is the new leader!'],
   newRecord: ['NEW POND RECORD! Somebody call the newspaper!', "That's the farthest a duck has EVER flown out of Thunderbill!", 'Record broken! Frame that flag!'],
-  landShort: ['Short flight, big heart.', 'That was about the length of a nice sandwich.', 'Incredible buildup. Modest payoff.', 'Well. That happened.', '{duck} would like a do-over. No do-overs.', 'The judges are being very kind about this one.', 'Every flight counts, folks!'],
-  landMid: ['Solid flight. Respectable. Very duck.', 'Right in the thick of it!', "That'll play.", 'A perfectly fine flight for a perfectly fine duck.', 'Nothing wrong with that one, folks.', 'Steady, sensible, deeply duck.', 'Right in the mix!', 'Respectable! The pond nods approvingly.', 'Good flight. Good duck.'],
-  landLong: ['WHAT A FLIGHT!', "That's a monster launch!", 'Folks, I need a minute.', 'The judges are reviewing the tape. The judges are also ducks.', 'Somebody measure that again! Actually, the computer did it. Wow!', 'That duck has places to be!', 'Look at that distance!', "That one's going on the fridge!"],
+  landShort: ['Short flight, big heart.', 'That was about the length of a nice sandwich.', 'Incredible buildup. Modest payoff.', 'Well. That happened.', '{duck} would like a do-over. No do-overs.', 'The judges are being very kind about this one.', 'Every flight counts, folks!', "Let's call that a soft launch.", "Short, sweet, and done before the first agenda item."],
+  landMid: ['Solid flight. Respectable. Very duck.', 'Right in the thick of it!', "That'll play.", 'A perfectly fine flight for a perfectly fine duck.', 'Nothing wrong with that one, folks.', 'Steady, sensible, deeply duck.', 'Right in the mix!', 'Respectable! The pond nods approvingly.', 'Good flight. Good duck.', "Meets expectations. Solidly meets them.", "A very professional flight."],
+  landLong: ['WHAT A FLIGHT!', "That's a monster launch!", 'Folks, I need a minute.', 'The judges are reviewing the tape. The judges are also ducks.', 'Somebody measure that again! Actually, the computer did it. Wow!', 'That duck has places to be!', 'Look at that distance!', "That one's going on the fridge!", "Put that one in the quarterly report!", "That duck just got promoted."],
   photoWon: ['By a FEATHER! {duck} takes it by {margin}!', 'Photo says YES! {duck} by {margin}!', 'That was close! {duck} edges ahead by {margin}!'],
   photoLost: ['Just {margin} short! So close!', 'Heartbreaker! {margin} short of the lead!', 'The photo says... {margin} short. Oof.'],
   closeWin: ['And the Golden Loaf goes to {duck}... by just {margin}!', '{duck} wins it by {margin}! What a finish!'],
@@ -584,7 +602,7 @@ C.LINES = {
   ev_crate_rocket: ['ROCKET! The crate gave {duck} a rocket!', 'Rocket from the crate! Off they go!'],
   ev_crate_balloons: ['Balloons! {duck} is floating!', 'A bunch of balloons! Up, up!'],
   ev_crate_reverse: ['Oh no, the crate said GO BACK!', 'Backwards! The crate sent {duck} backwards!'],
-  ev_cannonception: ['ANOTHER CANNON?!', 'Thunderbill Junior is open for business!'],
+  ev_cannonception: ['Thunderbill Junior is open for business!', "A cannon on the course? Who approved this? Great idea, though."],
   ev_space: ['{duck} is going to SPACE!', "We've lost visual. We've lost radio. We've lost the duck.", 'Liftoff! {duck} just left the atmosphere!'],
   ev_seagull: ['A seagull just stole the hat!', 'Hat theft! In front of everyone!'],
   ev_selfie: ['{duck} is taking a selfie. Priorities.', 'Say "bread"!'],
@@ -597,16 +615,16 @@ C.DUCK_LINES = {
   generic: ['I REGRET NOTHING', 'Per my last quack...', 'Is this a team-building exercise?', 'I can see my pond from here!', 'Tell my pond I love them', 'Wheeeee—wait', "I'm a duck, not a pilot!", 'Worth it.', 'Circle back? CIRCLE BACK?!', "Mom, I'm on TV!",
     'Is this the line for bread?', "Nobody said there'd be a cannon!", 'This was NOT in the meeting invite!', 'Can we take this offline?', 'QUAAAACK!', 'Totally on purpose.', 'Do I get frequent flyer miles?', 'Weeeee!', "Who's driving this thing?!", 'Gravity, we need to talk.',
     'Okay, NOW I am awake.', 'I can fly! I CAN FLY! I cannot fly.', "Sorry, you're breaking up!", 'Brb, flying.', 'Watch this!', 'Calculated.', 'Did anyone get that on camera?', 'Hi everyone!', 'Wing it! WING IT!', 'Out of office! Literally!',
-    'Stuck the landing!', "I'll be in my pond.", 'Never again. Okay, maybe tomorrow.', 'Is it over? Did I win?', 'Ten out of ten. Would launch again.', "Let's touch base. On the ground. Soon."],
-  launch: ['Wheeeee—wait', 'AAAAAAA', "I'm a duck, not a pilot!", 'Wing it! WING IT!', 'Weeeee!', "Who's driving this thing?!", 'I REGRET NOTHING'],
-  peek: ['Is it too late to reschedule?', 'Can I get a window seat?', 'Okay. Okay. Okay.', "Let's do this. Probably.", 'Tell the pond I said hi.', 'Is this thing on?'],
-  landGood: ['Calculated.', 'Nailed it.', 'Smooth landing!', 'Right where I wanted to be.', 'Ten out of ten. Would launch again.', 'Did anyone get that on camera?'],
+    'Stuck the landing!', "I'll be in my pond.", 'Never again. Okay, maybe tomorrow.', 'Is it over? Did I win?', 'Ten out of ten. Would launch again.', "Let's touch base. On the ground. Soon.", "Sorry, I was on mute!", "Can everyone see my screen?", "This could have been an email!", "Hard stop at the pond!", "I have a conflict. It is gravity.", "Quick sync on altitude?", "Adding this to my self-review!", "Ping me when we land!", "Action item: land.", "Bandwidth: zero. Altitude: plenty.", "Let's park that thought. In the pond.", "Who put a cannon on the agenda?"],
+  launch: ['Wheeeee—wait', 'AAAAAAA', "I'm a duck, not a pilot!", 'Wing it! WING IT!', 'Weeeee!', "Who's driving this thing?!", 'I REGRET NOTHING', "I did not accept this invite!", "HARD STOP! HARD STOP!", "Out of office! Very out!"],
+  peek: ['Is it too late to reschedule?', 'Can I get a window seat?', 'Okay. Okay. Okay.', "Let's do this. Probably.", 'Tell the pond I said hi.', 'Is this thing on?', "Can we push this to next week?", "Was there a pre-read?", "I'll just watch from in here."],
+  landGood: ['Calculated.', 'Nailed it.', 'Smooth landing!', 'Right where I wanted to be.', 'Ten out of ten. Would launch again.', 'Did anyone get that on camera?', "Exceeds expectations.", "Promote me.", "Huge win for the team!", "Put that in the newsletter."],
   bounce: ['Boing!', 'Ow. Ow. Ow.', 'Still bouncing!', 'One more bounce!', 'Is the ground always this hard?', 'Wheee!'],
   slide: ['Wheeeee!', 'Brakes! BRAKES!', 'Still going!', 'Is there a speed limit?', 'I can stop any time. Probably.', 'Grass stains. Great.', 'Coming through!'],
   iceslide: ['So. Slippery.', 'No brakes! NO BRAKES!', 'Who waxed the field?!', 'Wheeeee!', 'I should have taken skating lessons!', 'Somebody catch me!'],
   wrongWay: ['Wrong way?! Says who?', 'I prefer to call it reverse.', 'Okay, which way is the pond?'],
   pb: ['New personal best!', 'Best. Flight. EVER.', 'Did anyone get that on camera?!'],
-  landBad: ['Totally on purpose.', "I'm fine! I'm fine!", 'Is it over? Did I win?', 'Worth it.', "I'll be in my pond.", 'That was a warm-up.'],
+  landBad: ['Totally on purpose.', "I'm fine! I'm fine!", 'Is it over? Did I win?', 'Worth it.', "I'll be in my pond.", 'That was a warm-up.', "Per my last quack, that was intentional.", "Let's call that a soft launch.", "We'll circle back to that.", "Learning experience!"],
   tree: ['Little help?', 'I live here now.'],
   bread: ['Carbs!', 'Worth it.'],
   mud: ['Mud spa. Very fancy.', 'I feel exfoliated.'],
@@ -640,17 +658,18 @@ C.DUCK_LINES = {
 
 /* ---------- awards ---------- */
 C.AWARDS = {
-  altitude: { name: 'Highest Altitude', desc: 'Reached {v} up. Waved at a cloud.' },
-  airtime: { name: 'Most Airtime', desc: '{v} seconds in the air. Basically a pilot now.' },
-  chaos: { name: 'Most Chaotic Flight', desc: '{v} events in one flight.' },
-  closest: { name: 'Closest Call', desc: 'Just {v} from {other}.' },
-  bread: { name: 'Bread Over Glory', desc: 'Chose bread. No regrets.' },
-  hat: { name: 'Hat Overachiever', desc: 'The hat flew farther than the duck.' },
-  wrongway: { name: 'Wrong Way', desc: 'Launched in a bold new direction.' },
-  space: { name: 'Space Cadet', desc: 'Visited space. Came back.' },
-  dressed: { name: 'Best Dressed', desc: 'Judges’ choice. The judges are ducks.' },
-  comeback: { name: 'Comeback Kid', desc: 'Misfired, reloaded, flew anyway.' },
-  napper: { name: 'Power Napper', desc: 'Took a nap mid-race.' },
+  // a description can be a list: each race picks one (the same one on screen and in the copied results)
+  altitude: { name: 'Highest Altitude', desc: ['Reached {v} up. Waved at a cloud.', 'Reached {v} up. Saw the whole org chart from there.', 'Reached {v} up. Air traffic control has questions.'] },
+  airtime: { name: 'Most Airtime', desc: ['{v} seconds in the air. Basically a pilot now.', '{v} seconds aloft. Asked about the snack cart.', '{v} seconds airborne. Earned frequent flyer miles.'] },
+  chaos: { name: 'Most Chaotic Flight', desc: ['{v} events in one flight.', '{v} events in one flight. Zero regrets.', '{v} events in one flight. The paperwork is pending.'] },
+  closest: { name: 'Closest Call', desc: ['Just {v} from {other}.', 'Just {v} from {other}. A beak apart.'] },
+  bread: { name: 'Bread Over Glory', desc: ['Chose bread. No regrets.', 'Chose bread over glory. Correctly.'] },
+  hat: { name: 'Hat Overachiever', desc: ['The hat flew farther than the duck.', 'Outflown by its own hat.'] },
+  wrongway: { name: 'Wrong Way', desc: ['Launched in a bold new direction.', 'Went the other way. Visionary.'] },
+  space: { name: 'Space Cadet', desc: ['Visited space. Came back.', 'Went to space. Came back with stories.'] },
+  dressed: { name: 'Best Dressed', desc: ['Judges’ choice. The judges are ducks.', 'Dressed for the job it wants.', 'Fashion first. Flight second.'] },
+  comeback: { name: 'Comeback Kid', desc: ['Misfired, reloaded, flew anyway.', 'Misfired. Reloaded. Called it a pivot.'] },
+  napper: { name: 'Power Napper', desc: ['Took a nap mid-race.', 'Took a nap mid-race. Woke up refreshed.'] },
   feather: { name: 'Good Sport Feather', desc: 'Every flight counts.' },
 };
 
@@ -2015,7 +2034,7 @@ function runSelfTest() {
   for (let i = 0; i < 400; i++) { const tl = SIM.simulate(hash('selftest', i), ice, iceCourse, null, {}); if (tl.endT >= 69.9) capped++; const k = tl.n - 1; if (tl.y[k] > SIM.groundY(tl.x[k]) + 1) aloft++; }
   check('no flight runs into the time cap or ends in mid-air', capped === 0 && aloft === 0, capped + ' capped, ' + aloft + ' aloft of 400 Ice Rink flights');
   // content lint: nothing Bill or a duck says trips the blocklist
-  const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES);
+  const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]), ...Object.values(C.OUTLOOK_SKY), C.OUTLOOK);
   const holes = [].concat(...[C.LINES, C.DUCK_LINES].map(T => Object.entries(T).filter(([k, a]) => Object.keys(a).length !== a.length || a.some(x => typeof x !== 'string' || !x.trim())).map(([k]) => k)));
   check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
@@ -2083,6 +2102,11 @@ function runSelfTest() {
     const cast = [story('Win', 900, 'cannonception'), story('Two', 800, 'cannonception'), story('Tri', 700, 'ufo'), story('Fou', 600, 'wormhole'), story('Fiv', 500, 'hammock'), story('Six', 400, 'bread'), story('Sev', 300, 'pelican')];
     S.race = { id: 'self-hl', seed: 3, day, players: cast, queue: [], idx: 0, results: Object.fromEntries(cast.map(p => [p.key, p.r])), shots: {}, legend: [] };
     const hls = computeHighlights(S.race);
+    const geese = [story('Ana', 900, 'geese'), story('Ben', 800, 'geese'), story('Cal', 700, 'ufo'), story('Dee', 600, 'ufo')];
+    S.race = { id: 'self-hl2', seed: 4, day, players: geese, queue: [], idx: 0, results: Object.fromEntries(geese.map(p => [p.key, p.r])), shots: {}, legend: [] };
+    const hl2 = computeHighlights(S.race);
+    check('a second story of the same kind says "also"', hl2.some(h => /^Duck \w+ also got HONKED/.test(h)) && hl2.some(h => /^Duck \w+ was also abducted/.test(h)) && hl2.filter(h => / also /.test(h)).length === 2, hl2.join(' | '));
+    S.race = { id: 'self-hl', seed: 3, day, players: cast, queue: [], idx: 0, results: Object.fromEntries(cast.map(p => [p.key, p.r])), shots: {}, legend: [] };
     check('highlights tell each kind of moment once and include the winner', hls.length === 5 && hls.filter(h => /ANOTHER CANNON/.test(h)).length === 1 && hls.some(h => h.startsWith('Duck Win ')), hls.length + ' lines, ' + hls.filter(h => /ANOTHER CANNON/.test(h)).length + ' cannon');
     // captions: a distance never breaks between the number and its unit
     const mctx = document.createElement('canvas').getContext('2d');
@@ -2131,6 +2155,7 @@ function runSelfTest() {
 const OUT = '#1f1a2e';
 const FONT = 'ui-rounded, "Arial Rounded MT Bold", "Segoe UI Black", "Segoe UI", system-ui, -apple-system, sans-serif';
 const font = (px, w) => (w || 900) + ' ' + Math.round(px) + 'px ' + FONT;
+const HAS_WORD_SPACING = typeof CanvasRenderingContext2D !== 'undefined' && 'wordSpacing' in CanvasRenderingContext2D.prototype;
 
 /* ---------- color helpers ---------- */
 const _rgbCache = new Map();
@@ -2195,10 +2220,15 @@ function txt(ctx, str, x, y, o) {
   ctx.textAlign = o.align || 'center';
   ctx.textBaseline = o.base || 'middle';
   ctx.lineJoin = 'round';
+  const outlined = o.sw !== 0 && (o.stroke || o.sw), lw = outlined ? o.sw || Math.max(3, px * 0.16) : 0;
+  // a thick outline swallows the gaps between words in a heavy font ("R replay · S skip" read as "Rreplay·Sskip"):
+  // outlined text gets back about half the outline's width in each space
+  if (HAS_WORD_SPACING && lw >= 3) ctx.wordSpacing = Math.round(lw * 0.55) + 'px';
   if (o.shadow) { ctx.fillStyle = o.shadow === true ? 'rgba(31,26,46,0.5)' : o.shadow; ctx.fillText(str, x, y + px * 0.09); }
-  if (o.sw !== 0 && (o.stroke || o.sw)) { ctx.lineWidth = o.sw || Math.max(3, px * 0.16); ctx.strokeStyle = o.stroke || OUT; ctx.strokeText(str, x, y); }
+  if (outlined) { ctx.lineWidth = lw; ctx.strokeStyle = o.stroke || OUT; ctx.strokeText(str, x, y); }
   ctx.fillStyle = o.color || '#fff';
   ctx.fillText(str, x, y);
+  if (HAS_WORD_SPACING && lw >= 3) ctx.wordSpacing = '0px';
   return px;
 }
 function wrapText(ctx, str, maxW, maxLines) {
@@ -3598,9 +3628,12 @@ const Scenery = {
     g.addColorStop(0, sk[0]); g.addColorStop(0.55, sk[1]); g.addColorStop(1, sk[2]);
     c.fillStyle = g; c.fillRect(0, 0, 1920, 1080);
     const r = new Rng(hash('sky', cond.dayKey));
+    this.twinkles = null;
     if (cond.sky === 'night') {
       for (let i = 0; i < 140; i++) { const x = r.range(0, 1920), y = r.range(0, 700), s = r.range(1.5, 3.5); c.fillStyle = 'rgba(255,255,240,' + r.range(0.5, 1) + ')'; circ(c, x, y, s); c.fill(); }
-      for (let i = 0; i < 6; i++) { starPath(c, r.range(100, 1800), r.range(40, 500), r.range(6, 10), 0); c.fillStyle = '#fff6c8'; c.fill(); }
+      // the six big stars twinkle (drawn live, slowly; see drawWorld)
+      this.twinkles = [];
+      for (let i = 0; i < 6; i++) this.twinkles.push({ x: r.range(100, 1800), y: r.range(40, 500), s: r.range(6, 10), ph: r.range(0, TAU), sp: r.range(0.8, 1.6) });
     }
     // far layer (low contrast)
     const far = this.far = mkCanvas(2400, 460);
@@ -3609,7 +3642,6 @@ const Scenery = {
     if (cond.flags.beach) {
       c.fillStyle = '#5fb7e8'; c.fillRect(0, 300, 2400, 160);
       c.fillStyle = 'rgba(255,255,255,0.6)'; for (let x = 0; x < 2400; x += 60) { c.fillRect(x + (x % 120 ? 10 : 30), 330 + (x % 180) / 6, 26, 4); }
-      c.fillStyle = '#ffe9a8'; circ(c, 1700, 220, 70); c.fill();
     } else {
       const ridge = (base, amp, col, seed) => { const rr2 = new Rng(seed); c.fillStyle = col; c.beginPath(); c.moveTo(0, 460); let y = base; for (let x = 0; x <= 2400; x += 40) { const k = x / 2400 * TAU; y = base - amp * (0.5 + 0.5 * Math.sin(k * 2 + seed % 7)) - amp * 0.4 * Math.sin(k * 5 + 1.3); c.lineTo(x, y); } c.lineTo(2400, 460); c.closePath(); c.fill(); };
       ridge(250, 140, farCol[1], 3);
@@ -3635,15 +3667,53 @@ const Scenery = {
     // clouds
     this.clouds = [];
     const cloudCol = cond.sky === 'overcast' || cond.sky === 'drizzle' ? '#e2e7ee' : cond.sky === 'night' ? '#4a5a8a' : cond.sky === 'sunset' ? '#ffd9c2' : '#ffffff';
+    // puffy cartoon clouds: a rounded base with a row of puffs on top (the biggest in the middle), a shaded belly and a
+    // lit crown. No square corners anywhere.
+    const belly = shade(cloudCol, cond.sky === 'night' ? -0.18 : -0.1), lit = cond.sky === 'night' ? 'rgba(170,185,235,0.3)' : 'rgba(255,255,255,0.75)';
     for (let i = 0; i < 5; i++) {
       const cv = mkCanvas(360, 160); const cc = cv.getContext('2d');
       const cr = new Rng(hash('cloud', i));
-      const blobs = []; for (let j = 0; j < 6; j++) blobs.push([cr.range(70, 290), cr.range(70, 100), cr.range(30, 55)]);
-      cc.fillStyle = 'rgba(31,26,46,0.12)'; for (const b of blobs) { circ(cc, b[0], b[1] + 8, b[2]); cc.fill(); }
-      cc.fillStyle = cloudCol; for (const b of blobs) { circ(cc, b[0], b[1], b[2]); cc.fill(); }
-      cc.fillRect(70, 100, 220, 30);
+      const l0 = cr.range(46, 76), r0 = cr.range(284, 314), base = 126, nP = cr.int(3, 5);
+      const puffs = [];
+      for (let j = 0; j < nP; j++) {
+        const u = (j + 0.5) / nP, r = (24 + 30 * Math.sin(Math.PI * u)) * cr.range(0.88, 1.08);
+        puffs.push([lerp(l0 + 26, r0 - 26, u) + cr.range(-8, 8), base - 18 - r * 0.5, r]);
+      }
+      const shape = (dy, col) => {
+        cc.fillStyle = col;
+        rr(cc, l0, base - 32 + dy, r0 - l0, 36, 18); cc.fill();
+        for (const [x, y, r] of puffs) { circ(cc, x, y + dy, r); cc.fill(); }
+      };
+      shape(9, 'rgba(31,26,46,0.10)');   // soft shadow on the sky
+      shape(0, belly);                     // the belly...
+      shape(-7, cloudCol);                 // ...shows under the body
+      for (const [x, y, r] of puffs) { circ(cc, x - r * 0.2, y - 7 - r * 0.24, r * 0.56); cc.fillStyle = lit; cc.fill(); }
       this.clouds.push(cv);
     }
+    // the sun and the moon, each with a soft glow. The crescent is cut out of the disc (so the sky shows through the
+    // bite, whatever is behind it), instead of a sky-coloured circle painted over a full moon.
+    const glowDisc = (size, r, glow) => {
+      const cv = mkCanvas(size, size), gc = cv.getContext('2d'), m = size / 2;
+      const gg = gc.createRadialGradient(m, m, r * 0.8, m, m, m);
+      gg.addColorStop(0, glow); gg.addColorStop(1, 'rgba(255,255,255,0)');
+      gc.fillStyle = gg; gc.fillRect(0, 0, size, size);
+      return { cv, gc, m };
+    };
+    if (cond.sky === 'night') {
+      const d = glowDisc(320, 70, 'rgba(255,246,216,0.22)');
+      const disc = mkCanvas(320, 320), dc = disc.getContext('2d');
+      circ(dc, 160, 160, 70); dc.fillStyle = '#fff6d8'; dc.fill();
+      circ(dc, 140, 176, 11); dc.fillStyle = '#efe3bd'; dc.fill(); circ(dc, 118, 140, 7); dc.fill(); circ(dc, 132, 206, 6); dc.fill();
+      dc.globalCompositeOperation = 'destination-out'; circ(dc, 188, 140, 62); dc.fill(); dc.globalCompositeOperation = 'source-over';
+      d.gc.drawImage(disc, 0, 0);
+      this.orb = { cv: d.cv, x: 1500, y: 180 };
+    } else if (cond.sky === 'sunny' || cond.sky === 'sunset') {
+      const set = cond.sky === 'sunset', r = set ? 120 : 80;
+      const d = glowDisc(set ? 520 : 360, r, set ? 'rgba(255,210,122,0.45)' : 'rgba(255,241,160,0.5)');
+      circ(d.gc, d.m, d.m, r); d.gc.fillStyle = set ? '#ffd27a' : '#fff1a0'; d.gc.fill();
+      circ(d.gc, d.m - r * 0.25, d.m - r * 0.25, r * 0.55); d.gc.fillStyle = 'rgba(255,255,255,0.35)'; d.gc.fill();
+      this.orb = { cv: d.cv, x: 1550, y: set ? 520 : 170 };
+    } else this.orb = null;
     this.ground = groundPalette(cond);
   },
 };
@@ -3761,8 +3831,12 @@ function drawWorld(ctx, W) {
   }
   const lift = clamp(V.gy - GROUND_Y, 0, 4000);
   // sun / moon
-  if (cond.sky === 'night') { circ(ctx, 1500, 180 + lift * 0.05, 70); ctx.fillStyle = '#fff6d8'; ctx.fill(); circ(ctx, 1528, 160 + lift * 0.05, 62); ctx.fillStyle = SKY.night[0]; ctx.fill(); }
-  else if (cond.sky === 'sunny' || cond.sky === 'sunset') { const sy = (cond.sky === 'sunset' ? 520 : 170) + lift * 0.05; circ(ctx, 1550, sy, cond.sky === 'sunset' ? 120 : 80); ctx.fillStyle = cond.sky === 'sunset' ? '#ffd27a' : '#fff1a0'; ctx.fill(); }
+  if (Scenery.twinkles && !(W.space > 0.5)) for (const st of Scenery.twinkles) {
+    const k = 0.5 + 0.5 * Math.sin(t * st.sp + st.ph);
+    ctx.globalAlpha = 0.55 + 0.45 * k; starPath(ctx, st.x, st.y, st.s * (0.8 + 0.3 * k), 0); ctx.fillStyle = '#fff6c8'; ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  if (Scenery.orb) { const o = Scenery.orb; ctx.drawImage(o.cv, (W.orbX || o.x) - o.cv.width / 2, o.y + lift * 0.05 - o.cv.height / 2); }
   // space darkening (only during a space trip)
   if (W.space > 0) {
     ctx.fillStyle = 'rgba(8,6,28,' + (0.92 * W.space) + ')'; ctx.fillRect(0, 0, 1920, 1080);
@@ -3983,8 +4057,8 @@ function drawBig(ctx, dt) {
     rr(ctx, pill.x, pill.y, pill.w, pill.h, 18); fillStroke(ctx, Big.enabled ? '#fff8e6' : '#d8d2c4', 5);
     txt(ctx, Big.label, pill.x + pill.w / 2, pill.y + pill.h / 2 + 1, { px: 34, color: Big.enabled ? '#c22f1f' : '#6b6577', sw: 0, maxW: pill.w - 28 });
     ctx.globalAlpha = 1;
-    // keyboard hint
-    txt(ctx, 'or press SPACE', pill.x + pill.w / 2, pill.y + pill.h + 22, { px: 20, color: '#fff', sw: 4 });
+    // keyboard hint (only while SPACE would actually do something: "IN FLIGHT / or press SPACE" was a fib)
+    if (Big.enabled) txt(ctx, 'or press SPACE', pill.x + pill.w / 2, pill.y + pill.h + 22, { px: 20, color: '#fff', sw: 4 });
   }
   const hit = bigHitRect(ctx);
   S.buttons.push({ id: 'big', x: hit.x, y: hit.y, w: hit.w, h: hit.h, fn: () => primary(true) });
@@ -4070,7 +4144,7 @@ const Caps = {
       if (avoidY != null && !b.fixedY) {
         if (!b.yset) this.side = avoidY < 520 ? 'low' : 'high';   // a new caption starts on the side away from the duck
         const ty = this.side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off;
-        b.y = b.yset ? approach(b.y, ty, 12, 1 / 60) : ty; b.yset = true;
+        b.y = b.yset ? approach(b.y, ty, 12, drawDt()) : ty; b.yset = true;
       }
       if (!b.fixedY && t < b.dur - 0.3) off += hh + 16;   // a caption on its way out (or parked elsewhere) does not push the next one
       const k = easeBack(t / 0.3), out = t > b.dur - 0.3 ? (b.dur - t) / 0.3 : 1;
@@ -4733,7 +4807,10 @@ function billPickKey(R) {
   if (act.length < 3) return null;
   return act[hash(R.seed, 'billpick') % act.length].key;
 }
-function awardDesc(a) { return Lines.fill(C.AWARDS[a.id].desc, { v: a.v, other: a.other || '' }); }
+function awardDesc(a) {
+  const d = C.AWARDS[a.id].desc, seed = S.race ? S.race.seed : 0;
+  return Lines.fill(Array.isArray(d) ? d[hash(seed, 'award', a.id) % d.length] : d, { v: a.v, other: a.other || '' });
+}
 function computeHighlights(R) {
   const st = standings();
   const cands = [];
@@ -4770,7 +4847,18 @@ function computeHighlights(R) {
     picked.push(cw);
   }
   picked.sort((a, b) => b.s - a.s);
-  const out = picked.map(c => c.t);
+  // a big flock can have two stories of the same kind (half the pond met the geese): the second one says so, so it
+  // reads as a pattern rather than a copy ("Splash also joined a V of ducks...", "Bo was also abducted...")
+  const seenId = new Set();
+  const out = picked.map(c => {
+    let t = c.t;
+    if (seenId.has(c.id) && t.startsWith(c.who + ' ')) {
+      const rest = t.slice(c.who.length + 1), m = /^(was|is) /.exec(rest);
+      t = c.who + ' ' + (m ? m[1] + ' also ' + rest.slice(m[0].length) : 'also ' + rest);
+    }
+    seenId.add(c.id);
+    return t;
+  });
   if (!out.length && st.length) out.push(st[0].pl.duck.name + ' flew ' + fmtFt(st[0].dist) + ' with no help from anyone.');
   return out;
 }
@@ -4787,6 +4875,8 @@ function resultsText(R) {
   const tod = teamOfDay(R);
   if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
   if (hl.length) lines.push('Highlight: ' + hl[0]);
+  const so = C.LINES.signoff;   // Bill signs off (the same line every time this show is copied)
+  lines.push('Bill says: ' + so[hash(R.seed >>> 0, 'signoff') % so.length]);
   return lines.join('\n');
 }
 function finalizeRace() {
@@ -5201,7 +5291,7 @@ function updateFlight(dt) {
   // crossings
   const cross = x => prev < x && t >= x;
   // photo finish: the shutter clicks the moment the picture starts to slow down
-  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 1 }); }
+  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); S.flashAt = S.rt; Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 1 }); }
   // impact freeze: 0.3 s, but never two in quick succession (that reads as a stutter)
   const freeze = () => { if (pb.T - pb.holdEnd >= 0.7) { pb.hold = 0.3; pb.holdEnd = pb.T + 0.3; } };
   if (tl.special === 'misfire' && cross(tl.launchT)) { const savedBarrel = L.barrel; boomFX(false); L.barrel = savedBarrel; say('misfireBoom', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); freeze(); }
@@ -6111,7 +6201,7 @@ function drawSidebar(ctx) {
     const key = pl.key;
     const target = yy;
     const prev = SB.seen[key];
-    const ry = prev == null ? target : approach(prev, target, 7, 1 / 60);
+    const ry = prev == null ? target : approach(prev, target, 7, drawDt());
     SB.seen[key] = ry;
     const saveY = yy; yy = ry;
     if (hl) { rr(ctx, x + 8, yy, w - 16, rh - 6, 16); ctx.fillStyle = 'rgba(255,210,63,0.45)'; ctx.fill(); }
@@ -6455,7 +6545,7 @@ function updateSalvoFlight(dt) {
   const t = pb.simT, n = SV.fl.length;
   // the drumroll builds over the last seconds and lands on the result
   if (!SV.replay && n > 1 && !SV.drumOn && t >= pb.drumAt && pb.dur - pb.T > 1.2) { SV.drumOn = true; SFX.startDrum(Math.max(1.2, pb.dur - pb.T)); }
-  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff', y: 620 }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
+  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); S.flashAt = S.rt; Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
   let moving = 0, lastMover = null;
   for (const f of SV.fl) {
     const tl = f.tl, d = f.pl.duck, vars = { duck: d.name, player: f.pl.name };
@@ -6480,9 +6570,11 @@ function updateSalvoFlight(dt) {
         const cap = e.id === 'skip' ? 'SKIP!' : e.id === 'billboard' ? 'BONK!' : def.cap;
         const bigCap = sc >= 70 && cap && !Caps.freshBig(1.6) && t > 2.2;   // the big ones get the big caption instead
         if (cap && !bigCap) salvoTag(f, cap, { color: def.kind === 'obstacle' ? '#ffb8a8' : def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', px: sc >= 55 ? 36 : 30, dur: sc >= 55 ? 2 : 1.5 });
-        if (['geese', 'billboard', 'mud', 'tree', 'ooo', 'gatekeeper', 'replyall', 'castle', 'trampoline', 'bell'].includes(e.id)) Shake.add(3);
+        // a bump on impact, but a big flock hits things all the time: at most one bump a second (a screen that never
+        // stops jittering is hard to watch on a shared screen)
+        if (['geese', 'billboard', 'mud', 'tree', 'ooo', 'gatekeeper', 'replyall', 'castle', 'trampoline', 'bell'].includes(e.id) && S.rt - (SV.shakeAt || -9) > 1) { SV.shakeAt = S.rt; Shake.add(n > 12 ? 2 : 3); }
         // the big moments get the big caption (with whose duck it is); Bill calls the best of the rest when he is free
-        if (bigCap) Caps.big(cap + '\n' + f.pl.name, { px: 84, color: def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', dur: 2.2, y: 620 });
+        if (bigCap) Caps.big(cap + '\n' + f.pl.name, { px: n > 20 ? 72 : 84, color: def.kind === 'wildcard' ? '#d9b8ff' : '#ffd23f', dur: 2.2 });   // up in the sky, clear of the flock
         if (!SV.replay && C.LINES['ev_' + e.id]) {
           // Bill is mid-sentence: the best of what he missed gets said as soon as he is free, while it is still news
           if (!salvoSay('ev_' + e.id, vars, { delay: 0.3, prio: sc >= 55 ? 1 : 0 }, sc >= 70 ? 0 : sc >= 44 ? 1.6 : 2.6) && (!SV.pend || sc > SV.pend.sc)) SV.pend = { pool: 'ev_' + e.id, vars, sc, at: S.rt };
@@ -6559,7 +6651,7 @@ function updateSalvoFlight(dt) {
   // the lines to beat (last show's winner, the pond record): the first duck across each gets a cheer
   if (front && !SV.replay && t > 2.5) {
     if (R.lastWin != null && R.lastWin > 300 && !pb.fired.has('lw') && front.x > R.lastWin) { pb.fired.add('lw'); salvoTag(front, "PAST LAST SHOW'S WINNER!", { color: '#ffffff', px: 30, dur: 2 }); salvoSnd('ooh', 1); }
-    if (!R.practice && SV.recordAt != null && SV.recordAt > 300 && !pb.fired.has('rec') && front.x > SV.recordAt) { pb.fired.add('rec'); salvoTag(front, 'PAST THE POND RECORD!', { color: '#ffd23f', px: 34, dur: 2.4 }); salvoSnd('ooh', 1); SFX.play('cheer', 1.2); if (!Caps.freshBig(1.2)) Caps.big('PAST THE RECORD LINE!\n' + front.pl.name, { px: 76, color: '#ffd23f', dur: 2.2, y: 620 }); salvoSay('salvoRecord', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 0.8); }
+    if (!R.practice && SV.recordAt != null && SV.recordAt > 300 && !pb.fired.has('rec') && front.x > SV.recordAt) { pb.fired.add('rec'); salvoTag(front, 'PAST THE POND RECORD!', { color: '#ffd23f', px: 34, dur: 2.4 }); salvoSnd('ooh', 1); SFX.play('cheer', 1.2); if (!Caps.freshBig(1.2)) Caps.big('PAST THE RECORD LINE!\n' + front.pl.name, { px: 76, color: '#ffd23f', dur: 2.2 }); salvoSay('salvoRecord', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 0.8); }
   }
   // only one duck still going: everybody watches that one
   if (!SV.replay && n > 2 && moving === 1 && !SV.lastMover && pb.dur - pb.T > 2.2) { SV.lastMover = true; salvoTag(lastMover, 'STILL GOING!', { color: '#ffffff', px: 32, dur: 2 }); salvoSay('salvoLast', { duck: lastMover.pl.duck.name, player: lastMover.pl.name }, { prio: 1 }, 1.2); }
@@ -6591,7 +6683,8 @@ function salvoFlightCam(dt, t) {
 function salvoEnd(quiet) {
   const R = S.race, pb = SV.pb;
   SV.restAt = S.time;
-  Caps.bigs = Caps.bigs.filter(b => S.rt - b.t0 < 0.4);
+  // the flight's impact captions live up in the sky, where the result card is about to land: they make way for it
+  Caps.bigs = Caps.bigs.filter(b => b.t0 > S.rt);
   if (SV.drumOn) { SFX.stopDrum(0.04); if (!quiet) SFX.play('cymbal'); SV.drumOn = false; }
   if (SV.replay) { SV.replay = false; SV.phase = 'idle'; SV.pt = 0; salvoIdleBig(); return; }
   const before = leaderEntry(), prevRecord = R.record;
@@ -6622,7 +6715,7 @@ function salvoEnd(quiet) {
   else if (leaderF && (w.tl.final < 0 || (st.length === 1 && w.tl.special === 'backfire'))) { SFX.play('sad'); say('wrongWay', vars, { prio: 2, delay: 0.3 }); }
   else if (leaderF && st.length === 1) { const D = w.tl.final; if (D > 2000) SFX.play('cheer', 1.4); else if (D < 300) SFX.play('aww'); say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', vars, { prio: 2, delay: 0.3 }); }
   else if (leaderF) { SFX.play('leader'); SFX.play('cheer', 1.6); if (SV.result.photo && margin != null && margin < 25) say('photoWon', vars, { prio: 2, delay: 0.25 }); else say('salvoWin', vars, { prio: 2, delay: 0.3 }); }
-  else { SFX.play('aww'); Caps.say('Nobody caught ' + lead.pl.duck.name + '. Still ' + fmtFt(lead.dist) + ' to beat.', { prio: 2, delay: 0.3 }); }
+  else { SFX.play('aww'); say('salvoNoCatch', { duck: lead.pl.duck.name, player: lead.pl.name, distance: fmtFt(lead.dist) }, { prio: 2, delay: 0.3 }); }
   if (pbs.length && !newRecord) Caps.say(pbs.length === 1 ? 'And a personal best for ' + pbs[0].pl.name + '!' : pbs.length + ' personal bests in that volley!', { delay: 3.0 });
   burst('confetti', 60, { x: 760, y: 240, sp0: 200, sp1: 560, l0: 1.4, l1: 2.4, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
   Caps.bubbleSay(Lines.next(w.tl.final > 1500 || st.length >= 3 ? 'landGood' : 'landBad', {}, true), { delay: 1.0 });
@@ -6805,6 +6898,11 @@ function drawSalvoTags(ctx, V) {
   const pick = S.race ? billPickKey(S.race) : null;
   for (const f of SV.fl) f.tagY = null;   // a call-out anchors to this frame's tag only (or to the duck itself)
   const movers = tags.filter(g => !g.done && !g.off).length;
+  // the HUD up top (the salvo card; in flight the distance counter and its IN FRONT chip) is no place for a tag: a
+  // tag there would be half hidden, and the counter already names whoever is in front
+  const hud = [{ x: 255, y: 73, w: 480, h: 128 }];
+  if (SV.phase === 'flight') hud.push({ x: 960, y: 92, w: 790, h: 160 });
+  const inHud = (x, y, w, h) => hud.some(p => Math.abs(p.x - x) < (p.w + w) / 2 && Math.abs(p.y - y) < (p.h + h) / 2);
   // movers and the leader get their tag first (best spot); the rest fit in around them
   const order = tags.filter(g => !g.off).sort((a, b) => ((b.f.pl.key === leadKey ? 2 : 0) + (b.done ? 0 : 1)) - ((a.f.pl.key === leadKey ? 2 : 0) + (a.done ? 0 : 1)) || b.sx - a.sx);
   for (const g of order) {
@@ -6818,6 +6916,7 @@ function drawSalvoTags(ctx, V) {
     const drop = () => { f.tagOffAt = S.rt; };
     if (lvl >= 7 && placed.some(p => Math.abs(p.x - x) < (p.w + w) / 2 + 4 && Math.abs(p.y - y) < (p.h + h) / 2 + 2)) { drop(); continue; }   // a crowd with no room left: the board has everybody
     if (!keep && f.tagOffAt != null && S.rt - f.tagOffAt < 0.4) continue;   // once dropped, stays off a moment (no flicker)
+    if (inHud(x, y, w, h)) { drop(); continue; }
     // a big flock packed together: a tag that would have to stack is shown only for the leaders (the rest are on the
     // board, and their own tags come back as soon as the pack spreads out)
     if (n > 14 && lvl > 0 && !keep && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) { drop(); continue; }
@@ -6831,10 +6930,14 @@ function drawSalvoTags(ctx, V) {
   }
   // event call-outs float up from the duck; each one moves up until it is clear of the name tags and the call-outs
   // already placed
-  const cps = placed.slice();
+  const cps = placed.slice().concat(hud);
+  // a big flock gets a handful of call-outs at a time (the oldest keep their spot); the board and Bill have the rest
+  const maxCalls = n > 24 ? 4 : n > 12 ? 6 : 99;
+  let calls = 0;
   for (const g of SV.tags) {
     const f = g.f;
     if (f.sx == null) continue;
+    if (calls >= maxCalls) break;
     const k = (S.rt - g.t0) / g.dur;
     if (k < 0 || k > 1) continue;
     const a = k < 0.12 ? k / 0.12 : k > 0.75 ? (1 - k) / 0.25 : 1;
@@ -6845,11 +6948,12 @@ function drawSalvoTags(ctx, V) {
     for (let tries = 0; tries < 6 && hit(); tries++) y -= chh * 0.55;
     if (y < 120 || hit()) continue;   // no clear spot: the board and the name tags carry the story
     cps.push({ x: cx, y, w: cw, h: chh, text: g.text });
+    calls++;
     ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(cx, y); ctx.scale(0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1)), 0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1))); ctx.rotate(-0.05);
     txt(ctx, g.text, 0, 0, { px: g.px, color: g.color, sw: g.px * 0.22, maxW: 420 });
     ctx.restore();
   }
-  SV.drawnTags = cps;   // what went on screen this frame (name tags first, then call-outs): for the tests
+  SV.drawnTags = cps.filter(o => !hud.includes(o));   // what went on screen this frame (name tags first, then call-outs): for the tests
   // ducks that are out of the picture: an arrow on the edge says who and where. A long name stays inside the
   // chip, and a tall stack stops above Bill and the big button; the last chip says how many did not fit.
   const off = [];
@@ -6939,7 +7043,11 @@ function drawSalvoHUD(ctx, V, t) {
   if (SV.replay) badge('REPLAY', '#ffffff');
   drawSalvoBoard(ctx);
   if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
-  Caps.drawBigs(ctx, null, 1040);   // a caption with a long player name stays clear of the leaderboard
+  // impact captions go on the far side of the flock (up in the sky while it rolls along the ground, low while it is up
+  // in the air), and a caption with a long player name stays clear of the leaderboard
+  let flockY = null;
+  if (ph === 'flight') { const ys = SV.fl.filter(f => !f.done && f.sy != null && f.vis).map(f => f.sy).sort((a, b) => a - b); if (ys.length) flockY = ys[ys.length >> 1]; }
+  Caps.drawBigs(ctx, flockY, 1040);
   const w = SV.result && SV.result.best;
   if ((ph === 'result' || ph === 'idle') && w && w.sx != null) Caps.drawBubble(ctx, w.sx, w.sy - (SV.px || 80) * 0.5, false);
   else if (ph === 'armed' || ph === 'countdown') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
@@ -6991,7 +7099,7 @@ function drawSalvoBoard(ctx) {
   // sliding cannot be read). Between re-deals the distances keep counting.
   if (flying) {
     const key = rows.map(e => e.pl.key).join();
-    if (!SVB.order || S.rt - SVB.orderAt > 0.5 || SVB.order.length !== rows.length) { SVB.order = rows.map(e => e.pl.key); SVB.orderAt = S.rt; }
+    if (!SVB.order || S.rt - SVB.orderAt > (rows.length > 20 ? 0.8 : 0.5) || SVB.order.length !== rows.length) { SVB.order = rows.map(e => e.pl.key); SVB.orderAt = S.rt; }
     else if (key !== SVB.order.join()) { const pos = new Map(SVB.order.map((k, i) => [k, i])); rows.sort((a, b) => (pos.has(a.pl.key) ? pos.get(a.pl.key) : 999) - (pos.has(b.pl.key) ? pos.get(b.pl.key) : 999)); }
   } else SVB.order = null;
   const x = 1500, y = 14, w = 404, total = rows.length;
@@ -7008,10 +7116,19 @@ function drawSalvoBoard(ctx) {
   txt(ctx, down + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
   const two = rh >= 56, npx = two ? 27 : clamp(Math.round(rh * 0.62), 18, 28);
   const best = SV.result && SV.result.best ? SV.result.best.pl.key : null, pick = billPickKey(R);
-  shown.forEach((e, i) => {
-    const pl = e.pl, target = y + 62 + i * rh;
-    const prev = SVB.seen[pl.key], ry = prev == null || Math.abs(prev - target) > 600 || SVB.pg !== pg ? target : approach(prev, target, 16, 1 / 60);
-    SVB.seen[pl.key] = ry;
+  // rows glide to their new places. A row on the move gets its own opaque card and is drawn over the rows standing
+  // still, so two rows passing each other read as one overtaking the other instead of two names printed on top of
+  // each other.
+  const place = shown.map((e, i) => {
+    const target = y + 62 + i * rh, prev = SVB.seen[e.pl.key];
+    const ry = prev == null || Math.abs(prev - target) > 600 || SVB.pg !== pg ? target : approach(prev, target, 16, drawDt());
+    SVB.seen[e.pl.key] = ry;
+    return { e, ry, moving: Math.abs(ry - target) > 1.5, up: ry > target };
+  });
+  place.sort((a, b) => (a.moving - b.moving) || (a.up - b.up));
+  place.forEach(({ e, ry, moving }) => {
+    const pl = e.pl;
+    if (moving) { ctx.save(); ctx.shadowColor = 'rgba(31,26,46,0.25)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2; rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = '#fff8e6'; ctx.fill(); ctx.restore(); }
     const hl = (flying && SV.lead && SV.lead.pl.key === pl.key) || (!flying && e.rank === 1 && !e.wait && standings().length > 0);
     if (hl) { rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = 'rgba(255,210,63,0.5)'; ctx.fill(); }
     else if (!flying && !e.wait && (ph === 'result' || ph === 'idle') && (e.rank === 2 || e.rank === 3) && total > 3) { rr(ctx, x + 8, ry + 1, w - 16, rh - 3, Math.min(14, rh / 3)); ctx.fillStyle = e.rank === 2 ? 'rgba(190,200,214,0.6)' : 'rgba(222,160,110,0.5)'; ctx.fill(); }
@@ -7056,7 +7173,7 @@ function go(screen) {
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
   if (screen === 'results') { if (RS.back) { RS.back = false; setBig('DONE', true); } else startResults(); }
-  if (screen === 'fame') { Particles.clear(); FM.page = 0; FM.t = 0; setBig('NEXT PAGE', true); }
+  if (screen === 'fame') { Particles.clear(); FM.t = 0; const any = computeFame(S.history, S.day).races > 0; FM.page = any ? 0 : 1; setBig(any ? 'NEXT PAGE' : 'BACK', true); }   // nothing on record: there is no next page
   if (screen === 'gallery') { GL.seed = freshSeed(); setBig('NEW BATCH', true); }
 }
 function storedShow() { const c = Store.get('current', null); return c && c.stage && c.stage !== 'done' && Array.isArray(c.players) && c.players.length && Array.isArray(c.queue) ? c : null; }
@@ -7125,7 +7242,7 @@ function drawTitle(ctx, dt) {
   if (S.screen === 'title' && !S.race && !S.dbg.day && !Modal.isOpen && Iris.t < 0 && localDayKey() !== S.day) go('title');
   const t = S.time;
   const V = makeView(150, GROUND_Y + 30, 4.2);
-  drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0 });
+  drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0, orbX: 1765 });   // the sun or moon clear of the logo
   // attract mode: every few seconds Thunderbill lobs a demo duck off into the distance
   const ang = 40, CYC = 6.5, u = t % CYC, cyc = Math.floor(t / CYC);
   const mz = cannonMuzzle(ang);
@@ -7307,6 +7424,12 @@ function drawCard(ctx, rc, pl, flipK, num, pick) {
   ctx.restore();
   if (num != null) { circ(ctx, x + 6, y + 6, 26); fillStroke(ctx, '#ffd23f', 5); txt(ctx, String(num), x + 6, y + 7, { px: 28, color: OUT, sw: 0 }); }
 }
+function forecastOutlook(cond) {
+  const h = hash('outlook', cond.dayKey);
+  const skyKey = cond.wind.kind !== 'calm' && cond.wind.mph >= 12 && h % 2 ? cond.wind.kind : cond.sky;
+  const a = C.OUTLOOK_SKY[skyKey] || C.OUTLOOK_SKY.sunny, b = C.OUTLOOK;
+  return a[(h >>> 3) % a.length] + ' ' + Lines.fill(b[(h >>> 7) % b.length], { p: 10 + (h >>> 11) % 80, lvl: ['low', 'moderate', 'high', 'VERY high'][(h >>> 17) % 4] });
+}
 function drawForecast(ctx, k) {
   const cond = S.cond;
   ctx.save(); ctx.translate(960, 470); ctx.scale(k, k); ctx.translate(-960, -470);
@@ -7314,7 +7437,8 @@ function drawForecast(ctx, k) {
   rr(ctx, x, y, w, h, 36); fillStroke(ctx, '#fff8e6', 6);
   rr(ctx, x, y, w, 96, 36); ctx.fillStyle = '#3f8fd9'; ctx.fill(); ctx.fillRect(x, y + 60, w, 36); rr(ctx, x, y, w, h, 36); ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.stroke();
   txt(ctx, 'POND FORECAST', 960, y + 50, { px: 54, color: '#fff', sw: 8 });
-  txt(ctx, prettyDate(cond.dayKey), 960, y + 132, { px: 32, color: '#6b6577', sw: 0 });
+  txt(ctx, prettyDate(cond.dayKey), 960, y + 126, { px: 32, color: '#6b6577', sw: 0 });
+  txt(ctx, "Bill's outlook: " + forecastOutlook(cond), 960, y + 170, { px: 26, color: '#2a6cbf', sw: 0, maxW: w - 80, weight: 800 });
   // windsock + arrow
   const wx = x + 200, wy = y + 300;
   ctx.lineWidth = 8; ctx.strokeStyle = OUT; ctx.beginPath(); ctx.moveTo(wx - 60, wy + 120); ctx.lineTo(wx - 60, wy - 40); ctx.stroke();
@@ -7471,7 +7595,13 @@ function drawPodium(ctx, st) {
     txt(ctx, 'ALSO FLEW', x + 200, y + 32, { px: 26, color: '#6b6577', sw: 0 });
     const fade = pages > 1 ? clamp(Math.min(((k - 1.5) % 4 + 4) % 4, 4 - ((k - 1.5) % 4 + 4) % 4) / 0.3, 0, 1) : 1;
     ctx.globalAlpha = k < 3 ? 1 : fade;
-    rest.forEach((e, i) => { const r = pg * PER + i + 4, yy = y + 76 + i * 44; txt(ctx, r + '. ' + e.pl.name, x + 20, yy, { px: 28, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: 190 }); txt(ctx, fmtDist(st, r - 1), x + 380, yy, { px: 28, minPx: 18, color: OUT, sw: 0, align: 'right', maxW: 156 }); });
+    // the distance keeps its own column; the name gets whatever room is left of it
+    rest.forEach((e, i) => {
+      const r = pg * PER + i + 4, yy = y + 76 + i * 44, dist = fmtDist(st, r - 1);
+      ctx.font = font(28); const dw = Math.min(156, ctx.measureText(dist).width);
+      txt(ctx, r + '. ' + e.pl.name, x + 20, yy, { px: 28, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: 360 - dw - 16 - 20 });
+      txt(ctx, dist, x + 380, yy, { px: 28, minPx: 18, color: OUT, sw: 0, align: 'right', maxW: 156 });
+    });
     ctx.globalAlpha = 1;
     if (pages > 1) txt(ctx, 'page ' + (pg + 1) + ' of ' + pages, x + 200, y + 76 + rows * 44 - 6, { px: 22, color: '#6b6577', sw: 0 });
   }
@@ -7541,13 +7671,13 @@ function drawAwards(ctx) {
     ctx.font = font(30);
     wrapText(ctx, C.AWARDS[a.id].name, w - 30, 2).forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 130 + j * 34, { px: 30, color: '#c22f1f', sw: 0 }));
     drawDuck(ctx, a.e.pl.duck, x + w / 2, y + 250, 110, duckDrawOpts(a.e.pl, { pose: 'stand' }));
-    txt(ctx, a.e.pl.duck.name, x + w / 2, y + 330, { px: 28, color: OUT, sw: 0, maxW: w - 24 });
-    txt(ctx, a.e.pl.name, x + w / 2, y + 364, { px: 26, color: '#6b6577', sw: 0, maxW: w - 24, weight: 800 });
+    txt(ctx, a.e.pl.duck.name, x + w / 2, y + 326, { px: 28, color: OUT, sw: 0, maxW: w - 24 });
+    txt(ctx, a.e.pl.name, x + w / 2, y + 358, { px: 26, color: '#6b6577', sw: 0, maxW: w - 24, weight: 800 });
     // a long duck name in the description gets smaller type before it gets cut off
     let dpx = 24, dl;
     for (; dpx >= 20; dpx -= 2) { ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30); if (dl.length <= 2) break; }
     if (dl.length > 2) { dpx = 20; ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30, 2); }
-    dl.forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 398 + j * 28, { px: dpx, color: '#4a4458', sw: 0, weight: 800 }));
+    dl.forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 390 + j * 27, { px: dpx, color: '#4a4458', sw: 0, weight: 800 }));   // two lines end inside the card
     ctx.restore();
   });
   // highlights
@@ -7801,6 +7931,8 @@ function draw(dt) {
   drawBig(ctx, dt);
   // Bill's lower third sits above the big button so the opened SAFETY lid never covers his words
   if (S.screen === 'launch' || S.screen === 'reveal' || S.screen === 'results') Caps.drawBar(ctx);
+  // a photo finish gets one soft camera flash (a single quick fade, never repeated)
+  if (S.flashAt != null && S.rt - S.flashAt < 0.3) { ctx.fillStyle = 'rgba(255,255,255,' + (0.32 * (1 - (S.rt - S.flashAt) / 0.3)) + ')'; ctx.fillRect(0, 0, 1920, 1080); }
   Iris.draw(ctx);
   if (S.paused) { ctx.fillStyle = 'rgba(31,26,46,0.3)'; ctx.fillRect(0, 0, 1920, 1080); }
 }
@@ -7827,6 +7959,7 @@ function frame(now) {
   // pause freezes everything the audience sees: the show, captions (their clock, S.rt, stops too) and screen wipes
   if (!S.paused) S.rt += dt;
   if (!S.paused) { S.time += dt; try { update(dt); } catch (err) { console.error(err); } Particles.update(dt); Shake.update(dt); Caps.update(); Iris.update(dt); }
+  S.fdt = S.paused ? 0 : dt;   // draw-time animations (rows gliding, captions settling) run on real time, not per frame
   try { draw(dt); } catch (err) { console.error(err); }
   if (S.debugOn && (Math.floor(S.rt * 4) !== Math.floor((S.rt - dt) * 4))) DebugPanel.tick();
 }
