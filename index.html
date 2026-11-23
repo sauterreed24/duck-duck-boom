@@ -2386,6 +2386,9 @@ function drawDuck(ctx, duck, x, y, size, o) {
 
   ctx.save();
   ctx.translate(x, y);
+  // an impact flattens the duck against the ground, whichever way up it is: squashed in screen space, before the
+  // rotation, and about its lowest point so it neither sinks into the grass nor floats
+  if (o.squashW && o.squashW !== 1) { const q = Math.sqrt(o.squashW); ctx.translate(0, size * 0.45 * (1 - q)); ctx.scale(1 / q, q); }
   if (o.rot) ctx.rotate(o.rot);
   const sq = o.squash || 1;
   ctx.scale((o.flip ? -1 : 1) * sc / Math.sqrt(sq), sc * Math.sqrt(sq));
@@ -5570,9 +5573,8 @@ function updateFlight(dt) {
   const s = sampleTL(tl, t);
   const gy = SIM.groundY(s.x);
   if (L.prevY > gy + 1.5 && s.y <= gy + 1.5 && s.vis) {
-    Particles.add({ type: 'dust', ws: true, x: s.x, y: gy + 2, vx: -10, vy: 6, life: 0.7, r: 22 });
-    Particles.add({ type: 'dust', ws: true, x: s.x, y: gy + 2, vx: 14, vy: 6, life: 0.7, r: 20 });
-    SFX.play('thud'); L.squash = 0.18;
+    L.squashDepth = landingImpact(s.x, gy, L.prevVy || 0, s.vx);
+    SFX.play('thud'); L.squash = 0.2;
     if (!L.landed) {
       L.landed = true; pb.downAt = pb.T;
       if (tl.nDist === 0 && !tl.special) Shake.add(3);
@@ -5580,7 +5582,9 @@ function updateFlight(dt) {
       if (Caps.cur && Caps.cur.filler === 'air') Caps.cur.max = Math.min(Caps.cur.max, S.rt - Caps.curStart + 0.5);
     }
   }
-  L.prevY = s.y;
+  // a fast slide kicks up a little dust behind it
+  if (s.mode === SIM.MODE.ground && s.vis && Math.abs(s.vx) > 30 && S.rt - (L.skidAt || 0) > 0.11) { L.skidAt = S.rt; Particles.add({ type: 'dust', ws: true, x: s.x - Math.sign(s.vx) * 3, y: gy + 1.5, vx: -s.vx * 0.12, vy: 4, life: 0.4, r: 9 + Math.min(8, Math.abs(s.vx) * 0.08) }); }
+  L.prevY = s.y; L.prevVy = s.vy;
   // pass the leader's flag
   if (L.leaderX != null && !L.shownLeader && s.x > L.leaderX && s.vis && t > tl.launchT + 0.5) { L.shownLeader = true; say('passLeader', { duck: L.pl.duck.name }, { prio: 1 }); SFX.play('ooh'); }
   // the live leaderboard follows the duck; a soft blip marks every rival it passes
@@ -5894,6 +5898,17 @@ function drawGroundShadow(ctx, V, x, y, px) {
   ctx.fillStyle = 'rgba(31,26,46,' + (0.12 + 0.24 * k).toFixed(3) + ')';
   ell(ctx, sx, sy + 2, px * (0.26 + 0.3 * k), px * (0.06 + 0.07 * k)); ctx.fill();
 }
+// A touchdown, sized by how hard it was (vy just before, ft/s): a gentle hop barely dents the duck and lifts a wisp
+// of dust; a drop from the clouds flattens it and throws up a proper cloud. Returns the squash depth for the duck.
+function landingImpact(x, gy, vy, vx) {
+  const k = clamp(Math.abs(vy) / 130, 0.2, 1.25), n = k > 0.8 ? 4 : k > 0.45 ? 3 : 2;
+  for (let i = 0; i < n; i++) {
+    const side = i % 2 ? 1 : -1, sp = (8 + 10 * k) * (1 + (i >> 1) * 0.7);
+    Particles.add({ type: 'dust', ws: true, x: x + side * 2, y: gy + 2, vx: side * sp + vx * 0.08, vy: 3 + 6 * k, life: 0.45 + 0.4 * k, r: 12 + 14 * k - (i >> 1) * 4 });
+  }
+  return 0.1 + 0.26 * Math.min(1, k);
+}
+function squashNow(left, depth) { return left > 0 ? 1 - (depth || 0.28) * easeOut(left / 0.2) : 1; }
 function duckPx(z) { return clamp(20 * z, 104, 140); }
 
 function pieceStateFn(t) {
@@ -6103,13 +6118,12 @@ function drawLaunchActors(ctx, V, t) {
     const launchK = t - tl.launchT;
     let squash = 1;
     if (L.phase === 'flight' && launchK >= 0 && launchK < 0.35) squash = 1.35 - launchK;
-    if (L.squash > 0) squash = 0.72 + (0.18 - L.squash) * 1.4;
     const flags = { sock: ex.sockT != null && t >= ex.sockT, mud: ex.mudT != null && t >= ex.mudT, antennae: ex.antennaeT != null && t >= ex.antennaeT, shades: ex.shadesT != null && t >= ex.shadesT, tinyHat: ex.tinyHatT != null && t >= ex.tinyHatT };
     const besideFlag = done ? px * 0.42 : 0;
     const sx = V.sx(s.x) + besideFlag, sy = V.sy(s.y) - px * (pose === 'swim' ? 0.18 : 0.45) * (s.y <= SIM.groundY(s.x) + 2 ? 1 : 0.35);
     if (pose !== 'swim' && pose !== 'space' && pose !== 'stuck') drawGroundShadow(ctx, V, s.x + besideFlag / V.z, s.y, px);
     if (pose === 'swim') { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 1920, V.sy(SIM.groundY(s.x)) + 2); ctx.clip(); }
-    drawDuck(ctx, d, sx, sy, px, duckDrawOpts(L.pl, { pose, rot, flap, flags, squash, hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
+    drawDuck(ctx, d, sx, sy, px, duckDrawOpts(L.pl, { pose, rot, flap, flags, squash, squashW: squashNow(L.squash, L.squashDepth), hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
     if (pose === 'swim') ctx.restore();
     if (pose === 'dizzy' && (done || s.mode !== SIM.MODE.air)) for (let i = 0; i < 3; i++) { const a = S.time * 3 + i * 2.1; starPath(ctx, sx + Math.cos(a) * px * 0.4, sy - px * 0.55 + Math.sin(a) * px * 0.12, 11, a); fillStroke(ctx, '#ffd23f', 3); }
     if (pose === 'sleep' && done && fx.chance(0.02)) Particles.add({ type: 'zzz', ws: true, x: s.x + 4, y: s.y + 10, vx: 3, vy: 5, life: 2.2, px: 30 });
@@ -6882,11 +6896,12 @@ function updateSalvoFlight(dt) {
     // bounces: dust, a thud, a squash
     const gy = SIM.groundY(s.x);
     if (f.prevY > gy + 1.5 && s.y <= gy + 1.5 && s.vis) {
-      Particles.add({ type: 'dust', ws: true, x: s.x, y: gy + 2, vx: -10, vy: 6, life: 0.7, r: 22 });
-      Particles.add({ type: 'dust', ws: true, x: s.x, y: gy + 2, vx: 14, vy: 6, life: 0.7, r: 20 });
-      salvoSnd('thud', 0.07); f.squash = 0.18; f.landed = true;
+      f.squashDepth = landingImpact(s.x, gy, f.prevVy || 0, s.vx);
+      salvoSnd('thud', 0.07); f.squash = 0.2; f.landed = true;
     }
-    f.prevY = s.y;
+    // a fast slide kicks up a little dust behind it
+    if (s.mode === SIM.MODE.ground && s.vis && Math.abs(s.vx) > 30 && S.rt - f.lastSmoke > (n > 12 ? 0.22 : 0.13)) { f.lastSmoke = S.rt; Particles.add({ type: 'dust', ws: true, x: s.x - Math.sign(s.vx) * 3, y: gy + 1.5, vx: -s.vx * 0.12, vy: 4, life: 0.4, r: 9 + Math.min(8, Math.abs(s.vx) * 0.08) }); }
+    f.prevY = s.y; f.prevVy = s.vy;
     // smoke trail out of the cannon, rocket flames
     if (t < tl.launchT + 1.1 && t > tl.launchT && s.vis && S.rt - f.lastSmoke > (n > 12 ? 0.11 : 0.06)) { f.lastSmoke = S.rt; Particles.add({ type: 'smoke', ws: true, x: s.x - s.vx * 0.02, y: s.y, vx: 0, vy: 2, life: 0.8, r: 14, a: 0.5 }); }
     if (s.pose === SIM.POSE.rocket && s.vis && S.rt - f.lastSmoke > 0.04) { f.lastSmoke = S.rt; const sp = Math.hypot(s.vx, s.vy) || 1; Particles.add({ type: 'flame', ws: true, x: s.x - s.vx / sp * 6, y: s.y - s.vy / sp * 6, vx: -s.vx * 0.2, vy: -s.vy * 0.2, life: 0.45, r: 16 }); }
@@ -7153,13 +7168,12 @@ function drawSalvoActors(ctx, V, t) {
       const lk = ft - tl.launchT;
       let squash = 1;
       if (!done && lk >= 0 && lk < 0.35) squash = 1.35 - lk;
-      if (f.squash > 0) squash = 0.72 + (0.18 - f.squash) * 1.4;
       const flags = { sock: ex.sockT != null && ft >= ex.sockT, mud: ex.mudT != null && ft >= ex.mudT, antennae: ex.antennaeT != null && ft >= ex.antennaeT, shades: ex.shadesT != null && ft >= ex.shadesT, tinyHat: ex.tinyHatT != null && ft >= ex.tinyHatT };
       const hop = pose === 'happy' ? Math.abs(Math.sin(S.time * 7)) * px * 0.3 : 0;
       const sx = sxw, sy = V.sy(s.y) - px * (pose === 'swim' ? 0.18 : 0.45) * (s.y <= SIM.groundY(s.x) + 2 ? 1 : 0.35) - hop;
       if (pose !== 'swim' && pose !== 'space' && pose !== 'stuck') drawGroundShadow(ctx, V, s.x + (sx - V.sx(s.x)) / V.z, s.y, px);
       if (pose === 'swim') { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 1920, V.sy(SIM.groundY(s.x)) + 2); ctx.clip(); }
-      drawDuck(ctx, d, sx, sy, px, duckDrawOpts(f.pl, { pose, rot, flap, flags, squash, hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
+      drawDuck(ctx, d, sx, sy, px, duckDrawOpts(f.pl, { pose, rot, flap, flags, squash, squashW: squashNow(f.squash, f.squashDepth), hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
       if (pose === 'swim') ctx.restore();
       if (pose === 'dizzy' && (done || !inAir)) for (let i = 0; i < 3; i++) { const aa = S.time * 3 + i * 2.1; starPath(ctx, sx + Math.cos(aa) * px * 0.4, sy - px * 0.55 + Math.sin(aa) * px * 0.12, 9, aa); fillStroke(ctx, '#ffd23f', 3); }
       f.sx = sx; f.sy = sy;
