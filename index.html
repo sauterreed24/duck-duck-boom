@@ -671,6 +671,9 @@ C.AWARDS = {
   dressed: { name: 'Best Dressed', desc: ['Judges’ choice. The judges are ducks.', 'Dressed for the job it wants.', 'Fashion first. Flight second.'] },
   comeback: { name: 'Comeback Kid', desc: ['Misfired, reloaded, flew anyway.', 'Misfired. Reloaded. Called it a pivot.'] },
   napper: { name: 'Power Napper', desc: ['Took a nap mid-race.', 'Took a nap mid-race. Woke up refreshed.'] },
+  clean: { name: 'Self-Made Duck', desc: ['{v} with no help at all. Just cannon.', '{v} on its own feathers. No boosts required.', 'No boosts, no bonks: {v} of pure cannon.'] },
+  knocks: { name: 'Hard Knocks', desc: ['{v} obstacles in one flight. Still smiling.', 'Hit {v} obstacles and kept going.', '{v} obstacles. Walked it off every time.'] },
+  lowrider: { name: 'Low Rider', desc: ['Never higher than {v}. Keeps it humble.', 'Peaked at {v}. Prefers the scenic route.', 'Topped out at {v}. Heights are overrated.'] },
   feather: { name: 'Good Sport Feather', desc: 'Every flight counts.' },
 };
 
@@ -2131,6 +2134,18 @@ function runSelfTest() {
     check('a second story of the same kind says "also"', hl2.some(h => /^Duck \w+ also got HONKED/.test(h)) && hl2.some(h => /^Duck \w+ was also abducted/.test(h)) && hl2.filter(h => / also /.test(h)).length === 2, hl2.join(' | '));
     S.race = { id: 'self-hl', seed: 3, day, players: cast, queue: [], idx: 0, results: Object.fromEntries(cast.map(p => [p.key, p.r])), shots: {}, legend: [] };
     check('highlights tell each kind of moment once and include the winner', hls.length === 5 && hls.filter(h => /ANOTHER CANNON/.test(h)).length === 1 && hls.some(h => h.startsWith('Duck Win ')), hls.length + ' lines, ' + hls.filter(h => /ANOTHER CANNON/.test(h)).length + ' cannon');
+    // awards share the spotlight: one duck that tops every stat still gets one award while others are left to recognize
+    const flyer = (name, dist, alt, air, ev) => ({ name, key: name.toLowerCase(), team: 0, duck: duck('Duck ' + name), r: { dist, alt, air, n: ev.length, sp: null, ev: ev.map(id => [id, 400, 0]), gags: [] } });
+    const champ = [flyer('Top', 2400, 600, 30, ['drone', 'pepper', 'trampoline', 'ufo']), flyer('Bee', 1500, 300, 18, ['geese', 'mud']), flyer('Cee', 1300, 250, 16, []), flyer('Dee', 1100, 120, 12, ['billboard']), flyer('Eee', 900, 200, 14, ['glider']), flyer('Eff', 700, 180, 13, ['tree'])];
+    S.race = { id: 'self-aw', seed: 5, day, players: champ, queue: [], idx: 0, results: Object.fromEntries(champ.map(p => [p.key, p.r])), shots: {}, legend: [] };
+    const aw = computeAwards(S.race), awWho = aw.awards.map(a => a.e.pl.key);
+    const solo = [flyer('Solo', 800, 200, 12, [])];
+    S.race = { id: 'self-aw1', seed: 6, day, players: solo, queue: [], idx: 0, results: { solo: solo[0].r }, shots: {}, legend: [] };
+    const aw1 = computeAwards(S.race);
+    check('awards go to different ducks while there are enough of them (and a solo run still gets three)', aw.awards.length === 5 && new Set(awWho).size === 5 && new Set(aw.awards.map(a => a.id)).size === 5 && awWho.filter(k => k === 'top').length === 1 && aw.feather && !awWho.includes(aw.feather.pl.key) && aw1.awards.length === 3 && new Set(aw1.awards.map(a => a.id)).size === 3, aw.awards.map(a => a.id + ':' + a.e.pl.name).join(' ') + ' | solo ' + aw1.awards.map(a => a.id).join(' '));
+    const close = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent' };
+    const cds = awardDescs(close);
+    check('a long award line has its other versions ready, shortest first', cds.length === C.AWARDS.closest.desc.length && cds[0] === awardDesc(close) && cds.slice(1).every((d, i, a) => !i || a[i - 1].length <= d.length));
     // captions: a distance never breaks between the number and its unit
     const mctx = document.createElement('canvas').getContext('2d');
     mctx.font = font(34);
@@ -4925,19 +4940,19 @@ function recordFlight(q, tl) {
 /* ---------- awards + highlights ---------- */
 function computeAwards(R) {
   const st = standings();
-  const out = [];
-  if (!st.length) return { awards: out, feather: null };
+  if (!st.length) return { awards: [], feather: null };
   const rng = new Rng(hash(R.seed, 'awards'));
   const by = f => st.slice().sort((a, b) => f(b) - f(a))[0];
-  const vars = e => ({ duck: e.pl.duck.name, player: e.pl.name });
-  // rare ones first
+  const has = (e, id) => e.r.ev.some(x => x[0] === id);
+  // every candidate, the rare stories first; then the stats; then the ones that tend to find somebody new
+  const out = [];
   const wrong = st.find(e => e.r.sp === 'backfire'); if (wrong) out.push({ id: 'wrongway', e: wrong, v: '' });
-  const space = st.find(e => e.r.ev.some(x => x[0] === 'space')); if (space) out.push({ id: 'space', e: space, v: '' });
+  const space = st.find(e => has(e, 'space')); if (space) out.push({ id: 'space', e: space, v: '' });
   const hat = st.find(e => e.r.hatWin); if (hat) out.push({ id: 'hat', e: hat, v: '' });
-  const bread = st.find(e => e.r.ev.some(x => x[0] === 'bread')); if (bread) out.push({ id: 'bread', e: bread, v: '' });
-  const comeback = st.find(e => e.r.misfire); if (comeback && out.length < 4) out.push({ id: 'comeback', e: comeback, v: '' });
+  const bread = st.find(e => has(e, 'bread')); if (bread) out.push({ id: 'bread', e: bread, v: '' });
+  const comeback = st.find(e => e.r.misfire); if (comeback) out.push({ id: 'comeback', e: comeback, v: '' });
   const alt = by(e => e.r.alt); out.push({ id: 'altitude', e: alt, v: fmtFt(alt.r.alt) });
-  const air = by(e => e.r.air); if (st.length > 1 || out.length < 3) out.push({ id: 'airtime', e: air, v: air.r.air.toFixed(1) });
+  const air = by(e => e.r.air); out.push({ id: 'airtime', e: air, v: air.r.air.toFixed(1) });
   const chaos = by(e => e.r.n); if (chaos.r.n >= 2) out.push({ id: 'chaos', e: chaos, v: String(chaos.r.n) });
   if (st.length > 1) {
     let best = null;
@@ -4945,14 +4960,35 @@ function computeAwards(R) {
     // quote the gap between the two distances as they are shown, so it always agrees with the board and the podium
     if (best && best.g < 60) out.push({ id: 'closest', e: best.a, v: marginText(shownGap(best.b.dist, best.a.dist, showsTenths(st, best.i) || showsTenths(st, best.i + 1))), other: best.b.pl.duck.name });
   }
-  const nap = st.find(e => e.r.ev.some(x => x[0] === 'hammock')); if (nap) out.push({ id: 'napper', e: nap, v: '' });
-  if (out.length < 5) { const d = st[Math.floor(rng.next() * st.length)]; out.push({ id: 'dressed', e: d, v: '' }); }
-  // keep 3-5, unique by award id
-  const seen = new Set(), awards = [];
-  for (const a of out) { if (seen.has(a.id)) continue; seen.add(a.id); awards.push(a); if (awards.length >= 5) break; }
-  // the Good Sport Feather goes to a (seeded) random duck off the podium that has no other award
+  const nap = st.find(e => has(e, 'hammock')); if (nap) out.push({ id: 'napper', e: nap, v: '' });
+  if (st.length >= 3) {
+    // the farthest flight that nothing helped or hindered
+    const clean = st.find(e => e.dist > 0 && e.r.n === 0 && !e.r.misfire); if (clean) out.push({ id: 'clean', e: clean, v: fmtFt(clean.dist) });
+    // the most obstacles shrugged off in one flight
+    const obs = e => e.r.ev.filter(x => C.EVENTS[x[0]] && C.EVENTS[x[0]].kind === 'obstacle').length;
+    const knock = by(obs); if (obs(knock) >= 2) out.push({ id: 'knocks', e: knock, v: String(obs(knock)) });
+    // the flattest arc that still went forward
+    const fwd = st.filter(e => e.dist > 0 && e.r.sp !== 'backfire');
+    if (fwd.length >= 3) { const low = fwd.slice().sort((a, b) => a.r.alt - b.r.alt)[0]; out.push({ id: 'lowrider', e: low, v: fmtFt(Math.max(1, low.r.alt)) }); }
+  }
+  // the judges (ducks) favour a rare look; a tie goes to the seeded coin
+  const coin = new Map(st.map(e => [e.pl.key, rng.next()]));
+  const dressedPick = pool => { const sc = e => (RARITY_INDEX[e.pl.duck.rarity] || 0) + coin.get(e.pl.key); return pool.slice().sort((a, b) => sc(b) - sc(a))[0]; };
+  // Awards share the spotlight: a duck that already holds one steps aside for a candidate that recognizes somebody
+  // new (on a team call, five trophies for five different people beat three for the winner). Only when there are not
+  // enough different ducks does a second award go to the same one. 3 to 5 awards, each kind once.
+  const awards = [], count = new Map(), seen = new Set();
+  const take = a => { awards.push(a); seen.add(a.id); count.set(a.e.pl.key, (count.get(a.e.pl.key) || 0) + 1); };
+  for (const a of out) { if (awards.length >= 5) break; if (!seen.has(a.id) && !count.has(a.e.pl.key)) take(a); }
+  if (awards.length < 5) { const free = st.filter(e => !count.has(e.pl.key)); if (free.length) take({ id: 'dressed', e: dressedPick(free), v: '' }); }
+  for (const a of out) { if (awards.length >= 3) break; if (!seen.has(a.id)) take(a); }
+  if (awards.length < 3 && !seen.has('dressed')) take({ id: 'dressed', e: dressedPick(st), v: '' });
+  // shown in the order of the candidates (the rare stories lead)
+  const order = new Map(out.map((a, i) => [a.id, i])); order.set('dressed', 999);
+  awards.sort((a, b) => order.get(a.id) - order.get(b.id));
+  // the Good Sport Feather goes to a (seeded) random duck off the podium, one with no other award when there is one
   const awarded = new Set(awards.map(a => a.e.pl.key));
-  const pool = st.slice(3).filter(e => !awarded.has(e.pl.key));
+  const off = st.slice(3), pool = off.filter(e => !awarded.has(e.pl.key)).length ? off.filter(e => !awarded.has(e.pl.key)) : off;
   const feather = pool.length ? pool[hash(R.seed, 'feather') % pool.length] : null;
   return { awards, feather };
 }
@@ -4981,10 +5017,15 @@ function billPickKey(R) {
   if (act.length < 3) return null;
   return act[hash(R.seed, 'billpick') % act.length].key;
 }
-function awardDesc(a) {
+// the race's pick first, then the other versions, shortest first (a long duck name can push one out of its card)
+function awardDescs(a) {
   const d = C.AWARDS[a.id].desc, seed = S.race ? S.race.seed : 0;
-  return Lines.fill(Array.isArray(d) ? d[hash(seed, 'award', a.id) % d.length] : d, { v: a.v, other: a.other || '' });
+  if (!Array.isArray(d)) return [Lines.fill(d, { v: a.v, other: a.other || '' })];
+  const all = d.map(t => Lines.fill(t, { v: a.v, other: a.other || '' }));
+  const first = all[hash(seed, 'award', a.id) % all.length];
+  return [first].concat(all.filter(t => t !== first).sort((x, y) => x.length - y.length));
 }
+function awardDesc(a) { return awardDescs(a)[0]; }
 function computeHighlights(R) {
   const st = standings();
   const cands = [];
@@ -7308,13 +7349,23 @@ function drawSalvoBoard(ctx) {
       rows.push({ pl: f.pl, dist: f.done ? Math.max(f.tl.final, best == null ? -1e9 : best) : Math.max(launched ? f.x : 0, best == null ? -1e9 : best), live: !f.done, settled: f.done, f });
     }
   }
-  rows.sort((a, b) => (a.wait ? 1 : 0) - (b.wait ? 1 : 0) || (a.wait ? a.order - b.order : b.dist - a.dist));
+  const byDist = (a, b) => (a.wait ? 1 : 0) - (b.wait ? 1 : 0) || (a.wait ? a.order - b.order : b.dist - a.dist);
+  rows.sort(byDist);
   // in flight the order is only re-dealt every half second (ducks pass each other all the time; rows that never stop
-  // sliding cannot be read). Between re-deals the distances keep counting.
+  // sliding cannot be read). Between re-deals the distances keep counting. A held order may lag, but never by much:
+  // once a row trails a row below it by more than 40 ft (the whole flock leaving the barrel together, say, when the
+  // order was dealt at 0 ft), it is dealt again straight away.
   if (flying) {
-    const key = rows.map(e => e.pl.key).join();
-    if (!SVB.order || S.rt - SVB.orderAt > (rows.length > 20 ? 0.8 : 0.5) || SVB.order.length !== rows.length) { SVB.order = rows.map(e => e.pl.key); SVB.orderAt = S.rt; }
-    else if (key !== SVB.order.join()) { const pos = new Map(SVB.order.map((k, i) => [k, i])); rows.sort((a, b) => (pos.has(a.pl.key) ? pos.get(a.pl.key) : 999) - (pos.has(b.pl.key) ? pos.get(b.pl.key) : 999)); }
+    const key = rows.map(e => e.pl.key).join(), age = S.rt - SVB.orderAt;
+    let deal = !SVB.order || age > (rows.length > 20 ? 0.8 : 0.5) || SVB.order.length !== rows.length;
+    if (!deal && key !== SVB.order.join()) {
+      const pos = new Map(SVB.order.map((k, i) => [k, i]));
+      rows.sort((a, b) => (pos.has(a.pl.key) ? pos.get(a.pl.key) : 999) - (pos.has(b.pl.key) ? pos.get(b.pl.key) : 999));
+      let lo = Infinity, lag = 0;
+      for (const e of rows) { if (e.dist == null) continue; lag = Math.max(lag, e.dist - lo); lo = Math.min(lo, e.dist); }
+      if (lag > 40 && age > 0.2) { rows.sort(byDist); deal = true; }
+    }
+    if (deal) { SVB.order = rows.map(e => e.pl.key); SVB.orderAt = S.rt; }
   } else SVB.order = null;
   const x = 1500, y = 14, w = 404, total = rows.length;
   const maxH = 880, cap = total > 28 ? 26 : total;
@@ -7853,6 +7904,9 @@ function awardIcon(ctx, id, x, y, s) {
     case 'space': starPath(ctx, 0, 0, 26, 0); fillStroke(ctx, '#ffd23f', 5); break;
     case 'comeback': ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.beginPath(); ctx.arc(0, 0, 20, -0.5, Math.PI * 1.5); ctx.stroke(); ctx.beginPath(); ctx.moveTo(18, -22); ctx.lineTo(22, -6); ctx.lineTo(6, -10); ctx.closePath(); ctx.fillStyle = OUT; ctx.fill(); break;
     case 'napper': txt(ctx, 'Zz', 0, 2, { px: 40, color: '#fff' }); break;
+    case 'clean': circ(ctx, 0, 2, 21); fillStroke(ctx, '#4a4458', 5); circ(ctx, -7, -5, 6); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill(); break;   // a cannonball, nothing else
+    case 'knocks': ctx.rotate(-0.7); rr(ctx, -27, -11, 54, 22, 11); fillStroke(ctx, '#f2c48d', 5); rr(ctx, -9, -11, 18, 22, 3); fillStroke(ctx, '#e3a066', 4); ctx.fillStyle = OUT; for (const [dx, dy] of [[-18, -3], [-18, 3], [18, -3], [18, 3]]) { circ(ctx, dx, dy, 1.8); ctx.fill(); } break;   // a sticking plaster
+    case 'lowrider': ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.beginPath(); ctx.moveTo(-26, 16); ctx.lineTo(26, 16); ctx.stroke(); ctx.setLineDash([7, 6]); ctx.beginPath(); ctx.moveTo(-24, 12); ctx.quadraticCurveTo(0, -10, 22, 10); ctx.stroke(); ctx.setLineDash([]); circ(ctx, 22, 8, 6); fillStroke(ctx, '#4ad7ff', 4); break;   // a flat little arc
     default: heartPath(ctx, 0, 0, 22); fillStroke(ctx, '#ff6fb5', 5); break;
   }
   ctx.restore();
@@ -7904,13 +7958,17 @@ function drawAwards(ctx) {
     circ(ctx, x + w / 2, y + 60, 42); fillStroke(ctx, '#ffd23f', 5); awardIcon(ctx, a.id, x + w / 2, y + 60, 56);
     ctx.font = font(30);
     wrapText(ctx, C.AWARDS[a.id].name, w - 30, 2).forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 130 + j * 34, { px: 30, color: '#c22f1f', sw: 0 }));
-    drawDuck(ctx, a.e.pl.duck, x + w / 2, y + 250, 110, duckDrawOpts(a.e.pl, { pose: 'stand' }));
+    drawDuck(ctx, a.e.pl.duck, x + w / 2, y + 253, 94, duckDrawOpts(a.e.pl, { pose: 'stand' }));   // a tall hat (wizard, cone) stays clear of the title
     txt(ctx, a.e.pl.duck.name, x + w / 2, y + 326, { px: 28, minPx: 18, color: OUT, sw: 0, maxW: w - 24 });
     txt(ctx, a.e.pl.name, x + w / 2, y + 358, { px: 26, color: '#6b6577', sw: 0, maxW: w - 24, weight: 800 });
     // a long duck name in the description gets smaller type before it gets cut off
-    let dpx = 24, dl;
-    for (; dpx >= 20; dpx -= 2) { ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30); if (dl.length <= 2) break; }
-    if (dl.length > 2) { dpx = 20; ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30, 2); }
+    // (and if it still needs a third line, another version of the line that fits whole is used instead)
+    let dpx = 24, dl = null;
+    for (const d of awardDescs(a)) {
+      for (dpx = 24; dpx >= 20; dpx -= 2) { ctx.font = font(dpx, 800); const l = wrapText(ctx, d, w - 30); if (l.length <= 2) { dl = l; break; } }
+      if (dl) break;
+    }
+    if (!dl) { dpx = 20; ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30, 2); }
     dl.forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 390 + j * 27, { px: dpx, color: '#4a4458', sw: 0, weight: 800 }));   // two lines end inside the card
     ctx.restore();
   });
