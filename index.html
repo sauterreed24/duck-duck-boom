@@ -510,6 +510,12 @@ C.LINES = {
   salvoSolo: ['{duck} passes {distance} and is still going!', 'That is {distance} for {duck}, and counting!', '{distance}! Somebody go and fetch {duck}.', '{duck} at {distance}. The rest of the flock is just watching now.', '{distance}, and {duck} has not even thought about stopping.', '{duck} is still out there at {distance}. Send snacks.'],
   salvoSoloChase: ['{duck} at {distance}. {gap} to catch {leader}!', '{gap} short of the lead, and {duck} is still moving!', 'Can {duck} catch {leader}? {gap} to go!', '{duck} keeps coming: {gap} behind {leader} now!'],
   salvoSoloLead: ['{duck} goes past {leader}! A new leader, and it is still moving!', 'And {duck} takes the lead! {leader}, I am so sorry.', 'Past {leader}! {duck} has the lead!'],
+  // the chase: the duck in front has stopped, somebody is still coming
+  salvoNearMiss: ['{duck} stops {gap} short of {leader}! So close!', 'Oh, SO close! {duck} comes up {gap} short!', '{gap}! That is all {duck} needed!', '{duck} runs out of puff {gap} behind {leader}!', 'Agonizing! {duck} stops {gap} short!'],
+  salvoHeldOn: ['{duck} holds on! {margin} to spare!', 'And {duck} survives the late charge by {margin}!', 'Phew! {duck} keeps it by {margin}!', '{duck} hangs on by {margin}! Somebody breathe!'],
+  // two ducks come to rest in the same spot: the second one ends up on top
+  salvoStack: ['{duck} comes down right on top of {other}. Cozy.', 'Duck stack! {duck} is sitting on {other}!', '{other} has a passenger now: {duck}!', '{duck} parks on {other}. Bold move.', "That's a stack! {duck} on top of {other}!", '{duck} found a soft landing: {other}.'],
+  salvoTower: ['A {n}-duck tower! Somebody call the zoning office!', 'That is {n} ducks in one pile! Teamwork!', 'Duck tower! {n} high and wobbling!', '{n} ducks, one spot. Very efficient use of the field.'],
   salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!', "{duck} has the lead and is not giving it back!", "{player}'s duck is out in front! Somebody update the slide!", "{duck} moves to the front of the flock. Big move. Huge.", "New name at the top: {duck}!", "{duck} takes the lead with a move I can only describe as aerodynamic."],
   salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!", "Everybody else has landed. {duck} is working late.", "{duck} did not get the memo. The meeting is over. Still going!", "Just {duck} left out there, taking the scenic route!"],
   salvoCall: ['{duck} is out in front at {distance}!', 'Still {n} ducks on the move out there!', "{player}'s duck leads the way: {distance} and counting.", '{n} of them still going. Do not blink!', 'Out in front right now: {duck}!', "It's {duck} at the front of the flock. {n} ducks still moving!", 'Anybody could still win this. {n} ducks left out there!', "{duck} is at {distance} and looking very pleased about it.", "{n} ducks still moving. Best meeting of the week, folks.", "{player}'s duck is setting the pace at {distance}!", "It's {duck}'s race to lose right now. {n} still moving!", "Still {n} in motion. Nobody has called a hard stop yet!"],
@@ -2149,6 +2155,40 @@ function runSelfTest() {
     check('a second story of the same kind says "also"', hl2.some(h => /^Duck \w+ also got HONKED/.test(h)) && hl2.some(h => /^Duck \w+ was also abducted/.test(h)) && hl2.filter(h => / also /.test(h)).length === 2, hl2.join(' | '));
     S.race = { id: 'self-hl', seed: 3, day, players: cast, queue: [], idx: 0, results: Object.fromEntries(cast.map(p => [p.key, p.r])), shots: {}, legend: [] };
     check('highlights tell each kind of moment once and include the winner', hls.length === 5 && hls.filter(h => /ANOTHER CANNON/.test(h)).length === 1 && hls.some(h => h.startsWith('Duck Win ')), hls.length + ' lines, ' + hls.filter(h => /ANOTHER CANNON/.test(h)).length + ' cannon');
+    // a Golden Loaf decided by a few feet is the story of the race, told about the winner
+    const tight = [story('Fst', 900.4, 'geese'), story('Snd', 893, 'ufo'), story('Thd', 500, 'bread')];
+    S.race = { id: 'self-hl3', seed: 5, day, players: tight, queue: [], idx: 0, results: Object.fromEntries(tight.map(p => [p.key, p.r])), shots: {}, legend: [] };
+    const hl3 = computeHighlights(S.race, 3);
+    check('a Golden Loaf won by a few feet is a highlight of its own', hl3[0] === 'Duck Fst beat Duck Snd to the Golden Loaf by 7 ft.' && hl3.length === 3 && !hl3.some(h => /^Duck Fst got HONKED/.test(h)), hl3.join(' | '));
+    // duck stacks: only for show, never more than four high, one duck per back, each on a duck that stopped first
+    // within reach, and never in the pond, a hammock or the bread queue
+    const sfl = players.map((p, i) => ({ i, pl: { key: p.key }, tl: SIM.simulate(flightSeed(raceSeed, p.key, 0), cond, course, null, {}) }));
+    const sBefore = sfl.map(f => f.tl.final);
+    salvoStacks(sfl);
+    const sAssign = sfl.map(f => f.stackOn ? f.stackOn.i : -1).join(',');
+    salvoStacks(sfl);
+    const wet = f => f.tl.events.some(e => e.id === 'plop' || e.id === 'hammock' || e.id === 'bread');
+    const stacked = sfl.filter(f => f.stackOn), onTop = new Map();
+    for (const f of stacked) onTop.set(f.stackOn, (onTop.get(f.stackOn) || 0) + 1);
+    const stackOk = stacked.every(f => f.stackLvl === f.stackOn.stackLvl + 1 && f.stackLvl <= STACK_MAX && Math.abs(f.tl.final - f.stackOn.tl.final) < STACK_FT && f.stackOn.tl.endT <= f.tl.endT && !wet(f) && !wet(f.stackOn)) && [...onTop.values()].every(c => c === 1);
+    check('duck stacks: one duck per back, at most four high, never in the pond, and no distance changes', stacked.length > 0 && stackOk && sfl.map(f => f.stackOn ? f.stackOn.i : -1).join(',') === sAssign && sfl.every((f, i) => f.tl.final === sBefore[i]), stacked.length + ' stacked of 40');
+    // the chase: once the duck in front has stopped, the closest duck still moving is the one to watch; stopping just
+    // short of the lead is a near miss
+    const svKeep = { fl: SV.fl, lead: SV.lead, chase: SV.chase, tags: SV.tags, nearN: SV.nearN, replay: SV.replay }, sfxP = SFX.play;
+    SFX.play = () => {};
+    const ch = (key, x, done) => ({ pl: { key, name: key, team: 0, duck: duck('D' + key) }, tl: { final: x, launchT: 0 }, x, done, vis: 1 });
+    const cLead = ch('lead', 1000, true), cNear = ch('near', 950, false), cFar = ch('far', 600, false);
+    SV.fl = [cLead, cNear, cFar]; SV.lead = cLead; SV.chase = null; SV.tags = []; SV.nearN = 0; SV.replay = true;
+    const cpb = { photo: false, dur: 30, T: 10 };
+    salvoChase(5, cpb);
+    const watched = SV.chase && SV.chase.f === cNear;
+    cNear.done = true; cNear.tl.final = 950;
+    salvoChase(5.1, cpb);
+    const nearMiss = SV.tags.some(g => g.text === 'SO CLOSE!' && g.f === cNear) && SV.chase && SV.chase.f === cFar;
+    cLead.done = false;
+    salvoChase(5.2, cpb);
+    check('the chase follows the closest duck still moving; stopping just short is a near miss', watched && nearMiss && SV.chase === null);
+    Object.assign(SV, svKeep); SFX.play = sfxP;
     // awards share the spotlight: one duck that tops every stat still gets one award while others are left to recognize
     const flyer = (name, dist, alt, air, ev) => ({ name, key: name.toLowerCase(), team: 0, duck: duck('Duck ' + name), r: { dist, alt, air, n: ev.length, sp: null, ev: ev.map(id => [id, 400, 0]), gags: [] } });
     const champ = [flyer('Top', 2400, 600, 30, ['drone', 'pepper', 'trampoline', 'ufo']), flyer('Bee', 1500, 300, 18, ['geese', 'mud']), flyer('Cee', 1300, 250, 16, []), flyer('Dee', 1100, 120, 12, ['billboard']), flyer('Eee', 900, 200, 14, ['glider']), flyer('Eff', 700, 180, 13, ['tree'])];
@@ -4257,7 +4297,8 @@ const Caps = {
     ctx.restore();
   },
   side: null,
-  drawBigs(ctx, avoidY, maxW, avoid) {
+  drawBigs(ctx, avoidY, maxW, avoid, top) {
+    const T0 = top || 178;   // the high side starts below the HUD up top (lower while the salvo's chase chip is up)
     // keep impact captions on the far side of the duck (with hysteresis so they don't flip-flop)
     const held = this.sideHold && S.rt - this.sideHold.t0 < this.sideHold.dur;   // a caption that moved off the name tags stays put
     if (avoidY != null && !held) {
@@ -4276,12 +4317,12 @@ const Caps = {
           if (avoid && avoid.length) {   // ...or on the other side, if that covers fewer of the salvo's name tags
             ctx.font = font(b.px);
             const bw = Math.min(maxW || 1500, Math.max(...String(b.text).split('\n').map(l => ctx.measureText(l).width))) + 40;
-            const cover = side => { const ty = side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off; return avoid.filter(o => Math.abs(o.x - 960) < (o.w + bw) / 2 && Math.abs(o.y - ty) < (o.h + hh) / 2).length; };
+            const cover = side => { const ty = side === 'low' ? 790 - hh / 2 - off : T0 + hh / 2 + off; return avoid.filter(o => Math.abs(o.x - 960) < (o.w + bw) / 2 && Math.abs(o.y - ty) < (o.h + hh) / 2).length; };
             const other = this.side === 'low' ? 'high' : 'low';
             if (cover(other) < cover(this.side)) { this.side = other; this.sideHold = b; }
           }
         }
-        const ty = this.side === 'low' ? 790 - hh / 2 - off : 178 + hh / 2 + off;
+        const ty = this.side === 'low' ? 790 - hh / 2 - off : T0 + hh / 2 + off;
         b.y = b.yset ? approach(b.y, ty, 12, drawDt()) : ty; b.yset = true;
       }
       if (!b.fixedY && t < b.dur - 0.3) off += hh + 16;   // a caption on its way out (or parked elsewhere) does not push the next one
@@ -5069,6 +5110,12 @@ function computeHighlights(R, max) {
       if (id === 'ufo') t = duck + ' was abducted by a UFO at ' + fmtFt(Math.max(0, x)) + (extra === 'ahead' ? ' and dropped way down the field.' : extra === 'behind' ? ' and returned a little behind.' : ' and came back wearing antennae.');
       cands.push({ s: (score[id] || 20) + (e.pi % 7) * 0.1, t, who: duck, id });
     }
+    if (e.r.on) cands.push({ s: 29 + (e.pi % 7) * 0.1, t: duck + ' came down right on top of ' + e.r.on + '.', who: duck, id: 'stack' });
+  }
+  // the race itself is the story when the Golden Loaf was decided by a few feet
+  if (st.length > 1) {
+    const g = shownGap(st[0].dist, st[1].dist, showsTenths(st, 0) || showsTenths(st, 1));
+    if (g < 25) cands.push({ s: 80, t: st[0].pl.duck.name + ' beat ' + st[1].pl.duck.name + ' to the Golden Loaf by ' + marginText(g) + '.', who: st[0].pl.duck.name, id: 'photo' });
   }
   cands.sort((a, b) => b.s - a.s);
   // five different stories: no duck twice and no kind of event twice while there is anything else to tell, and the
@@ -6687,6 +6734,31 @@ function salvoPhotoT(fl) {
   return t > 3 && fl.filter(f => f.tl.endT > t + 0.3).length <= 2 ? t : -1;
 }
 
+// Duck stacks: a duck that comes to rest within a few feet of one already resting there hops up onto its back (up to
+// four high). Only for show, worked out from the flights themselves (so a replay stacks the same way): every distance
+// is still where the duck's feet stopped.
+const STACK_FT = 6, STACK_MAX = 3, STACK_H = 0.46;
+function salvoStacks(fl) {
+  for (const f of fl) { f.stackLvl = 0; f.stackOn = null; f.stackTop = false; }
+  // a duck resting on open ground (not in the pond, a hammock or the bread queue, and not back by the cannon)
+  const plain = f => { const tl = f.tl, s = sampleTL(tl, tl.endT); return tl.final > 40 && s.vis && Math.abs(s.y - SIM.groundY(s.x)) < 2 && !tl.events.some(e => e.id === 'plop' || e.id === 'hammock' || e.id === 'bread'); };
+  const resting = [];
+  for (const f of fl.filter(plain).sort((a, b) => a.tl.endT - b.tl.endT || a.i - b.i)) {
+    // the highest free back within reach (a duck with one on top already is not free)
+    let on = null;
+    for (const r of resting) if (!r.stackTop && Math.abs(r.tl.final - f.tl.final) < STACK_FT && (!on || r.stackLvl > on.stackLvl)) on = r;
+    if (on && on.stackLvl < STACK_MAX) { f.stackOn = on; f.stackLvl = on.stackLvl + 1; on.stackTop = true; }
+    resting.push(f);
+  }
+}
+// how high a stacked duck sits (screen px): one back per level, hopped up the moment it stops, riding along when the
+// duck underneath celebrates
+function salvoStackLift(f, px) {
+  if (!f.stackLvl) return 0;
+  const k = f.doneAt < 0 ? 1 : clamp((S.rt - f.doneAt) / 0.3, 0, 1);
+  return f.stackLvl * px * STACK_H * easeBack(k) + Math.sin(k * Math.PI) * px * 0.22;
+}
+
 /* ---------- fire ---------- */
 function salvoPrimary() {
   if (SV.phase === 'armed') { Big.press = 0.15; SFX.play('click'); salvoCountdown(); }
@@ -6712,13 +6784,14 @@ function salvoFire(replay) {
   const R = S.race;
   SV.replay = !!replay;
   for (const f of SV.fl) { f.fired = new Set(); f.hideGag = new Set(); f.gagOn = {}; f.prevY = f.tl.y[0]; f.landed = false; f.squash = 0; f.done = false; f.doneAt = -1; f.x = f.tl.x[0]; f.y = f.tl.y[0]; f.vis = 1; f.rank = 0; }
+  salvoStacks(SV.fl);
   const photoT = replay && SV.photoT != null ? SV.photoT : salvoPhotoT(SV.fl);   // a replay keeps the first showing's photo finish
   if (!replay) SV.photoT = photoT;
   const plan = buildSalvoPlan(SV.fl, replay, photoT);
   SV.pb = { simT: 0, rate: 1, T: 0, segs: plan.segs, P: plan.P, endT: plan.endT, dur: plan.dur, drumAt: plan.drumAt, photoAt: plan.photoAt, photo: photoT > 0, fired: new Set(), done: false, brake: null };
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
-  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false;
+  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null;
   if (!replay) SV.result = null;   // after a replay the winner card comes back
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
@@ -6930,6 +7003,18 @@ function updateSalvoFlight(dt) {
     if (t >= tl.endT) {
       f.done = true; f.doneAt = S.rt;
       salvoSnd('thud', 0.05); salvoSnd('quack', 0.12, d.pitch, 1);
+      // ...or it lands on somebody: up onto their back it goes
+      if (f.stackOn) {
+        const b = f.stackOn; b.squash = 0.22; b.squashDepth = 0.32;
+        salvoSnd('bonk', 0.15); salvoTag(f, f.stackLvl >= 3 ? 'DUCK TOWER!' : f.stackLvl === 2 ? 'TRIPLE STACK!' : 'DUCK STACK!', { color: '#ffffff', px: f.stackLvl > 1 ? 34 : 30, dur: 1.8 });
+        SV.stackN = (SV.stackN || 0) + 1;
+        if (!SV.replay) {
+          // (at the very end the winner gets called first; Bill gets to the pile right after)
+          if (pb.dur - pb.T < 1.2) SV.lateStack = f;
+          else if (f.stackLvl >= 2) salvoSay('salvoTower', { n: f.stackLvl + 1 }, { prio: 1 }, 1.2);
+          else if (SV.stackN <= 2) salvoSay('salvoStack', { duck: d.name, other: b.pl.duck.name, player: f.pl.name }, { prio: 0 }, 1.6);
+        }
+      }
     } else { moving++; lastMover = f; }
   }
   // who is in front right now (ducks still in the barrel or hidden do not count)
@@ -6951,11 +7036,17 @@ function updateSalvoFlight(dt) {
       }
     } else SV.cand = null;
   }
-  // Bill keeps the call going: something he missed a moment ago, or after a few quiet seconds who is in front
+  salvoChase(t, pb);
+  // Bill keeps the call going: something he missed a moment ago, or after a few quiet seconds who is in front (or,
+  // once the duck in front has stopped, who is chasing it and how far it still has to go)
   if (!SV.replay) {
     if (SV.pend && S.rt - SV.pend.at > 2.4) SV.pend = null;
     if (SV.pend && S.rt - SV.lineAt >= 2.0) { const pd = SV.pend; SV.pend = null; salvoSay(pd.pool, pd.vars, { prio: 0 }, 0); }
-    else if (front && n > 1 && moving > 1 && t > 4 && S.rt - SV.lineAt > 4.4 && pb.dur - pb.T > 3 && Caps.free()) salvoSay('salvoCall', { duck: front.pl.duck.name, player: front.pl.name, distance: fmtFt(Math.max(0, front.x)), n: moving }, { prio: 0 }, 0);
+    else if (front && n > 1 && moving > 1 && t > 4 && S.rt - SV.lineAt > 4.4 && pb.dur - pb.T > 3 && Caps.free()) {
+      const ch = SV.chase && SV.chase.f, lead = SV.lead;
+      if (ch && lead && ch.x < lead.x) salvoSay('salvoSoloChase', { duck: ch.pl.duck.name, player: ch.pl.name, distance: fmtFt(Math.max(0, ch.x)), gap: fmtFt(Math.max(1, lead.x - ch.x)), leader: lead.pl.name }, { prio: 0 }, 0);
+      else salvoSay('salvoCall', { duck: front.pl.duck.name, player: front.pl.name, distance: fmtFt(Math.max(0, front.x)), n: moving }, { prio: 0 }, 0);
+    }
   }
   // the lines to beat (last show's winner, the pond record): the first duck across each gets a cheer
   if (front && !SV.replay && t > 2.5) {
@@ -6987,6 +7078,48 @@ function updateSalvoFlight(dt) {
   salvoFlightCam(dt, t);
   if (t >= pb.endT) { pb.done = true; salvoEnd(); }
 }
+// The chase: once the duck in front has stopped, the closest duck still moving is the one to watch. The HUD names it
+// under IN FRONT with the gap it still has to close (live, so the room can root for it), and a chaser that stops just
+// short gets a SO CLOSE! (a finish within 25 ft is the photo finish's to tell).
+function salvoChase(t, pb) {
+  const lead = SV.lead, ch = SV.chase;
+  if (SV.fl.length < 2 || !lead || !lead.done || t < 3) { SV.chase = null; return; }
+  if (ch && ch.f.done) {
+    const gap = shownGap(lead.tl.final, ch.f.tl.final, false);
+    if (ch.f !== lead && gap > 0 && gap < 100 && !(pb.photo && gap < 25) && (SV.nearN || 0) < 2 && pb.dur - pb.T > 0.6) {
+      SV.nearN = (SV.nearN || 0) + 1;
+      salvoTag(ch.f, 'SO CLOSE!', { color: '#ffb8a8', px: 36, dur: 2 });
+      salvoSnd('ooh', 1);
+      if (!SV.replay) salvoSay('salvoNearMiss', { duck: ch.f.pl.duck.name, player: ch.f.pl.name, leader: lead.pl.name, gap: marginText(gap) }, { prio: 1 }, 0.8);
+    }
+    SV.chase = null;
+  }
+  let best = null;
+  for (const f of SV.fl) if (!f.done && f.vis && f !== lead && t >= f.tl.launchT + 0.4 && f.x > 0 && (!best || f.x > best.x)) best = f;
+  if (!best) { SV.chase = null; return; }
+  const c = SV.chase;
+  if (!c) { SV.chase = { f: best, at: S.rt, cand: null, candAt: 0 }; return; }
+  // a new duck to watch only once it has been the closest for a moment (two neck and neck would flicker)
+  if (best === c.f) c.cand = null;
+  else if (c.cand !== best) { c.cand = best; c.candAt = S.rt; }
+  else if (S.rt - c.candAt > 0.6) { c.f = best; c.at = S.rt; c.cand = null; }
+}
+function drawChaseChip(ctx) {
+  const c = SV.chase, lead = SV.lead;
+  if (!c || !lead || SV.phase !== 'flight') return null;
+  const f = c.f, gap = lead.x - f.x, past = gap < 0, tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff';
+  ctx.font = font(26);
+  const tail = past ? ' · ' + fmtFt(Math.max(1, -gap)) + ' ahead!' : ' · ' + fmtFt(Math.max(1, gap)) + ' to go';
+  const label = fitTail(ctx, (past ? 'PASSING: ' : 'CHASING: ') + f.pl.name, tail, 660);
+  const w = Math.min(700, ctx.measureText(label).width + 36), y = 176;
+  // it pops in, and it throbs once the gap is under 100 ft
+  const k = easeBack(clamp((S.rt - c.at) / 0.3, 0, 1)), near = !past && gap < 100 ? 1 + 0.04 * Math.sin(S.time * 12) : 1;
+  ctx.save(); ctx.translate(960, y + 20); ctx.scale(k * near, k * near); ctx.translate(-960, -(y + 20));
+  rr(ctx, 960 - w / 2, y, w, 40, 14); fillStrokeLifted(ctx, past ? '#9be58b' : tm.color, 4, 4);
+  txt(ctx, label, 960, y + 21, { px: 26, color: past || dark ? OUT : '#fff', sw: 0, maxW: w - 24 });
+  ctx.restore();
+  return { x: 960, y: y + 20, w, h: 40 };
+}
 function salvoFlightCam(dt, t) {
   const cam = L.cam, pb = SV.pb;
   const mv = SV.fl.filter(f => !f.done && f.vis && t >= f.tl.launchT);
@@ -7011,7 +7144,7 @@ function salvoFlightCam(dt, t) {
 }
 function salvoEnd(quiet) {
   const R = S.race, pb = SV.pb;
-  SV.restAt = S.time;
+  SV.restAt = S.time; SV.chase = null;
   // the flight's impact captions live up in the sky, where the result card is about to land: they make way for it
   Caps.bigs = Caps.bigs.filter(b => b.t0 > S.rt);
   if (SV.drumOn) { SFX.stopDrum(0.04); if (!quiet) SFX.play('cymbal'); SV.drumOn = false; }
@@ -7022,6 +7155,7 @@ function salvoEnd(quiet) {
     const prevBest = R.results[f.pl.key] ? R.results[f.pl.key].dist : null;
     recordFlight(f.q, f.tl);
     f.counted = prevBest == null || f.tl.final > prevBest;
+    if (f.counted && f.stackOn && R.results[f.pl.key]) R.results[f.pl.key].on = f.stackOn.pl.duck.name;   // (a duck stack makes a story)
     const was = R.pbs && R.pbs[f.pl.key];
     if (!R.practice && was != null && f.tl.final > was && f.tl.final > 0 && !f.q.bonus) { R.pbs[f.pl.key] = Math.round(f.tl.final); pbs.push(f); f.pb = true; }
   }
@@ -7043,9 +7177,19 @@ function salvoEnd(quiet) {
   if (newRecord) { setTimeout(() => SFX.play('record'), 200); SFX.play('fireworks'); SFX.play('cheer', 2); Caps.big('NEW POND RECORD!', { px: 100, color: '#ffd23f', dur: 3, y: 560 }); say('newRecord', vars, { prio: 2, delay: 0.3 }); fireworks(); }
   else if (leaderF && (w.tl.final < 0 || (st.length === 1 && w.tl.special === 'backfire'))) { SFX.play('sad'); say('wrongWay', vars, { prio: 2, delay: 0.3 }); }
   else if (leaderF && st.length === 1) { const D = w.tl.final; if (D > 2000) SFX.play('cheer', 1.4); else if (D < 300) SFX.play('aww'); say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', vars, { prio: 2, delay: 0.3 }); }
-  else if (leaderF) { SFX.play('leader'); SFX.play('cheer', 1.6); if (SV.result.photo && margin != null && margin < 25) say('photoWon', vars, { prio: 2, delay: 0.25 }); else say('salvoWin', vars, { prio: 2, delay: 0.3 }); }
+  else if (leaderF) {
+    SFX.play('leader'); SFX.play('cheer', 1.6);
+    // the runner-up was still coming after the winner had stopped, and fell just short: the winner held on
+    const ru = st.length > 1 ? SV.fl.find(f => f.pl.key === st[1].pl.key && f.counted) : null;
+    const heldOn = ru && margin != null && margin < 100 && ru.tl.endT > leaderF.tl.endT + 0.5;
+    if (SV.result.photo && margin != null && margin < 25) say('photoWon', vars, { prio: 2, delay: 0.25 });
+    else if (heldOn) say('salvoHeldOn', vars, { prio: 2, delay: 0.3 });
+    else say('salvoWin', vars, { prio: 2, delay: 0.3 });
+  }
   else { SFX.play('aww'); say('salvoNoCatch', { duck: lead.pl.duck.name, player: lead.pl.name, distance: fmtFt(lead.dist) }, { prio: 2, delay: 0.3 }); }
   if (pbs.length && !newRecord) Caps.say(pbs.length === 1 ? 'And a personal best for ' + pbs[0].pl.name + '!' : pbs.length + ' personal bests in that volley!', { delay: 3.0 });
+  const ls = SV.lateStack;
+  if (ls && ls.stackOn) say(ls.stackLvl >= 2 ? 'salvoTower' : 'salvoStack', { n: ls.stackLvl + 1, duck: ls.pl.duck.name, other: ls.stackOn.pl.duck.name, player: ls.pl.name }, { delay: 3.2 });
   burst('confetti', 60, { x: 760, y: 240, sp0: 200, sp1: 560, l0: 1.4, l1: 2.4, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
   Caps.bubbleSay(Lines.next(w.tl.final > 1500 || st.length >= 3 ? 'landGood' : 'landBad', {}, true), { delay: 1.0 });
 }
@@ -7156,7 +7300,7 @@ function drawSalvoActors(ctx, V, t) {
   // flight / result / idle
   ART.cannon(ctx, V, cannonSt);
   const resting = ph !== 'flight';
-  const order = SV.fl.slice().sort((a, b) => (a.done ? 0 : 1) - (b.done ? 0 : 1) || a.x - b.x);   // movers on top
+  const order = SV.fl.slice().sort((a, b) => (a.done ? 0 : 1) - (b.done ? 0 : 1) || (a.done ? (a.stackLvl || 0) - (b.stackLvl || 0) : 0) || a.x - b.x);   // movers on top (and a stacked duck over the one under it)
   const tags = [];
   for (const f of order) {
     const tl = f.tl;
@@ -7191,9 +7335,13 @@ function drawSalvoActors(ctx, V, t) {
       let squash = 1;
       if (!done && lk >= 0 && lk < 0.35) squash = 1.35 - lk;
       const flags = { sock: ex.sockT != null && ft >= ex.sockT, mud: ex.mudT != null && ft >= ex.mudT, antennae: ex.antennaeT != null && ft >= ex.antennaeT, shades: ex.shadesT != null && ft >= ex.shadesT, tinyHat: ex.tinyHatT != null && ft >= ex.tinyHatT };
-      const hop = pose === 'happy' ? Math.abs(Math.sin(S.time * 7)) * px * 0.3 : 0;
-      const sx = sxw, sy = V.sy(s.y) - px * (pose === 'swim' ? 0.18 : 0.45) * (s.y <= SIM.groundY(s.x) + 2 ? 1 : 0.35) - hop;
-      if (pose !== 'swim' && pose !== 'space' && pose !== 'stuck') drawGroundShadow(ctx, V, s.x + (sx - V.sx(s.x)) / V.z, s.y, px);
+      // a duck on a stack rides along when the one at the bottom is the winner doing its victory hop
+      const happyHop = () => Math.abs(Math.sin(S.time * 7)) * px * 0.3;
+      let hop = pose === 'happy' ? happyHop() : 0;
+      const lift = done && f.stackLvl ? salvoStackLift(f, px) : 0;
+      if (lift) { for (let b = f.stackOn; b; b = b.stackOn) if (resting && SV.result && SV.result.best === b && SV.result.leaderInVolley) { hop = happyHop(); break; } rot = (f.i % 2 ? 0.1 : -0.1) * clamp(lift / (px * STACK_H), 0, 1); }
+      const sx = sxw, sy = V.sy(s.y) - px * (pose === 'swim' ? 0.18 : 0.45) * (s.y <= SIM.groundY(s.x) + 2 ? 1 : 0.35) - hop - lift;
+      if (pose !== 'swim' && pose !== 'space' && pose !== 'stuck' && !lift) drawGroundShadow(ctx, V, s.x + (sx - V.sx(s.x)) / V.z, s.y, px);
       if (pose === 'swim') { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 1920, V.sy(SIM.groundY(s.x)) + 2); ctx.clip(); }
       drawDuck(ctx, d, sx, sy, px, duckDrawOpts(f.pl, { pose, rot, flap, flags, squash, squashW: squashNow(f.squash, f.squashDepth), hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
       if (pose === 'swim') ctx.restore();
@@ -7203,6 +7351,8 @@ function drawSalvoActors(ctx, V, t) {
     }
     if (!done) drawEventActors(ctx, V, ft, s, px, false, tl, f.pl, f.hideGag);
   }
+  // a pile's name tags all go above its top duck (a tag at the bottom duck would sit on the one above it)
+  for (const g of tags) { if (!g.done || !g.f.stackLvl || g.sy == null) continue; for (let b = g.f.stackOn; b; b = b.stackOn) { const gb = tags.find(x => x.f === b); if (gb && gb.sy != null && gb.sy > g.sy) gb.sy = g.sy; } }
   SV.drawn = tags; SV.px = px;
 }
 // name tags over the ducks (stacked where they would overlap), event call-outs, arrows for ducks out of the picture
@@ -7238,6 +7388,7 @@ function drawSalvoTags(ctx, V) {
   // tag there would be half hidden, and the counter already names whoever is in front
   const hud = [{ x: 255, y: 73, w: 480, h: 128 }];
   if (SV.phase === 'flight') hud.push({ x: 960, y: 92, w: 790, h: 160 });
+  if (SV.phase === 'flight' && SV.chase) hud.push({ x: 960, y: 196, w: 720, h: 44 });   // (the chase chip under it)
   const inHud = (x, y, w, h) => hud.some(p => Math.abs(p.x - x) < (p.w + w) / 2 && Math.abs(p.y - y) < (p.h + h) / 2);
   // movers and the leader get their tag first (best spot); the rest fit in around them
   const order = tags.filter(g => !g.off).sort((a, b) => ((b.f.pl.key === leadKey ? 2 : 0) + (b.done ? 0 : 1)) - ((a.f.pl.key === leadKey ? 2 : 0) + (a.done ? 0 : 1)) || b.sx - a.sx);
@@ -7338,20 +7489,21 @@ function drawSalvoTags(ctx, V) {
     txt(ctx, label, x, y + 1, { px: 24, color: dark ? OUT : '#fff', sw: 0, maxW: w - 16 });
   };
   const ups = off.filter(c => c.up), sides = off.filter(c => !c.up);
-  const upFit = edgeChipFit(ups.length, 190, 40, 800);
+  const top = SV.phase === 'flight' && SV.chase ? 238 : 190;   // (below the chase chip while it is up)
+  const upFit = edgeChipFit(ups.length, top, 40, 800);
   for (let i = 0; i < upFit.shown; i++) {
     const c = ups[i], w = edgeChipWidth(ctx, c.label);
-    drawChip(c.label, clamp(c.sx, w / 2 + 12, 1470 - w / 2), 190 + i * 40, c.tm.color, c.dark);
+    drawChip(c.label, clamp(c.sx, w / 2 + 12, 1470 - w / 2), top + i * 40, c.tm.color, c.dark);
   }
   if (upFit.more) {
     const label = '+' + upFit.more + ' more', w = edgeChipWidth(ctx, label);
     const anchor = upFit.shown ? ups[upFit.shown - 1].sx : 740;
-    drawChip(label, clamp(anchor, w / 2 + 12, 1470 - w / 2), 190 + upFit.shown * 40, '#fff8e6', true);
+    drawChip(label, clamp(anchor, w / 2 + 12, 1470 - w / 2), top + upFit.shown * 40, '#fff8e6', true);
   }
   const sideYs = [];
   for (let i = 0; i < sides.length; i++) {
-    const y = clamp(sides[i].sy, 230, 720) - sideYs.length * 40;
-    if (y < 190 || y >= 800) break;
+    const y = clamp(sides[i].sy, top + 40, 720) - sideYs.length * 40;
+    if (y < top || y >= 800) break;
     sideYs.push(y);
   }
   let sideShown = sideYs.length;
@@ -7364,7 +7516,7 @@ function drawSalvoTags(ctx, V) {
   if (sideMore && sideYs.length) {
     const label = '+' + sideMore + ' more', w = edgeChipWidth(ctx, label), c = sides[sideShown] || sides[0];
     const y = sideYs[sideShown] != null ? sideYs[sideShown] : sideYs[sideYs.length - 1];
-    if (y >= 190 && y < 800) drawChip(label, c.left ? w / 2 + 12 : 1470 - w / 2, y, '#fff8e6', true);
+    if (y >= top && y < 800) drawChip(label, c.left ? w / 2 + 12 : 1470 - w / 2, y, '#fff8e6', true);
   }
 }
 function drawSalvoHUD(ctx, V, t) {
@@ -7386,6 +7538,7 @@ function drawSalvoHUD(ctx, V, t) {
     const lead = SV.lead && t > 1.2 ? SV.lead : null, ahead = lead || (n === 1 && t > 1.2 ? SV.front : null);
     drawOdometer(ctx, ahead ? Math.max(0, ahead.x) : 0);
     if (lead && n > 1) { ctx.font = font(26); let label = 'IN FRONT: ' + lead.pl.name + ' · ' + lead.pl.duck.name; if (ctx.measureText(label).width > 700) label = 'IN FRONT: ' + lead.pl.name;   /* a long name keeps its size; the duck is on the board */ const w = Math.min(760, ctx.measureText(label).width + 36); rr(ctx, 960 - w / 2, 126, w, 40, 14); fillStrokeLifted(ctx, '#fff8e6', 4, 4); txt(ctx, label, 960, 147, { px: 26, color: OUT, sw: 0, maxW: w - 24 }); }
+    if (n > 1) drawChaseChip(ctx);
   }
   // countdown numbers
   if (ph === 'countdown') {
@@ -7412,7 +7565,7 @@ function drawSalvoHUD(ctx, V, t) {
   // in the air), and a caption with a long player name stays clear of the leaderboard
   let flockY = null;
   if (ph === 'flight') { const ys = SV.fl.filter(f => !f.done && f.sy != null && f.vis).map(f => f.sy).sort((a, b) => a - b); if (ys.length) flockY = ys[ys.length >> 1]; }
-  Caps.drawBigs(ctx, flockY, 1040, SV.drawnTags);
+  Caps.drawBigs(ctx, flockY, 1040, SV.drawnTags, ph === 'flight' && SV.chase ? 228 : 178);
   const w = SV.result && SV.result.best;
   if ((ph === 'result' || ph === 'idle') && w && w.sx != null) Caps.drawBubble(ctx, w.sx, w.sy - (SV.px || 80) * 0.5, false);
   else if (ph === 'armed' || ph === 'countdown') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
