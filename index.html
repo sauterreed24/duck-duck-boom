@@ -505,6 +505,10 @@ C.LINES = {
   salvoLoad: ['All {n} of them. In one cannon. What could possibly go wrong?', '{n} ducks, one barrel. Squeeze in, everybody!', "Ol' Thunderbill is taking all {n} at once today. Mind the elbows.", 'Everybody in! {n} ducks and not a seatbelt between them.', "That is {n} ducks in one cannon. The manual says four. We don't have the manual.", "{n} ducks, one barrel. This is either a launch or a very full elevator.", "Loading {n} ducks. Please hold your questions until after the boom.", "Wings tucked, beaks forward, and absolutely no reply-all.", "{n} passengers and zero emergency exits. Lovely.", "Squeeze in, everyone. It is a cannon, not a conference room.", "Thunderbill is officially at capacity. Thunderbill does not care."],
   salvoCount: ['Count it down with me, folks!', 'Everybody together now: three, two, one!', 'The fuse is ready. Help me count!', 'All aboard? Then count with me!', 'Big breath, everybody. Count it down!', "Unmute yourselves for this one! Three! Two! One!", "Count it down, everybody. Yes, the camera-off crowd too!", "Fingers off the mute button. Count it with me!", "This is the only countdown today that ends well. Count it!"],
   salvoLaunch: ['THERE THEY GO! All {n} of them!', '{n} ducks in the air! Keep your eye on yours!', 'What a sight! The whole flock is away!', 'BOOM! Find your duck, folks, find your duck!', "That's {n} ducks airborne and nobody steering!", "And the flock is AWAY! Air traffic control has questions.", "{n} ducks in the air and not one flight plan between them!", "Liftoff! Somewhere, a goose is filing a complaint.", "Look at them go! The most aligned this flock has ever been!", "BOOM! {n} ducks, one direction. Mostly one direction."],
+  rivalLead: ['{a} and {b}, one and two again. Head to head, {a} leads {wa}–{wb}.', 'Head to head, that is {wa}–{wb} to {a} over {b}.', '{a} over {b} again. The head-to-head is {wa}–{wb}.'],
+  rivalLevel: ['{a} pulls level with {b}: {wa}–{wb} head to head!', 'All square! {a} and {b} are {wa}–{wb} head to head.'],
+  rivalTrail: ['{a} takes this one, but {b} still leads head to head, {wb}–{wa}.', 'A win for {a}! {b} still leads the head-to-head {wb}–{wa}, though.'],
+  salvoTeamLead: ['The team race has a new leader: {team}!', 'Team race update: {team} on top now!', 'In the team race, it is {team} out in front!', 'Team race: {team} in front, {other} in pursuit!', 'New order in the team race: {team} first, {other} second!'],
   salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!', "{duck} has the lead and is not giving it back!", "{player}'s duck is out in front! Somebody update the slide!", "{duck} moves to the front of the flock. Big move. Huge.", "New name at the top: {duck}!", "{duck} takes the lead with a move I can only describe as aerodynamic."],
   salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!", "Everybody else has landed. {duck} is working late.", "{duck} did not get the memo. The meeting is over. Still going!", "Just {duck} left out there, taking the scenic route!"],
   salvoCall: ['{duck} is out in front at {distance}!', 'Still {n} ducks on the move out there!', "{player}'s duck leads the way: {distance} and counting.", '{n} of them still going. Do not blink!', 'Out in front right now: {duck}!', "It's {duck} at the front of the flock. {n} ducks still moving!", 'Anybody could still win this. {n} ducks left out there!', "{duck} is at {distance} and looking very pleased about it.", "{n} ducks still moving. Best meeting of the week, folks.", "{player}'s duck is setting the pace at {distance}!", "It's {duck}'s race to lose right now. {n} still moving!", "Still {n} in motion. Nobody has called a hard stop yet!"],
@@ -2143,6 +2147,24 @@ function runSelfTest() {
     S.race = { id: 'self-aw1', seed: 6, day, players: solo, queue: [], idx: 0, results: { solo: solo[0].r }, shots: {}, legend: [] };
     const aw1 = computeAwards(S.race);
     check('awards go to different ducks while there are enough of them (and a solo run still gets three)', aw.awards.length === 5 && new Set(awWho).size === 5 && new Set(aw.awards.map(a => a.id)).size === 5 && awWho.filter(k => k === 'top').length === 1 && aw.feather && !awWho.includes(aw.feather.pl.key) && aw1.awards.length === 3 && new Set(aw1.awards.map(a => a.id)).size === 3, aw.awards.map(a => a.id + ':' + a.e.pl.name).join(' ') + ' | solo ' + aw1.awards.map(a => a.id).join(' '));
+    // the team race counts the way Team of the Day counts, so its last frame agrees with the crown
+    const teamed = champ.map((p, i) => Object.assign({}, p, { team: i % 3 === 2 ? 2 : i % 2 }));
+    S.race = { id: 'self-tr', seed: 8, day, players: teamed, queue: [], idx: 0, results: Object.fromEntries(teamed.map(p => [p.key, p.r])), shots: {}, legend: [] };
+    const svPh = SV.phase; SV.phase = 'idle';
+    const tr = salvoTeamRace(), tdy = teamOfDay(S.race);
+    SV.phase = svPh;
+    check('the team race ends where Team of the Day is crowned', !!tr && !!tdy && tr[0].team === tdy.team && Math.abs(tr[0].avg - tdy.avg) < 1e-6 && tr.every((e, i) => !i || tr[i - 1].avg >= e.avg), tr ? tr.map(e => e.name + ' ' + Math.round(e.avg)).join(', ') : 'none');
+    // head to head: every saved show the top two both flew in, up to this one, once they have met three times
+    const hist = S.history, mk = (id, a, b) => ({ id, date: day, res: [{ p: 'Top', dist: a }, { p: 'Bee', dist: b }, { p: 'Cee', dist: 10 }] });
+    S.race = { id: 'h3', seed: 9, day, practice: false, players: champ, queue: [], idx: 0, results: Object.fromEntries(champ.map(p => [p.key, p.r])), shots: {}, legend: [] };
+    S.history = [mk('h1', 100, 200), mk('h2', 300, 200), { id: 'hx', date: day, res: [{ p: 'Top', dist: 5 }] }, mk('h3', 2400, 1500), mk('h4', 1, 999)];
+    const h2 = headToHead(S.race);
+    S.history = [mk('h1', 100, 200), mk('h3', 2400, 1500)];
+    const h2few = headToHead(S.race);
+    S.race.practice = true; S.history = [mk('h1', 100, 200), mk('h2', 300, 200), mk('h3', 2400, 1500)];
+    const h2prac = headToHead(S.race);
+    S.history = hist;
+    check('head to head counts the shows the top two shared, up to this one', !!h2 && h2.a === 'Top' && h2.b === 'Bee' && h2.wa === 2 && h2.wb === 1 && headToHeadText(h2) === 'Top leads Bee 2–1' && !h2few && !h2prac, h2 ? headToHeadText(h2) : 'none');
     const close = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent' };
     const cds = awardDescs(close);
     check('a long award line has its other versions ready, shortest first', cds.length === C.AWARDS.closest.desc.length && cds[0] === awardDesc(close) && cds.slice(1).every((d, i, a) => !i || a[i - 1].length <= d.length));
@@ -5077,6 +5099,25 @@ function computeHighlights(R) {
   if (!out.length && st.length) out.push(st[0].pl.duck.name + ' flew ' + fmtFt(st[0].dist) + ' with no help from anyone.');
   return out;
 }
+// Today's top two, head to head: every saved show they both flew in, up to and including this one (a practice show is
+// not saved, so it has none). Only worth a mention once they have met three times.
+function headToHead(R) {
+  const st = standings();
+  if (!R || R.practice || st.length < 2) return null;
+  const upto = S.history.findIndex(h => h.id === R.id);
+  if (upto < 0) return null;
+  const ka = personKey(st[0].pl.name), kb = personKey(st[1].pl.name);
+  let wa = 0, wb = 0;
+  for (const h of S.history.slice(0, upto + 1)) {
+    const ea = h.res.find(e => personKey(e.p) === ka), eb = h.res.find(e => personKey(e.p) === kb);
+    if (!ea || !eb || ea.dist === eb.dist) continue;
+    if (ea.dist > eb.dist) wa++; else wb++;
+  }
+  return wa + wb >= 3 ? { a: st[0].pl.name, b: st[1].pl.name, wa, wb } : null;
+}
+function headToHeadText(h) {
+  return h.wa > h.wb ? h.a + ' leads ' + h.b + ' ' + h.wa + '–' + h.wb : h.wa === h.wb ? h.a + ' and ' + h.b + ' are level at ' + h.wa + '–' + h.wb : h.b + ' still leads ' + h.a + ' ' + h.wb + '–' + h.wa;
+}
 function resultsText(R) {
   const st = standings();
   const { awards, feather } = computeAwards(R);
@@ -5089,6 +5130,8 @@ function resultsText(R) {
   if (aw.length) lines.push('Awards: ' + aw.join(' · '));
   const tod = teamOfDay(R);
   if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
+  const h2h = headToHead(R);
+  if (h2h) lines.push('Head to head: ' + headToHeadText(h2h));
   if (hl.length) lines.push('Highlight: ' + hl[0]);
   const so = C.LINES.signoff;   // Bill signs off (the same line every time this show is copied)
   lines.push('Bill says: ' + so[hash(R.seed >>> 0, 'signoff') % so.length]);
@@ -5915,6 +5958,7 @@ function drawLaunch(ctx, dt) {
 /* ---------- landing flags + ghost lines ---------- */
 function drawFieldMarks(ctx, V, noLabels, extra) {
   const R = S.race;
+  const B = boardRect();   // where the leaderboard sits (drawn after the field): labels keep out from under it
   L.curLabel = null;
   if (!R) return;
   const flagH = clamp(18 * V.z, 70, 120);
@@ -5941,14 +5985,23 @@ function drawFieldMarks(ctx, V, noLabels, extra) {
     if (sx < -50 || sx > 1970) continue;
     stack = sx - lastSx < 190 ? stack + 1 : 0; lastSx = sx;
     ctx.save();
-    ctx.setLineDash([16, 12]); ctx.lineWidth = 5; ctx.strokeStyle = rgba(g.color === '#ffffff' ? '#ffffff' : g.color, 0.85);
-    ctx.beginPath(); ctx.moveTo(sx, V.gy); ctx.lineTo(sx, V.gy - 330); ctx.stroke();
-    ctx.setLineDash([]);
-    const ly = V.gy - 330 - stack * 44;
     ctx.font = font(24);
     const w = ctx.measureText(g.label).width + 26;
-    rr(ctx, sx - w / 2, ly - 34, w, 36, 12); fillStroke(ctx, g.color, 4);
-    txt(ctx, g.label, sx, ly - 15, { px: 24, color: g.color === '#ffffff' || g.color === '#ffd23f' ? OUT : '#fff', sw: 0 });
+    let ly = V.gy - 330 - stack * 44, cx = sx, side = false;
+    // the leaderboard is drawn over the field: a chip that would end up underneath it moves below the board when
+    // there is room above the ground (its line gets shorter), and otherwise waits at the board's edge pointing at it
+    if (B && cx + w / 2 > B.x - 10 && cx - w / 2 < B.x + B.w && ly - 34 < B.y + B.h + 10) {
+      const below = B.y + B.h + 52 + stack * 44;
+      if (below <= V.gy - 24) ly = below;
+      else if (sx < B.x - 4) cx = Math.min(cx, B.x - 10 - w / 2);   // its line is still in view: slide the chip off the board
+      else { cx = B.x - 22 - w / 2; side = true; }
+    }
+    ctx.setLineDash([16, 12]); ctx.lineWidth = 5; ctx.strokeStyle = rgba(g.color === '#ffffff' ? '#ffffff' : g.color, 0.85);
+    ctx.beginPath(); ctx.moveTo(sx, V.gy); ctx.lineTo(sx, side ? V.gy - 330 : ly); ctx.stroke();
+    ctx.setLineDash([]);
+    rr(ctx, cx - w / 2, ly - 34, w, 36, 12); fillStroke(ctx, g.color, 4);
+    if (side) { ctx.beginPath(); ctx.moveTo(cx + w / 2 - 2, ly - 26); ctx.lineTo(cx + w / 2 + 14, ly - 16); ctx.lineTo(cx + w / 2 - 2, ly - 6); ctx.closePath(); fillStroke(ctx, g.color, 4); }
+    txt(ctx, g.label, cx, ly - 15, { px: 24, color: g.color === '#ffffff' || g.color === '#ffd23f' ? OUT : '#fff', sw: 0 });
     ctx.restore();
   }
   // flags: labels only where they fit
@@ -5960,6 +6013,10 @@ function drawFieldMarks(ctx, V, noLabels, extra) {
     const sx = V.sx(m.x);
     if (sx < -100 || sx > 2020) continue;
     const w = Math.min(340, m.pl.duck.name.length * 15 + 30);
+    // a label that would sit under the leaderboard is left off (the board already has the name; half a name showing
+    // through the board's edge only looks broken)
+    const sy = V.sy(SIM.groundY(m.x)), fh = m.cur ? Math.max(flagH, duckPx(V.z) * 1.35) : flagH;
+    if (B && sx + w / 2 > B.x - 6 && sx - w / 2 < B.x + B.w && sy - fh - 52 < B.y + B.h) continue;
     if (!noLabels && placed.every(p => Math.abs(p - sx) > (w + 20) * 0.75) && V.z > 0.9) { labeled.add(m); placed.push(sx); }
   }
   for (const m of marks) {
@@ -6386,6 +6443,10 @@ function drawResultPanel(ctx, r) {
   if (r.personalBest) { ctx.save(); ctx.translate(x + w - 50, y + 10); ctx.rotate(0.1); rr(ctx, -170, -24, 250, 48, 14); fillStroke(ctx, '#e8412c', 5); txt(ctx, 'PERSONAL BEST!', -45, 1, { px: 26, minPx: 18, color: '#fff', sw: 0, maxW: 226 }); ctx.restore(); }
   ctx.restore();
 }
+// where the leaderboard was drawn last frame (the field is drawn before it, so its markers can keep out from under it)
+const BOARD = { r: null, at: -9 };
+function noteBoard(x, y, w, h) { BOARD.r = { x, y, w, h }; BOARD.at = S.rt; }
+function boardRect() { return BOARD.r && S.rt - BOARD.at < 0.25 ? BOARD.r : null; }
 const SB = { seen: {} };
 function drawSidebar(ctx) {
   const R = S.race;
@@ -6408,6 +6469,7 @@ function drawSidebar(ctx) {
   const left = remainingCount() - (L.phase === 'idle' || L.phase === 'result' ? 0 : 1);
   const rh = 76;
   const h = 70 + rows.length * rh + (showCur ? rh + 34 : 0) + 56;
+  noteBoard(x, y, w, h);
   rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, 'rgba(255,248,230,0.95)', 5);
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
   txt(ctx, stReal.length + '/' + activePlayers().length, x + w - 22, y + 36, { px: 26, color: '#6b6577', sw: 0, align: 'right' });
@@ -6630,7 +6692,7 @@ function salvoFire(replay) {
   SV.pb = { simT: 0, rate: 1, T: 0, segs: plan.segs, P: plan.P, endT: plan.endT, dur: plan.dur, drumAt: plan.drumAt, photoAt: plan.photoAt, photo: photoT > 0, fired: new Set(), done: false, brake: null };
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
-  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false;
+  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.teamLead = null; SV.teamCand = null; SV.teamCalls = 0; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false;
   if (!replay) SV.result = null;   // after a replay the winner card comes back
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
@@ -6872,6 +6934,21 @@ function updateSalvoFlight(dt) {
   if (front && !SV.replay && t > 2.5) {
     if (R.lastWin != null && R.lastWin > 300 && !pb.fired.has('lw') && front.x > R.lastWin) { pb.fired.add('lw'); salvoTag(front, "PAST LAST SHOW'S WINNER!", { color: '#ffffff', px: 30, dur: 2 }); salvoSnd('ooh', 1); }
     if (!R.practice && SV.recordAt != null && SV.recordAt > 300 && !pb.fired.has('rec') && front.x > SV.recordAt) { pb.fired.add('rec'); salvoTag(front, 'PAST THE POND RECORD!', { color: '#ffd23f', px: 34, dur: 2.4 }); salvoSnd('ooh', 1); SFX.play('cheer', 1.2); if (!Caps.freshBig(1.2)) Caps.big('PAST THE RECORD LINE!\n' + front.pl.name, { px: 76, color: '#ffd23f', dur: 2.2 }); salvoSay('salvoRecord', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 0.8); }
+  }
+  // the team race (Team of the Day is decided on the average): a new team in front gets a call, twice a flight at most
+  if (!SV.replay && t > 5 && moving > 1) {
+    const tr = salvoTeamRace();
+    if (tr) {
+      const top = tr[0].team, gap = tr[0].avg - tr[1].avg;
+      if (SV.teamLead == null) SV.teamLead = top;
+      else if (top !== SV.teamLead) {
+        if (SV.teamCand !== top) { SV.teamCand = top; SV.teamCandAt = pb.T; }
+        else if (pb.T - SV.teamCandAt > 1.2 && gap > 15) {
+          SV.teamLead = top; SV.teamCand = null;
+          if (SV.teamCalls < 2 && salvoSay('salvoTeamLead', { team: tr[0].name, other: tr[1].name }, { prio: 0 }, 3)) SV.teamCalls++;
+        }
+      } else SV.teamCand = null;
+    }
   }
   // only one duck still going: everybody watches that one
   if (!SV.replay && n > 2 && moving === 1 && !SV.lastMover && pb.dur - pb.T > 2.2) { SV.lastMover = true; salvoTag(lastMover, 'STILL GOING!', { color: '#ffffff', px: 32, dur: 2 }); salvoSay('salvoLast', { duck: lastMover.pl.duck.name, player: lastMover.pl.name }, { prio: 1 }, 1.2); }
@@ -7126,7 +7203,7 @@ function drawSalvoTags(ctx, V) {
   const movers = tags.filter(g => !g.done && !g.off).length;
   // the HUD up top (the salvo card; in flight the distance counter and its IN FRONT chip) is no place for a tag: a
   // tag there would be half hidden, and the counter already names whoever is in front
-  const hud = [{ x: 255, y: 73, w: 480, h: 128 }];
+  const hud = [salvoCardRace(SV.pb ? SV.pb.simT : 0) ? { x: 255, y: 92, w: 480, h: 166 } : { x: 255, y: 73, w: 480, h: 128 }];
   if (SV.phase === 'flight') hud.push({ x: 960, y: 92, w: 790, h: 160 });
   const inHud = (x, y, w, h) => hud.some(p => Math.abs(p.x - x) < (p.w + w) / 2 && Math.abs(p.y - y) < (p.h + h) / 2);
   // movers and the leader get their tag first (best spot); the rest fit in around them
@@ -7257,13 +7334,51 @@ function drawSalvoTags(ctx, V) {
     if (y >= 190 && y < 800) drawChip(label, c.left ? w / 2 + 12 : 1470 - w / 2, y, '#fff8e6', true);
   }
 }
+// The team race, live: each team's average distance (counted the way Team of the Day counts it, so the last frame of
+// the race matches the crown on the results). Like Team of the Day it needs two teams with at least two ducks each.
+function salvoTeamRace() {
+  const R = S.race;
+  if (!R) return null;
+  const flying = SV.phase === 'flight' && SV.pb && !SV.replay;
+  const inVol = flying ? new Map(SV.fl.map(f => [f.pl.key, f])) : null;
+  const by = new Map();
+  for (const pl of R.players) {
+    if (pl.out) continue;
+    const prev = R.results[pl.key], f = inVol && inVol.get(pl.key);
+    let d = prev ? prev.dist : null;
+    if (f) { const now = f.done ? f.tl.final : SV.pb.simT >= f.tl.launchT + 0.2 ? f.x : 0; d = Math.max(now, d == null ? -1e9 : d); }
+    if (d == null) continue;
+    if (!by.has(pl.team)) by.set(pl.team, []);
+    by.get(pl.team).push(d);
+  }
+  const T = teams(), out = [];
+  for (const [team, ds] of by) if (ds.length >= 2 && T[team]) out.push({ team, avg: ds.reduce((a, c) => a + c, 0) / ds.length, n: ds.length, name: T[team].name, color: T[team].color, shape: T[team].shape });
+  if (out.length < 2) return null;
+  return out.sort((a, b) => b.avg - a.avg);
+}
+// the salvo's top-left card grows a row for the team race while there is one to show
+function salvoCardRace(t) {
+  const ph = SV.phase;
+  if (!(ph === 'flight' && t > 1.2) && ph !== 'result' && ph !== 'idle') return null;
+  return salvoTeamRace();
+}
 function drawSalvoHUD(ctx, V, t) {
   const R = S.race, ph = SV.phase, n = SV.fl.length, pb = SV.pb;
   if (ph === 'loading') return;
   if (ph === 'flight' || ph === 'result' || ph === 'idle') drawSalvoTags(ctx, V);
   // top-left card: what this is and how it is going
-  { const x = 20, y = 14, w = 470, h = 118;
+  { const race = salvoCardRace(t), x = 20, y = 14, w = 470, h = race ? 156 : 118;
     rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, '#fff8e6', 5);
+    if (race) {
+      // one chip per team, the leading team in gold; the order follows the race
+      const shown = race.slice(0, 3), cw = (w - 40 - (shown.length - 1) * 8) / shown.length;
+      shown.forEach((e, i) => {
+        const cx = x + 20 + i * (cw + 8), cy = y + 122;
+        rr(ctx, cx, cy - 16, cw, 32, 11); fillStroke(ctx, i === 0 ? '#ffd23f' : '#efe7d2', 3);
+        teamShape(ctx, e.shape, cx + 18, cy, 8); ctx.fillStyle = e.color; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke();
+        txt(ctx, fmtFt(Math.max(0, Math.round(e.avg))), cx + 32 + (cw - 40) / 2, cy + 1, { px: 22, color: OUT, sw: 0, maxW: cw - 44 });
+      });
+    }
     txt(ctx, SV.bonus ? 'BONUS VOLLEY' : SV.late ? 'LATE VOLLEY' : 'THE SALVO', x + 24, y + 38, { px: 34, color: '#e8412c', sw: 0, align: 'left' });
     let line = n + ' duck' + (n === 1 ? '' : 's') + ', one cannon';
     if (ph === 'load') line = 'Loading: ' + SV.loaded + ' of ' + n;
@@ -7310,8 +7425,9 @@ function drawSalvoHUD(ctx, V, t) {
 function drawSalvoResult(ctx, r) {
   const k = SV.phase === 'result' ? easeBack(clamp(SV.pt / 0.35, 0, 1)) : 1;
   const w = r.best, lead = r.lead;
-  ctx.save(); ctx.translate(760, 300); ctx.scale(k, k); ctx.translate(-760, -300);
-  const x = 330, y = 160, W = 860, H = 290;
+  const dy = salvoCardRace(0) ? 22 : 0;   // clear of the corner card when it carries the team race
+  ctx.save(); ctx.translate(760, 300 + dy); ctx.scale(k, k); ctx.translate(-760, -300 - dy);
+  const x = 330, y = 160 + dy, W = 860, H = 290;
   rr(ctx, x, y, W, H, 30); fillStrokeLifted(ctx, '#fff8e6', 6);
   const title = r.leaderInVolley ? (S.race.idx >= S.race.queue.length ? 'FARTHEST DUCK!' : 'IN THE LEAD!') : r.n > 1 ? 'BEST OF THE VOLLEY' : SV.bonus ? 'BONUS SHOT' : 'LATE DUCK';
   rr(ctx, x + W / 2 - 230, y - 26, 460, 54, 18); fillStroke(ctx, r.leaderInVolley ? '#ffd23f' : '#e9eef5', 5);
@@ -7375,6 +7491,7 @@ function drawSalvoBoard(ctx) {
   rows.forEach((e, i) => { e.rank = i + 1; });
   const shown = total > cap ? rows.slice(0, keep).concat(rows.slice(keep + pg * per, keep + (pg + 1) * per)) : rows;
   const h = 70 + shown.length * rh + (total > cap ? 44 : 12);
+  noteBoard(x, y, w, h);
   rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, 'rgba(255,248,230,0.95)', 5);
   txt(ctx, 'LEADERBOARD', x + 22, y + 36, { px: 30, color: OUT, sw: 0, align: 'left' });
   const down = flying ? SV.fl.filter(f => f.done).length + standings().filter(e => !inVol.has(e.pl.key)).length : standings().length;
@@ -7768,6 +7885,9 @@ function startResults() {
     // his record, once there is one worth mentioning (today's show is already in the history unless it is practice)
     const bp = pk && pi >= 0 && !R.practice ? computeFame(S.history, R.day).picks : null;
     if (bp && bp.n >= 3) Caps.say('That makes Bill ' + bp.hits + ' for ' + bp.n + ' on his picks.', { delay: 11.4 });
+    // a rivalry: today's top two have met before
+    const h2h = headToHead(R);
+    if (h2h) say(h2h.wa > h2h.wb ? 'rivalLead' : h2h.wa === h2h.wb ? 'rivalLevel' : 'rivalTrail', h2h, { delay: bp && bp.n >= 3 ? 14 : pk && pi >= 0 ? 11 : 8 });
   }
   RS.tod = teamOfDay(R);
   RS.conf = 0;
