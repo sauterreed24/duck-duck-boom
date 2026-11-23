@@ -1734,7 +1734,14 @@ const SIM = (() => {
           else {
             const hit = groundPieceAt(s.x);
             if (hit >= 0 && canFireGround(hit)) { /* handled */ }
-            else if (-s.vy > 24) { s.vy = -s.vy * P.rest * rng.range(0.85, 1.05); s.vx *= 0.8; s.spin = s.vx * 0.06 * rng.sign(); s.pose = POSE.dizzy; }
+            else if (-s.vy > 24) {
+              // The angle of the impact matters: a flat, fast arrival skims on and keeps most of its speed; a steep
+              // drop digs in and loses more of it (it used to be 20% whatever the angle, so every flight bounced
+              // the same way). The duck comes off the ground tumbling forward, the way it is travelling.
+              const steep = Math.atan2(-s.vy, Math.abs(s.vx) + 1e-6) / (Math.PI / 2);
+              s.vy = -s.vy * P.rest * rng.range(0.85, 1.05); s.vx *= 0.93 - 0.26 * steep;
+              s.spin = s.vx * 0.05 * (0.7 + 0.3 * rng.sign()); s.pose = POSE.dizzy;
+            }
             else { s.vy = 0; s.mode = MODE.ground; s.pose = POSE.slide; }
           }
         }
@@ -1747,9 +1754,12 @@ const SIM = (() => {
         decel += Math.max(0, 14 - Math.abs(s.vx)) * 0.45;      // the last few ft/s dig in: no long crawl to a stop
         const sg = Math.sign(s.vx);
         s.vx -= sg * decel * dt;
-        if (Math.sign(s.vx) !== sg || Math.abs(s.vx) < 1.2) { s.vx = 0; s.rot = 0; deadStopNatural(); }
+        if (Math.sign(s.vx) !== sg || Math.abs(s.vx) < 1.2) { s.vx = 0; s.rot = Math.round(s.rot / TAU) * TAU; deadStopNatural(); }
         else {
-          s.x += s.vx * dt; s.y = groundY(s.x); s.rot += s.vx * dt / 7;
+          // it rolls while it is quick and rights itself as it slows, so it comes to rest the right way up (it used
+          // to stop at whatever angle it had reached and snap upright in one frame)
+          const rollK = clamp((Math.abs(s.vx) - 4) / 18, 0, 1), upright = Math.round(s.rot / TAU) * TAU;
+          s.x += s.vx * dt; s.y = groundY(s.x); s.rot += s.vx * dt / 7 * rollK + (upright - s.rot) * (1 - rollK) * 7 * dt;
           const hit = groundPieceAt(s.x);
           if (hit >= 0) canFireGround(hit);
         }
@@ -1784,7 +1794,7 @@ const SIM = (() => {
       s.y = groundY(s.x);
     }
     if (s.mode !== MODE.done) finish();
-    if (record) { rec.x.push(s.x); rec.y.push(s.y); rec.rot.push(0); rec.mode.push(MODE.done); rec.pose.push(s.pose); rec.vis.push(1); }
+    if (record) { rec.x.push(s.x); rec.y.push(s.y); rec.rot.push(Math.round(s.rot / TAU) * TAU); rec.mode.push(MODE.done); rec.pose.push(s.pose); rec.vis.push(1); }
 
     function groundPieceAt(x) {
       for (let i = Math.max(0, pi0 - 6); i < pieces.length; i++) {
@@ -5874,6 +5884,16 @@ function duckDrawOpts(pl, extra) {
   const R = S.race;
   return Object.assign({ party: S.cond.friday, bigHead: S.cond.mod === 'bighead', crown: R && R.champ === pl.key, t: S.time, blink: (S.time + pl.duck.seed % 5) % 3.3 < 0.12 }, extra || {});
 }
+// A soft shadow on the ground under a duck: big and dark when it is low, small and faint when it is high, so height
+// and the moment of touchdown read at a glance. (A flat ellipse, no blur: cheap enough for 40 ducks.)
+function drawGroundShadow(ctx, V, x, y, px) {
+  const gy = SIM.groundY(x), alt = Math.max(0, y - gy);
+  if (alt > 900) return;
+  const k = 1 / (1 + alt / 110), sx = V.sx(x), sy = V.sy(gy) + 3;
+  if (sx < -80 || sx > 2000) return;
+  ctx.fillStyle = 'rgba(31,26,46,' + (0.12 + 0.24 * k).toFixed(3) + ')';
+  ell(ctx, sx, sy + 2, px * (0.26 + 0.3 * k), px * (0.06 + 0.07 * k)); ctx.fill();
+}
 function duckPx(z) { return clamp(20 * z, 104, 140); }
 
 function pieceStateFn(t) {
@@ -6087,6 +6107,7 @@ function drawLaunchActors(ctx, V, t) {
     const flags = { sock: ex.sockT != null && t >= ex.sockT, mud: ex.mudT != null && t >= ex.mudT, antennae: ex.antennaeT != null && t >= ex.antennaeT, shades: ex.shadesT != null && t >= ex.shadesT, tinyHat: ex.tinyHatT != null && t >= ex.tinyHatT };
     const besideFlag = done ? px * 0.42 : 0;
     const sx = V.sx(s.x) + besideFlag, sy = V.sy(s.y) - px * (pose === 'swim' ? 0.18 : 0.45) * (s.y <= SIM.groundY(s.x) + 2 ? 1 : 0.35);
+    if (pose !== 'swim' && pose !== 'space' && pose !== 'stuck') drawGroundShadow(ctx, V, s.x + besideFlag / V.z, s.y, px);
     if (pose === 'swim') { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 1920, V.sy(SIM.groundY(s.x)) + 2); ctx.clip(); }
     drawDuck(ctx, d, sx, sy, px, duckDrawOpts(L.pl, { pose, rot, flap, flags, squash, hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
     if (pose === 'swim') ctx.restore();
@@ -7136,6 +7157,7 @@ function drawSalvoActors(ctx, V, t) {
       const flags = { sock: ex.sockT != null && ft >= ex.sockT, mud: ex.mudT != null && ft >= ex.mudT, antennae: ex.antennaeT != null && ft >= ex.antennaeT, shades: ex.shadesT != null && ft >= ex.shadesT, tinyHat: ex.tinyHatT != null && ft >= ex.tinyHatT };
       const hop = pose === 'happy' ? Math.abs(Math.sin(S.time * 7)) * px * 0.3 : 0;
       const sx = sxw, sy = V.sy(s.y) - px * (pose === 'swim' ? 0.18 : 0.45) * (s.y <= SIM.groundY(s.x) + 2 ? 1 : 0.35) - hop;
+      if (pose !== 'swim' && pose !== 'space' && pose !== 'stuck') drawGroundShadow(ctx, V, s.x + (sx - V.sx(s.x)) / V.z, s.y, px);
       if (pose === 'swim') { ctx.save(); ctx.beginPath(); ctx.rect(0, 0, 1920, V.sy(SIM.groundY(s.x)) + 2); ctx.clip(); }
       drawDuck(ctx, d, sx, sy, px, duckDrawOpts(f.pl, { pose, rot, flap, flags, squash, hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
       if (pose === 'swim') ctx.restore();

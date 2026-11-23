@@ -110,6 +110,7 @@ In one-by-one mode, flights play close to real time. The launch always plays at 
 - Each race gets a fresh seed from `crypto.getRandomValues`, shown as the Race ID.
 - Each flight's seed is `hash(raceSeed, playerKey, shotNumber)`, so launch order, late additions and looks never change anyone's distance.
 - `sim(seed, conditions, course, duck)` runs a fixed 120 Hz simulation and returns a timeline. The renderer only plays it back.
+- Landings depend on the angle of arrival: a flat, fast touchdown skims on and keeps most of its speed, a steep drop digs in and loses more. A duck comes off a bounce tumbling forward, rolls while it is quick, and rights itself as it slows, so it comes to rest the right way up. Every duck casts a soft shadow on the ground that grows and darkens as it comes down, so height and the moment of touchdown read at a glance.
 - The race (seed, roster, rerolls, order, current index and results) is saved after every step, so a reload mid-show resumes the exact race.
 
 ## Data
@@ -129,9 +130,9 @@ In one-by-one mode, flights play close to real time. The launch always plays at 
 Latest balance run (10,000 flights):
 
 ```text
-distance  min -459  p10 727  p25 1,073  median 1,447  p75 1,936  p90 2,647  p99 4,466  max 7,210 ft
-past 2,500 ft: 12.2%   past 5,000 ft: 3.0 per 1,000   backfire: 0.91%   misfire: 1.26%
-distance-changing events per flight: 1.88 avg   0: 17.4%  1: 31.8%  2: 22.1%  3: 12.5%  4: 7.2%  5: 9.1%
+distance  min -451  p10 721  p25 1,063  median 1,444  p75 1,942  p90 2,670  p99 4,490  max 6,698 ft
+past 2,500 ft: 12.5%   past 5,000 ft: 3.0 per 1,000   backfire: 0.91%   misfire: 1.26%
+distance-changing events per flight: 1.87 avg   0: 17.5%  1: 31.6%  2: 21.8%  3: 12.9%  4: 7.2%  5: 8.9%
 most decisive events: espresso drone (the winner had it in 28% of races) and mystery crate (27%)
 busiest single obstacle on a day: catches 14% of that day's ducks (typical), 18% at worst
 pond: 6% of all flights end with a swim; at most 18% of one day's ducks
