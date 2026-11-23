@@ -110,7 +110,7 @@ In one-by-one mode, flights play close to real time. The launch always plays at 
 - Each race gets a fresh seed from `crypto.getRandomValues`, shown as the Race ID.
 - Each flight's seed is `hash(raceSeed, playerKey, shotNumber)`, so launch order, late additions and looks never change anyone's distance.
 - `sim(seed, conditions, course, duck)` runs a fixed 120 Hz simulation and returns a timeline. The renderer only plays it back.
-- Landings depend on the angle of arrival: a flat, fast touchdown skims on and keeps most of its speed, a steep drop digs in and loses more. A duck comes off a bounce tumbling forward, rolls while it is quick, and rights itself as it slows, so it comes to rest the right way up. Every duck casts a soft shadow on the ground that grows and darkens as it comes down, so height and the moment of touchdown read at a glance.
+- Landings depend on the angle of arrival: a flat, fast touchdown skims on and keeps most of its speed, a steep drop digs in and loses more. A duck comes off a bounce tumbling forward, rolls while it is quick, and rights itself as it slows, so it comes to rest the right way up. A touchdown is sized by how hard it was: a gentle hop barely dents the duck and lifts a wisp of dust, a drop from the clouds flattens it against the ground and throws up a cloud; a fast slide trails dust. Every duck casts a soft shadow on the ground that grows and darkens as it comes down, so height and the moment of touchdown read at a glance.
 - The race (seed, roster, rerolls, order, current index and results) is saved after every step, so a reload mid-show resumes the exact race.
 
 ## Data
