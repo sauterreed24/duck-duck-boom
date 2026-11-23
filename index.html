@@ -2103,7 +2103,12 @@ function runSelfTest() {
     S.turbo = false;
     const plan = buildSalvoPlan(fl, false, -1);
     const planFast = buildSalvoPlan(fl, true, -1);
+    // spotlights: at most two, clear of the launch, the finish and each other, slowed down, and the volley still
+    // inside its cap (a dozen ducks from the same race)
+    const fl12 = players.slice(0, 12).map(p => ({ tl: SIM.simulate(flightSeed(raceSeed, p.key, 0), cond, course, null, { record: false }), pl: { key: p.key } }));
+    const p12 = buildSalvoPlan(fl12, false, -1), sp12 = p12.spots, spotSegs = p12.segs.filter(sg => sg.spot);
     S.turbo = wasTurbo;
+    check('spotlights: one or two, clear of the launch, the finish and each other, in slow motion, inside the cap', sp12.length >= 1 && sp12.length <= 2 && sp12.every((sp, i) => sp.ca >= 2.8 && sp.cb <= p12.endT - 2.5 && sp.sa > sp.ca && sp.sb < sp.cb && (!i || sp.ca >= sp12[i - 1].cb + 3)) && spotSegs.length === sp12.length && spotSegs.every(sg => sg.r < 1 && sg.fix && !sg.photo) && p12.dur <= SALVO_PACE.normal.cap * 1.12 + 0.05, sp12.map(sp => sp.id + '@' + sp.t.toFixed(1)).join(', ') + ' · ' + p12.dur.toFixed(1) + ' s');
     const segsOk = s => s.segs && s.segs.length && s.segs.every((sg, i) => sg.a <= sg.b + 1e-6 && (i === 0 || Math.abs(sg.a - s.segs[i - 1].b) < 1e-3) && isFinite(sg.r)) && Math.abs(s.segs[0].a) < 1e-6 && Math.abs(s.segs[s.segs.length - 1].b - s.endT) < 1e-3;
     check('salvo plan is ordered and inside the pace cap', isFinite(plan.dur) && plan.dur > 0 && plan.dur <= SALVO_PACE.normal.cap * 1.12 + 0.05 && segsOk(plan) && isFinite(planFast.dur) && planFast.dur <= SALVO_PACE.turbo.cap * 1.12 + 0.05 && segsOk(planFast), 'normal ' + (plan.dur && plan.dur.toFixed(1)) + 's turbo ' + (planFast.dur && planFast.dur.toFixed(1)) + 's');
     S.race = { id: 'self-quiet', seed: 7, day, practice: false, saved: false, mode: 'classic', players: [{ name: 'Ada', key: 'ada', team: 0, duck: duck('Quiet Duck') }], queue: [{ p: 0, s: 0 }, { p: 0, s: 1, bonus: true }], idx: 0, results: {}, shots: {}, legend: [], record: 80, pbs: { ada: 50 } };
@@ -5958,7 +5963,7 @@ function landingImpact(x, gy, vy, vx) {
 // A short trail of fading dots behind a duck in the air, in its team colour: the arc it is on is easier to follow,
 // and in a flock it is easier to tell whose duck is whose. Read straight from the timeline, so it never crosses a
 // teleport, and it stops at the last touchdown.
-function drawFlightTrail(ctx, V, tl, t, color, dots) {
+function drawFlightTrail(ctx, V, tl, t, color, dots, flair) {
   const A = SIM.MODE.air;
   let px = null, py = null;
   for (let k = 1; k <= dots; k++) {
@@ -5972,8 +5977,33 @@ function drawFlightTrail(ctx, V, tl, t, color, dots) {
     const f = 1 - k / (dots + 1);
     ctx.globalAlpha = 0.5 * f;
     circ(ctx, V.sx(x), V.sy(y), 3 + 5 * f); ctx.fillStyle = color; ctx.fill();
+    if (flair && (flair !== 'epic' || k % 2 === 1)) { ctx.globalAlpha = Math.min(1, 1.4 * f); drawTrailFlair(ctx, flair, V.sx(x), V.sy(y), k, f, tt); }
   }
   ctx.globalAlpha = 1;
+}
+// Epic and Legendary ducks show it in the air too: their trail sparkles, each legendary in its own way. (Only for
+// show, like every look.)
+function trailFlair(duck) {
+  if (!duck) return null;
+  if (duck.rarity === 'legendary') return duck.legendary || 'golden';
+  return duck.rarity === 'epic' ? 'epic' : null;
+}
+function glint(ctx, x, y, r, fill) {   // a four-pointed sparkle
+  burstPath(ctx, x, y, r, r * 0.32, 4, 0); ctx.fillStyle = fill; ctx.fill();
+  ctx.lineWidth = Math.max(1, r * 0.16); ctx.strokeStyle = OUT; ctx.stroke();
+}
+function drawTrailFlair(ctx, style, x, y, k, f, tt) {
+  const tw = 0.65 + 0.35 * Math.sin(S.time * 10 + k * 1.9);   // a twinkle
+  const side = (k % 2 ? -1 : 1) * (7 + 8 * f), r = (8 + 11 * f) * tw;
+  switch (style) {
+    case 'epic': glint(ctx, x + side * 0.6, y + side, r, '#d9a8ff'); break;
+    case 'golden': glint(ctx, x + side * 0.6, y + side, r * 1.25, '#ffd23f'); circ(ctx, x - side * 0.5, y - side * 0.7, r * 0.3); ctx.fillStyle = '#fff6c2'; ctx.fill(); break;
+    case 'disco': glint(ctx, x + side * 0.6, y + side, r * 1.1, hsl(S.time * 260 + k * 47, 90, 66)); break;
+    case 'robo': { ctx.save(); ctx.translate(x + side * 0.6, y + side); ctx.rotate(Math.PI / 4); const q = r * 0.95; ctx.fillStyle = '#7ff7ff'; ctx.fillRect(-q / 2, -q / 2, q, q); ctx.lineWidth = 2; ctx.strokeStyle = OUT; ctx.strokeRect(-q / 2, -q / 2, q, q); ctx.restore(); break; }
+    case 'ghost': { const g = ctx.globalAlpha; ctx.globalAlpha = g * 0.45; circ(ctx, x, y + Math.sin(S.time * 4 + k) * 5, r * 1.5); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.globalAlpha = g; break; }
+    case 'pixel': { const q = Math.round(r * 1.05), gx = Math.round((x + side * 0.6) / 6) * 6, gy = Math.round((y + side) / 6) * 6; ctx.fillStyle = ['#ff5a5a', '#ffd23f', '#5ccf6a', '#3fa4ff'][(k + Math.floor(tt * 8)) % 4]; ctx.fillRect(gx - q / 2, gy - q / 2, q, q); break; }
+    case 'goose': { ctx.save(); ctx.translate(x + side * 0.6, y + side); ctx.rotate(Math.sin(S.time * 3 + k) * 0.8); ctx.beginPath(); ctx.ellipse(0, 0, r * 0.95, r * 0.38, 0, 0, TAU); ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = OUT; ctx.stroke(); ctx.restore(); break; }
+  }
 }
 function squashNow(left, depth) { return left > 0 ? 1 - (depth || 0.28) * easeOut(left / 0.2) : 1; }
 function duckPx(z) { return clamp(20 * z, 104, 140); }
@@ -6158,7 +6188,7 @@ function drawLaunchActors(ctx, V, t) {
   if (!tl) return;
   const s = sampleTL(tl, t);
   // event actors behind the duck
-  if (L.phase === 'flight' && s.vis && s.mode === SIM.MODE.air) drawFlightTrail(ctx, V, tl, t, teamOf(pl).color, 12);
+  if (L.phase === 'flight' && s.vis && s.mode === SIM.MODE.air) drawFlightTrail(ctx, V, tl, t, teamOf(pl).color, 12, trailFlair(pl.duck));
   drawEventActors(ctx, V, t, s, px, true);
   // flying hat
   const ex = tl.extra || {};
@@ -6585,8 +6615,8 @@ const SALVO_PACE = {
   // or more still rolling, only the last one or two rolling. cap: a volley is never planned longer than this (seconds).
   // tail: once most of the volley is down (40% or fewer still moving), the stragglers' events play a little faster
   // (tEv) and their quiet stretches faster still (tAir in the air, tRoll on the ground).
-  normal: { ev: 1.0, air2: 1.0, air1: 1.25, roll: 1.8, last: 2.5, tEv: 1.3, tAir: 1.9, tRoll: 3.0, cap: 34, up: 2.2, down: 6, uMax: 3, dMax: 16, photoLen: 1.2, photoRate: 0.42 },
-  turbo: { ev: 1.7, air2: 1.8, air1: 2.3, roll: 3.2, last: 4.2, tEv: 2.2, tAir: 3.2, tRoll: 5.0, cap: 20, up: 3.5, down: 7, uMax: 6, dMax: 26, photoLen: 1.0, photoRate: 0.5 },
+  normal: { ev: 1.0, air2: 1.0, air1: 1.25, roll: 1.8, last: 2.5, tEv: 1.3, tAir: 1.9, tRoll: 3.0, cap: 34, up: 2.2, down: 6, uMax: 3, dMax: 16, photoLen: 1.2, photoRate: 0.42, spotRate: 0.5 },
+  turbo: { ev: 1.7, air2: 1.8, air1: 2.3, roll: 3.2, last: 4.2, tEv: 2.2, tAir: 3.2, tRoll: 5.0, cap: 20, up: 3.5, down: 7, uMax: 6, dMax: 26, photoLen: 1.0, photoRate: 0.5, spotRate: 0.7 },
 };
 // how much a moment is worth: Bill talks about the big ones first (same scale as the highlights)
 const SALVO_SCORE = { space: 100, backfire: 95, cannonception: 90, ufo: 70, wormhole: 60, tornado: 55, hammock: 50, bread: 50, onhold: 48, gatekeeper: 46, pelican: 45, skip: 44, migration: 42, bell: 40, mud: 40, tree: 38, geese: 36, crate: 35, ooo: 34, replyall: 33, pinball: 33, billboard: 32, lilypad: 31, clothesline: 30, glider: 30, pepper: 28, plop: 26, drone: 26, trampoline: 25, castle: 25, banana: 24, walkway: 22, jetstream: 22, misfire: 60 };
@@ -6690,31 +6720,55 @@ function buildSalvoPlan(fl, fast, photoT) {
     return r > P.ev ? Math.min(P.ev * 5, P.ev + (r - P.ev) * k) : r;   // never faster than 5x the event speed
   };
   const make = k => {
-    const segs = [];
+    let segs = [];
     for (let t = 0; t < endT; t += 0.1) {
       const r = rateAtT(t + 0.05, k), last = segs[segs.length - 1];
       if (last && Math.abs(last.r - r) < 1e-6) last.b = Math.min(endT, t + 0.1); else segs.push({ a: t, b: Math.min(endT, t + 0.1), r });
     }
-    // the photo finish: slow motion over the last moment of the duck that settles it
-    if (photoT > 0) {
-      const a = Math.max(0.5, photoT - P.photoLen), b = Math.min(endT, photoT);
+    // slow motion: the spotlights' big moments, and the photo finish over the last moment of the duck that settles it
+    const cut = (segs, w) => {
       const out = [];
-      for (const s of segs) { if (s.b <= a || s.a >= b) out.push(s); else { if (s.a < a) out.push({ a: s.a, b: a, r: s.r }); if (s.b > b) out.push({ a: b, b: s.b, r: s.r }); } }
-      out.push({ a, b, r: P.photoRate, fix: 1 });
-      out.sort((x, y) => x.a - y.a);
-      return out;
-    }
+      for (const s of segs) { if (s.b <= w.a || s.a >= w.b) out.push(s); else { if (s.a < w.a) out.push(Object.assign({}, s, { b: w.a })); if (s.b > w.b) out.push(Object.assign({}, s, { a: w.b })); } }
+      out.push(w);
+      return out.sort((x, y) => x.a - y.a);
+    };
+    for (const sp of spots) segs = cut(segs, { a: sp.sa, b: sp.sb, r: P.spotRate, fix: 1, spot: 1 });
+    if (photoT > 0) segs = cut(segs, { a: Math.max(0.5, photoT - P.photoLen), b: Math.min(endT, photoT), r: P.photoRate, fix: 1, photo: 1 });
     return segs;
   };
-  // a very long volley (many ducks, long slides) lets its quiet stretches run faster so it stays inside the cap
-  let k = 1, segs = make(1), run = salvoRun(segs, P, endT);
-  for (let it = 0; it < 4 && run.T > P.cap; it++) { k *= clamp(run.T / P.cap, 1.1, 1.8) * 1.15; segs = make(k); run = salvoRun(segs, P, endT); }
-  // still too long (an Ice Rink day with a dozen long slides): everything between the launch and the last stop runs
-  // a little faster
-  for (let it = 0; it < 3 && run.T > P.cap * 1.12; it++) { const f = clamp(run.T / (P.cap * 1.08), 1.05, 1.5); for (const sg of segs) if (!sg.fix && sg.a >= 2.4 && sg.b <= endT - 0.8) sg.r *= f; run = salvoRun(segs, P, endT); }
+  let spots = salvoSpotlights(fl, endT, photoT), k, segs, run;
+  const build = () => {
+    // a very long volley (many ducks, long slides) lets its quiet stretches run faster so it stays inside the cap
+    k = 1; segs = make(1); run = salvoRun(segs, P, endT);
+    for (let it = 0; it < 4 && run.T > P.cap; it++) { k *= clamp(run.T / P.cap, 1.1, 1.8) * 1.15; segs = make(k); run = salvoRun(segs, P, endT); }
+    // still too long (an Ice Rink day with a dozen long slides): everything between the launch and the last stop runs
+    // a little faster
+    for (let it = 0; it < 3 && run.T > P.cap * 1.12; it++) { const f = clamp(run.T / (P.cap * 1.08), 1.05, 1.5); for (const sg of segs) if (!sg.fix && sg.a >= 2.4 && sg.b <= endT - 0.8) sg.r *= f; run = salvoRun(segs, P, endT); }
+  };
+  build();
+  if (spots.length && run.T > P.cap * 1.12) { spots = []; build(); }   // no time for slow motion on a volley this long
   let drumAt = 0;
   for (const m of run.marks) if (m[0] <= run.T - 6) drumAt = m[1];
-  return { segs, P, endT, dur: run.T, drumAt, photoAt: photoT > 0 ? Math.max(0.5, photoT - P.photoLen) : -1 };
+  return { segs, P, endT, dur: run.T, drumAt, photoAt: photoT > 0 ? Math.max(0.5, photoT - P.photoLen) : -1, spots };
+}
+// Spotlights: the biggest moments of a volley (at most two, clear of the launch, the finish and each other) play in
+// slow motion while the camera leans in on that duck. In the wide shot of a whole flock, a UFO abduction is a speck.
+// Worked out from the flights, so a replay gets the same ones.
+function salvoSpotlights(fl, endT, photoT) {
+  if (fl.length < 2) return [];
+  const c = [];
+  fl.forEach(f => f.tl.events.forEach(e => {
+    const def = C.EVENTS[e.id], sc = SALVO_SCORE[e.id] || 0;
+    if (!def || sc < 55) return;
+    // the camera: from the wind-up to a moment after it is over; the slow motion: the impact itself
+    const ca = e.t - (def.antic || 0.4) - 0.3, cb = e.t + Math.min(Math.max(0, e.tEnd - e.t), 1.7) + 0.45;
+    if (ca < 2.8 || cb > endT - 2.5 || (photoT > 0 && cb > photoT - 2.5)) return;
+    c.push({ f, id: e.id, t: e.t, ca, cb, sa: e.t - 0.3, sb: e.t + 0.5, sc });
+  }));
+  c.sort((x, y) => y.sc - x.sc || x.t - y.t);
+  const out = [];
+  for (const sp of c) { if (out.length >= 2) break; if (!out.some(o => sp.ca < o.cb + 3 && sp.cb > o.ca - 3)) out.push(sp); }
+  return out.sort((x, y) => x.ca - y.ca);
 }
 function salvoRun(segs, P, endT, from) {
   const pb = { simT: from ? from.simT : 0, rate: from ? from.rate : 1, segs, P }, dt = 1 / 60, marks = [];
@@ -6788,7 +6842,8 @@ function salvoFire(replay) {
   const photoT = replay && SV.photoT != null ? SV.photoT : salvoPhotoT(SV.fl);   // a replay keeps the first showing's photo finish
   if (!replay) SV.photoT = photoT;
   const plan = buildSalvoPlan(SV.fl, replay, photoT);
-  SV.pb = { simT: 0, rate: 1, T: 0, segs: plan.segs, P: plan.P, endT: plan.endT, dur: plan.dur, drumAt: plan.drumAt, photoAt: plan.photoAt, photo: photoT > 0, fired: new Set(), done: false, brake: null };
+  SV.pb = { simT: 0, rate: 1, T: 0, segs: plan.segs, P: plan.P, endT: plan.endT, dur: plan.dur, drumAt: plan.drumAt, photoAt: plan.photoAt, photo: photoT > 0, spots: plan.spots, fired: new Set(), done: false, brake: null };
+  SV.spot = null; SV.spotK = 0;
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
   SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null;
@@ -6833,7 +6888,7 @@ function salvoReplan() {
   const pb = SV.pb;
   if (SV.phase !== 'flight' || !pb || pb.done) return;
   const plan = buildSalvoPlan(SV.fl, SV.replay, pb.photo ? SV.photoT : -1);
-  pb.segs = plan.segs; pb.P = plan.P; pb.brake = null; pb.photoAt = plan.photoAt;
+  pb.segs = plan.segs; pb.P = plan.P; pb.brake = null; pb.photoAt = plan.photoAt; pb.spots = plan.spots;
   const rest = salvoRun(pb.segs, pb.P, pb.endT, { simT: pb.simT, rate: pb.rate });
   pb.dur = pb.T + rest.T;
   if (SV.drumOn) SFX.retimeDrum(rest.T); else { pb.drumAt = pb.simT; for (const m of rest.marks) if (m[0] <= rest.T - 6) pb.drumAt = m[1]; }
@@ -6922,9 +6977,13 @@ function updateSalvoFlight(dt) {
   pb.T += dt;
   pb.simT = Math.min(pb.endT, pb.simT + dt * stepRate(pb, dt));
   const t = pb.simT, n = SV.fl.length;
+  // a spotlight: the camera leans in on one duck's big moment, in slow motion (with a swish on the way in)
+  const sp = (pb.spots && pb.spots.find(s => t >= s.ca && t <= s.cb)) || null;
+  if (sp && SV.spot !== sp) salvoSnd('whoosh', 0.5, 0.5);
+  SV.spot = sp; SV.spotK = approach(SV.spotK || 0, sp ? 1 : 0, 5, dt);
   // the drumroll builds over the last seconds and lands on the result
   if (!SV.replay && n > 1 && !SV.drumOn && t >= pb.drumAt && pb.dur - pb.T > 1.2) { SV.drumOn = true; SFX.startDrum(Math.max(1.2, pb.dur - pb.T)); }
-  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.fix && pb.brake.r < 1))) { pb.fired.add('photo'); SFX.play('shutter'); S.flashAt = S.rt; Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
+  if (pb.photoAt > 0 && !pb.fired.has('photo') && (t >= pb.photoAt || (pb.brake && pb.brake.photo))) { pb.fired.add('photo'); SFX.play('shutter'); S.flashAt = S.rt; Caps.big('PHOTO FINISH!', { px: 90, color: '#ffffff' }); say('photoFinish', {}, { prio: 2 }); SV.lineAt = S.rt; }
   let moving = 0, lastMover = null;
   for (const f of SV.fl) {
     const tl = f.tl, d = f.pl.duck, vars = { duck: d.name, player: f.pl.name };
@@ -7122,6 +7181,17 @@ function drawChaseChip(ctx) {
 }
 function salvoFlightCam(dt, t) {
   const cam = L.cam, pb = SV.pb;
+  const sp = REDUCED_MOTION ? null : SV.spot;   // (reduced motion: the slow motion stays, the swoop in does not)
+  if (sp) {
+    // in close (the ducks only get drawn bigger past about 2.2x), and up to wherever the duck is: the ground drops out
+    // of the bottom of the picture while it is high. (A duck inside a second cannon is still where the camera looks;
+    // one blasting off to space is let go at 650 ft, so the camera is never left up in an empty sky.)
+    const f = sp.f;
+    cam.z = approach(cam.z, 2.8, 2.2, dt);
+    cam.cx = approach(cam.cx, f.x + 40 + 210 / cam.z, 3.4, dt);
+    cam.gy = approach(cam.gy, Math.max(GROUND_Y, 520 + Math.min(f.y, 650) * cam.z), 4, dt);
+    return;
+  }
   const mv = SV.fl.filter(f => !f.done && f.vis && t >= f.tl.launchT);
   let lo, hi, top = 60;
   if (!mv.length) { const f = SV.lead || SV.fl[0]; lo = f.x - 200; hi = f.x + 200; }
@@ -7140,11 +7210,11 @@ function salvoFlightCam(dt, t) {
   cam.z = approach(cam.z, z, z < cam.z ? 2.4 : 1.1, dt);
   const mid = (lo + hi) / 2 + 40;
   cam.cx = approach(cam.cx, mid + 210 / cam.z, 2.2 * fast, dt);
-  cam.gy = approach(cam.gy, GROUND_Y, 3, dt);
+  cam.gy = approach(cam.gy, GROUND_Y, 4.5, dt);   // (quick back down to the ground after a spotlight up in the sky)
 }
 function salvoEnd(quiet) {
   const R = S.race, pb = SV.pb;
-  SV.restAt = S.time; SV.chase = null;
+  SV.restAt = S.time; SV.chase = null; SV.spot = null; SV.spotK = 0;
   // the flight's impact captions live up in the sky, where the result card is about to land: they make way for it
   Caps.bigs = Caps.bigs.filter(b => b.t0 > S.rt);
   if (SV.drumOn) { SFX.stopDrum(0.04); if (!quiet) SFX.play('cymbal'); SV.drumOn = false; }
@@ -7245,6 +7315,8 @@ function drawSalvo(ctx, dt) {
   if (tb) { ctx.save(); ctx.imageSmoothingEnabled = false; ctx.drawImage(LowRes, 0, 0, 1920, 1080); ctx.restore(); }
   Weather.draw(ctx, dt, S.time, (L.cam.cx - (L.lastCx || L.cam.cx)) * L.cam.z / Math.max(dt, 0.001));
   L.lastCx = L.cam.cx;
+  // a spotlight gets cinema bars (the HUD stays on top of them)
+  if (SV.phase === 'flight' && SV.spotK > 0.01) { const h = 64 * easeOut(clamp(SV.spotK, 0, 1)); ctx.fillStyle = 'rgba(20,18,28,0.88)'; ctx.fillRect(0, 0, 1920, h); ctx.fillRect(0, 1080 - h, 1920, h); }
   drawSalvoHUD(ctx, V, t);
 }
 function drawSalvoActors(ctx, V, t) {
@@ -7310,7 +7382,7 @@ function drawSalvoActors(ctx, V, t) {
     if (ft < tl.launchT && tl.special !== 'misfire') continue;   // still in the barrel
     const sxw = V.sx(s.x);
     if (sxw < -220 || sxw > 2140) { if (!done && s.vis) tags.push({ f, s, off: true }); continue; }
-    if (!done && s.vis && s.mode === SIM.MODE.air) drawFlightTrail(ctx, V, tl, ft, teamOf(f.pl).color, SV.fl.length > 20 ? 6 : 10);
+    if (!done && s.vis && s.mode === SIM.MODE.air) drawFlightTrail(ctx, V, tl, ft, teamOf(f.pl).color, SV.fl.length > 20 ? 6 : 10, trailFlair(f.pl.duck));
     if (!done) drawEventActors(ctx, V, ft, s, px, true, tl, f.pl, f.hideGag);
     const ex = tl.extra || {};
     const hatGone = (tl.hat && ft >= tl.hat.t0) || (ex.hatStolenT != null && ft >= ex.hatStolenT);
@@ -7395,6 +7467,7 @@ function drawSalvoTags(ctx, V) {
   for (const g of order) {
     // a duck out of the picture (or behind the board) gets an arrow on the edge instead (below), not a squeezed-in tag too
     if (!g.done && g.s && g.s.vis) { const ax = V.sx(g.s.x), ay = V.sy(g.s.y); if (ay < 96 || ax < 20 || ax > 1470) continue; }
+    if (g.sy > 900) continue;   // below the picture (a spotlight has the camera up in the sky): no tag down on Bill's bar
     const f = g.f, tm = teamOf(f.pl), isLead = f.pl.key === leadKey && n > 1;
     ctx.font = font(fpx);
     const label = fitTail(ctx, (f.pl.key === pick ? '★ ' : '') + f.pl.name, g.done && f.tl ? ' · ' + fmtFt(f.tl.final) : '', 300 - 22);   // a long name gives way, never the distance
@@ -7449,7 +7522,7 @@ function drawSalvoTags(ctx, V) {
   let calls = 0;
   for (const g of SV.tags) {
     const f = g.f;
-    if (f.sx == null) continue;
+    if (f.sx == null || f.sy > 900) continue;
     if (calls >= maxCalls) break;
     if (bigNow.includes(String(g.text).trim().toUpperCase())) continue;
     const k = (S.rt - g.t0) / g.dur;
@@ -7477,6 +7550,7 @@ function drawSalvoTags(ctx, V) {
     const sx = V.sx(s.x), sy = V.sy(s.y);
     const up = sy < 96, left = sx < 20, right = sx > 1470;
     if (!up && !left && !right) continue;
+    if (!up && SV.phase === 'flight' && SV.spotK > 0.3 && !REDUCED_MOTION) continue;   // (out of the picture only while a spotlight is on)
     const tm = teamOf(f.pl);
     ctx.font = font(24);   // (edgeChipWidth's font) the altitude and the arrow stay whole; a long name gives way
     // (a chip up top already sits at the right-hand end when its duck is off to the right: no ▶ needed there)
