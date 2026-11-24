@@ -572,7 +572,8 @@ C.LINES = {
   hatOff: ['There goes the hat!', 'Hat overboard!', 'And the hat has a mind of its own!'],
   hatWins: ['Technically, the hat wins.', 'The hat flew farther than the duck. Think about that one.', 'Folks, the HAT beat the duck.'],
   // the reveal: Bill reads out one duck's scouting report (its stats and bio are otherwise only on the one-by-one intro card)
-  scoutStat: ['Scouting report on {duck}. {stat}: {value}.', 'A quick word from the scouts on {duck}. {stat}? {value}.', 'The file on {duck} says {stat}: {value}. Make of that what you will.', 'Scouts are very excited about {duck}. {stat}: {value}.'],
+  scoutStat: ['Scouting report on {duck}. {stat}: {value}.', 'A quick word from the scouts on {duck}. {stat}? Apparently {value}.', 'The file on {duck} says {stat}: {value}. Make of that what you will.', 'Scouts are very excited about {duck}. {stat}: {value}.'],
+  rerollHint: ["Don't like your duck? Click it for a new one.", 'Not feeling your duck? Click it and Thunderbill will find you another.', 'Any duck can be swapped before we lock them in. Just click it.', "Click a duck to trade it in. No questions asked. Some judgement.", 'Second thoughts about your duck? Click it. It will understand.'],
   scoutBio: ['Scouting report on {duck}: {bio}', 'Everything you need to know about {duck}: {bio}', 'A little background on {duck}. {bio}'],
   billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
   billPickWon: ['Called it! Bill\'s pick, {duck}, took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick, {duck}, WON! Nobody tell my editor.'],
@@ -2333,10 +2334,9 @@ function runSelfTest() {
     const rsA = salvoRaceStory(sfl12, { results: {} }), rsB = salvoRaceStory(sfl12, { results: {} });
     const ledSum = [...rsA.led.values()].reduce((a, b) => a + b, 0), endS = Math.max(...sfl12.map(f => f.tl.endT));
     check('the race story is read from the flights: the same every time, one leader at a time, places inside the field', sfl12.every(f => (rsA.led.get(f) || 0) === (rsB.led.get(f) || 0) && rsA.low.get(f) === rsB.low.get(f)) && ledSum <= endS - 3 + 0.15 && ledSum > (endS - 3) * 0.8 && [...rsA.low.values()].every(r => r >= 1 && r <= 12), ledSum.toFixed(1) + ' s led of ' + (endS - 3).toFixed(1));
-    // the scouting report: every duck has one (bio and three stats), and its card stays on screen beside any card
-    const scoutOk = [1, 4, 12, 25, 40].every(n => cardGrid(n).every(rc => { const p = scoutCardAt(rc, 470, 330); return p.x >= 20 && p.x + 470 <= 1900 && p.y >= 100 && p.y + 330 <= 930 && (p.x >= rc.x + rc.w || p.x + 470 <= rc.x || n === 1); }));
+    // the scouting report: every duck has one (bio and three stats), for Bill and the one-by-one intro card
     const someDucks = players.slice(0, 20).map(p => generateDuck(duckSeed(day, p.name, 0), {}));
-    check('every duck has a scouting report, and it fits beside its card', scoutOk && someDucks.every(d => d.bio && d.stats && d.stats.length === 3 && d.stats.every(st => st.k && st.v && !/\{n\}/.test(st.v))));
+    check('every duck has a scouting report', someDucks.every(d => d.bio && d.stats && d.stats.length === 3 && d.stats.every(st => st.k && st.v && !/\{n\}/.test(st.v))));
     const close = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent' };
     const cds = awardDescs(close);
     check('a long award line has its other versions ready, shortest first', cds.length === C.AWARDS.closest.desc.length && cds[0] === awardDesc(close) && cds.slice(1).every((d, i, a) => !i || a[i - 1].length <= d.length));
@@ -4754,7 +4754,14 @@ const Caps = {
 const Lines = {
   bags: {}, rng: new Rng(1), used: new Set(), last: {},
   reset(seed) { this.bags = {}; this.rng = new Rng(hash('lines', seed >>> 0)); this.used = new Set(); this.last = {}; },
-  fill(text, vars) { return tidyDots(String(text).replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null ? vars[k] : m))); },
+  // a value that starts a sentence starts with a capital ("Heartbreaker! A whisker short."; not after "...")
+  fill(text, vars) {
+    return tidyDots(String(text).replace(/\{(\w+)\}/g, (m, k, off, str) => {
+      if (!vars || vars[k] == null) return m;
+      const v = String(vars[k]);
+      return /(^|(?<!\.)[.!?]\s+)$/.test(str.slice(0, off)) ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+    }));
+  },
   next(pool, vars, isDuck) {
     const src = ((isDuck ? C.DUCK_LINES[pool] : C.LINES[pool]) || []).filter(l => typeof l === 'string' && l);
     if (!src || !src.length) return null;
@@ -8417,42 +8424,15 @@ function revealPrimary() {
   if (RV.shuf < 0) { RV.shuf = 0; R.shuffled = true; R.stage = 'forecast'; saveRace(); SFX.play('whoosh', 1.2); setBig("LET'S LAUNCH!", false); return; }
   if (RV.fc >= 0.6 || RV.fc > 50) { SFX.play('click'); Iris.start(() => { if (S.race) launchBegin(); }, 960, 540); }
 }
-// every card is up: how to reroll, then a scouting report on one duck (seeded, so a reload reads the same one)
+// every card is up: how to reroll, then Bill reads one duck's scouting report (seeded, so a reload reads the same one)
 function revealDoneLines() {
   const R = S.race;
-  Caps.say('Point at a duck for its scouting report. Click one to reroll it.', {});
+  say('rerollHint', {});
   const pl = R.players.length ? R.players[hash(R.seed, 'scout') % R.players.length] : null, d = pl && pl.duck;
   if (!d) return;
   const st = d.stats && d.stats.length ? d.stats[hash(R.seed, 'scoutstat') % d.stats.length] : null;
   if (st && hash(R.seed, 'scoutkind') % 3) say('scoutStat', { duck: d.name, stat: st.k, value: st.v }, { delay: 2.6 });
   else if (d.bio) say('scoutBio', { duck: d.name, bio: d.bio }, { delay: 2.6 });
-}
-// beside the card (right, else left), on screen and clear of Bill's bar
-function scoutCardAt(rc, W, H) {
-  let x = rc.x + rc.w + 14; if (x + W > 1900) x = rc.x - 14 - W;
-  if (x < 20) x = clamp(rc.x + rc.w / 2 - W / 2, 20, 1900 - W);
-  return { x, y: clamp(rc.y + rc.h / 2 - H / 2, 100, 930 - H) };
-}
-// a duck's scouting report next to its card while the host points at it (before the ducks are locked in)
-function drawScoutCard(ctx, rc, pl) {
-  const d = pl.duck, W = 470, pad = 20, tw = W - pad * 2;
-  ctx.save();
-  ctx.font = font(26, 800); const bl = wrapText(ctx, '\u201c' + d.bio + '\u201d', tw, 3);
-  const stats = d.stats || [];
-  const H = pad + 34 + 8 + bl.length * 32 + 10 + stats.length * 40 + pad;
-  const { x, y } = scoutCardAt(rc, W, H);
-  rr(ctx, x, y, W, H, 24); fillStrokeLifted(ctx, '#fff8e6', 5);
-  const nameY = y + pad + 17, bioY = y + pad + 34 + 8 + 16, statY = y + pad + 34 + 8 + bl.length * 32 + 10 + 17;
-  txt(ctx, d.name, x + pad, nameY, { px: 30, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: tw });
-  bl.forEach((ln, i) => txt(ctx, ln, x + pad, bioY + i * 32, { px: 26, color: '#4a4458', sw: 0, align: 'left', weight: 800 }));
-  stats.forEach((st, i) => {
-    const yy = statY + i * 40;
-    rr(ctx, x + pad, yy - 17, tw, 34, 10); ctx.fillStyle = '#f1e9d4'; ctx.fill();
-    ctx.font = font(22, 800); const kw = ctx.measureText(st.k + ': ').width;
-    txt(ctx, st.k + ':', x + pad + 12, yy + 1, { px: 22, color: '#6b6577', sw: 0, align: 'left', weight: 800 });
-    txt(ctx, st.v, x + pad + 12 + kw, yy + 1, { px: 22, minPx: 18, color: OUT, sw: 0, align: 'left', maxW: tw - kw - 24 });
-  });
-  ctx.restore();
 }
 function updateReveal(dt) {
   const R = S.race;
@@ -8504,19 +8484,28 @@ function drawReveal(ctx, dt) {
   const pos = new Array(n);
   R.queue.forEach((q, qi) => { if (!q.bonus && pos[q.p] == null) pos[q.p] = qi; });
   const sk = RV.shuf >= 0 ? easeInOut(clamp(RV.shuf / 1.4, 0, 1)) : 0;
+  // pointing at a new card: its duck hops and quacks hello (in its own voice; a sweep along a row does not machine-gun)
+  if (!RV.hopAt) RV.hopAt = {};
+  if (S.hover !== RV.lastHov) {
+    RV.lastHov = S.hover;
+    const hi = /^card\d+$/.test(S.hover || '') ? +S.hover.slice(4) : -1;
+    if (hi >= 0 && RV.done && RV.shuf < 0 && R.players[hi] && !S.paused) { RV.hopAt[hi] = S.rt; if (S.rt - (RV.quackAt || -9) > 0.35) { RV.quackAt = S.rt; SFX.play('quack', R.players[hi].duck.pitch); } }
+  }
   R.players.forEach((pl, i) => {
     const a = grid[i], b = grid[pos[i] != null ? pos[i] : i];
     const lift = Math.sin(sk * Math.PI) * 50 * ((i % 3) - 1);
-    const rc = { x: lerp(a.x, b.x, sk) + lift, y: lerp(a.y, b.y, sk) - Math.sin(sk * Math.PI) * 30, w: a.w, h: a.h };
+    // the card under the pointer rises a touch while cards can still be rerolled (a click there rerolls that duck)
+    if (!RV.hov) RV.hov = [];
+    RV.hov[i] = approach(RV.hov[i] || 0, RV.done && RV.shuf < 0 && S.hover === 'card' + i ? 1 : 0, 10, S.fdt || 0);
+    const rc = { x: lerp(a.x, b.x, sk) + lift, y: lerp(a.y, b.y, sk) - Math.sin(sk * Math.PI) * 30 - easeOut(RV.hov[i]) * 8, w: a.w, h: a.h };
     const fl = RV.flipped[i];
     const ft = fl ? clamp((RV.t - RV.flipAt[i]) / 0.3, 0, 1) : 0;
     const rr0 = RV.rerollAt[i] != null ? clamp((S.rt - RV.rerollAt[i]) / 0.4, 0, 1) : 1;
     const flipK = Math.min(RV.done && RV.t < RV.flipAt[i] ? 1 : ft, rr0);
-    drawCard(ctx, rc, pl, flipK, RV.shuf >= 0 && R.mode !== 'salvo' ? (pos[i] + 1) : null, RV.fc >= 0 && R.pick === pl.key);
-    if (RV.done && RV.shuf < 0) S.buttons.push({ id: 'card' + i, x: rc.x, y: rc.y, w: rc.w, h: rc.h, fn: () => { rerollDuck(i); RV.rerollAt[i] = S.rt; if (R.players[i].duck.rarity === 'epic' || R.players[i].duck.rarity === 'legendary') RV.stampAt[i] = S.rt + 0.25; SFX.play('flip'); SFX.play('sting', R.players[i].duck.rarity); Toast.show('Rerolled ' + pl.name + "'s duck"); } });
+    const hk = RV.hopAt[i] != null ? (S.rt - RV.hopAt[i]) / 0.36 : 1;
+    drawCard(ctx, rc, pl, flipK, RV.shuf >= 0 && R.mode !== 'salvo' ? (pos[i] + 1) : null, RV.fc >= 0 && R.pick === pl.key, hk >= 0 && hk < 1 ? Math.sin(hk * Math.PI) : 0);
+    if (RV.done && RV.shuf < 0) S.buttons.push({ id: 'card' + i, x: rc.x, y: rc.y, w: rc.w, h: rc.h + easeOut(RV.hov[i]) * 8, fn: () => { rerollDuck(i); RV.rerollAt[i] = S.rt; if (R.players[i].duck.rarity === 'epic' || R.players[i].duck.rarity === 'legendary') RV.stampAt[i] = S.rt + 0.25; SFX.play('flip'); SFX.play('sting', R.players[i].duck.rarity); Toast.show('Rerolled ' + pl.name + "'s duck"); } });
   });
-  // the host is pointing at a duck: its scouting report (drawn after every card, so no neighbour covers it)
-  if (RV.done && RV.shuf < 0 && S.hover && /^card\d+$/.test(S.hover)) { const i = +S.hover.slice(4), pl = R.players[i]; if (pl && grid[i]) drawScoutCard(ctx, grid[i], pl); }
   // rarity stamps: slammed onto the card's picture, then they fade (the pill on the card keeps saying it)
   if (RV.shuf < 0 && RV.stampAt) for (const k in RV.stampAt) {
     const age = S.rt - RV.stampAt[k], a = grid[k], d = R.players[k] && R.players[k].duck;
@@ -8534,7 +8523,7 @@ function drawReveal(ctx, dt) {
   // a name is wrong or someone is missing: go back to the roster (the race hasn't started yet)
   if (RV.shuf < 0) button(ctx, 'editnames', 40, 948, 330, 76, '◀ Edit names', { bg: '#fff8e6', fn: () => { Store.del('current'); S.race = null; Caps.reset(); go('roster'); Toast.show('Fix the names, then press REVEAL DUCKS again'); } });
 }
-function drawCard(ctx, rc, pl, flipK, num, pick) {
+function drawCard(ctx, rc, pl, flipK, num, pick, hop) {
   const { x, y, w, h } = rc;
   const d = pl.duck;
   const sx = Math.abs(Math.cos(flipK * Math.PI));
@@ -8561,7 +8550,7 @@ function drawCard(ctx, rc, pl, flipK, num, pick) {
     rr(ctx, x + 8, y + 8, w - 16, artH, 16); fillStroke(ctx, mix(R0.color, '#ffffff', 0.55), 4);
     const ex = (S.race && S.race.champ === pl.key ? 'crown' : '') + (S.cond.friday ? 'party' : '');
     const ps = Math.min(artH * 0.72, w * 0.62);
-    drawDuck(ctx, d, x + w / 2, y + 8 + artH * 0.56, ps, { pose: 'stand', t: S.time, aura: true, crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
+    drawDuck(ctx, d, x + w / 2, y + 8 + artH * 0.56 - (hop || 0) * artH * 0.12, ps, { pose: 'stand', t: S.time, aura: true, crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
     const top = y + 8 + artH + 4, room = yb - top;
     let npx = clamp(Math.round(Math.min(h * 0.13, w * 0.11)), 19, 30), lines = [d.name];
     if (room >= npx * 2.2) ({ lines, px: npx } = wrapFit(ctx, d.name, w - 20, 2, npx, Math.max(16, Math.round(npx * 0.72))));   // shrink a little before cutting a long name short
