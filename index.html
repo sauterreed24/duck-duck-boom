@@ -678,6 +678,12 @@ C.DUCK_LINES = {
   billboard: ['Ow. Fine. I am fine.', 'Good sign though.', "Read the ad!", "Bonk."],
   trampoline: ['Again! Again!', 'Higher! HIGHER!', "Boing! Boing!", "Best. Office. Perk."],
   plop: ['Pond, sweet pond.', 'Bath time!', "Cannonball!", "The water is lovely!"],
+  crate: ['Ooh, a present!', 'What did I win?', 'Is it bread?', 'Unboxing time!'],
+  jetstream: ['Tailwind!', 'Whoosh!', 'I am one with the wind!', 'Is this first class?'],
+  pinball: ['Bing! Bong! Ow!', 'TILT!', 'Extra ball!', 'High score!'],
+  castle: ['Bouncy!', 'Best. Party. Ever.', 'Shoes off in the castle!', 'Again!'],
+  migration: ['Room for one more?', 'Which way is south?', 'Is this a team offsite?', 'Honk? I mean, QUACK!'],
+  cannonception: ['Not AGAIN!', 'Round two!', 'Another cannon?!', 'Double-booked!'],
   selfie: ['Get my good side!', 'For the pond group chat!'],
   hatwin: ['My hat! MY HAT!', 'Show-off.'],
   dizzy: ['Quack?', 'Which way is up?'],
@@ -5570,11 +5576,14 @@ function resultsText(R) {
   const cond = S.cond;
   const head = 'Duck Duck BOOM! · ' + shortDate(R.day) + ' · ' + st.length + ' duck' + (st.length === 1 ? '' : 's') + ' · ' + modName(cond) + ' · Race ID ' + R.id + (R.practice ? ' · Practice' : '');
   const lines = [head];
-  st.slice(0, 3).forEach((e, i) => lines.push((i + 1) + '. ' + e.pl.name + ' · ' + e.pl.duck.name + ' · ' + fmtDist(st, i)));
+  // medals read at a glance in a chat (Teams and Slack draw them in colour)
+  st.slice(0, 3).forEach((e, i) => lines.push(['🥇', '🥈', '🥉'][i] + ' ' + e.pl.name + ' · ' + e.pl.duck.name + ' · ' + fmtDist(st, i)));
+  if (!R.practice && st.length && R.recordStart != null && st[0].dist > R.recordStart) lines.push('🏆 New pond record! (the old one was ' + fmtFt(R.recordStart) + ')');
   const aw = awards.slice(0, 3).map(a => C.AWARDS[a.id].name + ' (' + a.e.pl.name + ')');
   if (aw.length) lines.push('Awards: ' + aw.join(' · '));
   const tod = teamOfDay(R);
   if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
+  if (feather) lines.push('Good Sport Feather: ' + feather.pl.name + ' (' + feather.pl.duck.name + ')');   // (it is on the podium too)
   if (hl.length) lines.push('Highlight: ' + hl[0]);
   const so = C.LINES.signoff;   // Bill signs off (the same line every time this show is copied)
   lines.push('Bill says: ' + so[hash(R.seed >>> 0, 'signoff') % so.length]);
@@ -8003,7 +8012,7 @@ function drawSalvoTags(ctx, V) {
     const a = k < 0.12 ? k / 0.12 : k > 0.75 ? (1 - k) / 0.25 : 1;
     ctx.font = font(g.px);
     const cw = Math.min(420, ctx.measureText(g.text).width) + 16, chh = g.px * 1.1, cx = clamp(f.sx, 120, 1380);
-    let y = (f.tagY != null ? f.tagY : f.sy - px) - 26 - k * 46;
+    let y = Math.min((f.tagY != null ? f.tagY : f.sy - px) - 26 - k * 46, 806 - chh / 2 - 8 - k * 46);   // never down behind Bill's caption bar (its top edge is at 806)
     const hit = () => cps.some(o => Math.abs(o.x - cx) < (o.w + cw) / 2 && Math.abs(o.y - y) < (o.h + chh) / 2);
     for (let tries = 0; tries < 6 && hit(); tries++) y -= chh * 0.55;
     if (y < 120 || hit()) continue;   // no clear spot: the board and the name tags carry the story
