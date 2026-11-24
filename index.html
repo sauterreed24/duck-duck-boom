@@ -515,6 +515,8 @@ C.LINES = {
   salvoHeldOn: ['{duck} holds on! {margin} to spare!', 'And {duck} survives the late charge by {margin}!', 'Phew! {duck} keeps it by {margin}!', '{duck} hangs on by {margin}! Somebody breathe!'],
   // two ducks come to rest in the same spot: the second one ends up on top
   salvoStack: ['{duck} comes down right on top of {other}. Cozy.', 'Duck stack! {duck} is sitting on {other}!', '{other} has a passenger now: {duck}!', '{duck} parks on {other}. Bold move.', "That's a stack! {duck} on top of {other}!", '{duck} found a soft landing: {other}.'],
+  // a duck that led for a long stretch has been passed
+  salvoReignEnd: ["That's the end of the {old} era!", "{duck} ends {old}'s reign at the top!", 'The {old} era is over! {duck} takes the lead!', '{old} has been passed! It was a good run.', '{old} is no longer in charge. {duck} is!', 'And down goes {old}! {duck} has the lead!'],
   salvoTower: ['A {n}-duck tower! Somebody call the zoning office!', 'That is {n} ducks in one pile! Teamwork!', 'Duck tower! {n} high and wobbling!', '{n} ducks, one spot. Very efficient use of the field.'],
   salvoLead: ['{duck} takes the lead!', '{player}\'s duck is out in front now!', 'A new duck in front: {duck}!', 'Here comes {duck}, right to the front!', '{duck} goes past everybody!', "{duck} has the lead and is not giving it back!", "{player}'s duck is out in front! Somebody update the slide!", "{duck} moves to the front of the flock. Big move. Huge.", "New name at the top: {duck}!", "{duck} takes the lead with a move I can only describe as aerodynamic."],
   salvoLast: ['Everybody is down except {duck}. Still going!', "All eyes on {duck}: the last duck moving!", 'One duck left out there: {duck}!', "{player}'s duck is the only one still rolling!", "Everybody else has landed. {duck} is working late.", "{duck} did not get the memo. The meeting is over. Still going!", "Just {duck} left out there, taking the scenic route!"],
@@ -624,6 +626,9 @@ C.LINES = {
   ev_balloon: ['A birthday balloon! Happy birthday to somebody!', 'Just a balloon, out for a float.'],
 };
 C.DUCK_LINES = {
+  // the runner-up on the podium, once the Golden Loaf has landed (lost by a few feet, or by more)
+  runnerUpClose: ['Recount!', 'I demand a recount.', 'Was the camera even on?', 'That photo is blurry.', 'Check the tape!', 'By a WHAT?'],
+  runnerUp: ['Silver is the new gold.', 'Happy for them. Mostly.', 'Next week. Next week.', 'Second is just first, but later.', 'I was robbed. Politely.', 'Fine. FINE.'],
   generic: ['I REGRET NOTHING', 'Per my last quack...', 'Is this a team-building exercise?', 'I can see my pond from here!', 'Tell my pond I love them', 'Wheeeee—wait', "I'm a duck, not a pilot!", 'Worth it.', 'Circle back? CIRCLE BACK?!', "Mom, I'm on TV!",
     'Is this the line for bread?', "Nobody said there'd be a cannon!", 'This was NOT in the meeting invite!', 'Can we take this offline?', 'QUAAAACK!', 'Totally on purpose.', 'Do I get frequent flyer miles?', 'Weeeee!', "Who's driving this thing?!", 'Gravity, we need to talk.',
     'Okay, NOW I am awake.', 'I can fly! I CAN FLY! I cannot fly.', "Sorry, you're breaking up!", 'Brb, flying.', 'Watch this!', 'Calculated.', 'Did anyone get that on camera?', 'Hi everyone!', 'Wing it! WING IT!', 'Out of office! Literally!',
@@ -684,6 +689,8 @@ C.AWARDS = {
   napper: { name: 'Power Napper', desc: ['Took a nap mid-race.', 'Took a nap mid-race. Woke up refreshed.'] },
   clean: { name: 'Self-Made Duck', desc: ['{v} with no help at all. Just cannon.', '{v} on its own feathers. No boosts required.', 'No boosts, no bonks: {v} of pure cannon.'] },
   knocks: { name: 'Hard Knocks', desc: ['{v} obstacles in one flight. Still smiling.', 'Hit {v} obstacles and kept going.', '{v} obstacles. Walked it off every time.'] },
+  early: { name: 'Early Bird', desc: ['Led the flock for {v} seconds. Finished {other}.', 'In front for {v} seconds. Then everybody else showed up.', 'Led for {v} seconds. Peaked early. Finished {other}.'] },
+  climber: { name: 'Late Bloomer', desc: ['Was {v} at one point. Finished {other}.', 'From {v} to {other}. Saved the best for last.', 'Climbed from {v} to {other}. Never in doubt.'] },
   lowrider: { name: 'Low Rider', desc: ['Never higher than {v}. Keeps it humble.', 'Peaked at {v}. Prefers the scenic route.', 'Topped out at {v}. Heights are overrated.'] },
   feather: { name: 'Good Sport Feather', desc: 'Every flight counts.' },
 };
@@ -2203,6 +2210,18 @@ function runSelfTest() {
     S.race = { id: 'self-aw1', seed: 6, day, players: solo, queue: [], idx: 0, results: { solo: solo[0].r }, shots: {}, legend: [] };
     const aw1 = computeAwards(S.race);
     check('awards go to different ducks while there are enough of them (and a solo run still gets three)', aw.awards.length === 3 && new Set(awWho).size === 3 && new Set(aw.awards.map(a => a.id)).size === 3 && awWho.filter(k => k === 'top').length === 1 && aw.feather && !awWho.includes(aw.feather.pl.key) && aw1.awards.length === 3 && new Set(aw1.awards.map(a => a.id)).size === 3, aw.awards.map(a => a.id + ':' + a.e.pl.name).join(' ') + ' | solo ' + aw1.awards.map(a => a.id).join(' '));
+    // the race as it was run: a duck that led a long stretch and fell off the podium is the Early Bird; a podium duck
+    // that was a third of the field further back is the Late Bloomer; neither story is told twice on the same screen
+    const story8 = [flyer('Win', 2000, 300, 18, ['geese']), flyer('Two', 1900, 290, 17, ['mud']), flyer('Thr', 1800, 280, 16, []), flyer('Fou', 1700, 270, 15, ['drone']), flyer('Fiv', 1600, 260, 14, []), flyer('Six', 1500, 250, 13, []), flyer('Sev', 1400, 240, 12, []), flyer('Eig', 1300, 230, 11, [])];
+    story8.forEach((p, i) => { p.r.led = i === 4 ? 9.3 : i === 0 ? 4 : 0.5; p.r.low = i === 0 ? 7 : i + 1; });
+    S.race = { id: 'self-story', seed: 8, day, players: story8, queue: [], idx: 0, results: Object.fromEntries(story8.map(p => [p.key, p.r])), shots: {}, legend: [] };
+    const awS = computeAwards(S.race), byId = Object.fromEntries(awS.awards.map(a => [a.id, a]));
+    const hlS = computeHighlights(S.race, 3, awS.awards), hlS0 = computeHighlights(S.race, 3);
+    check('the race story: Early Bird and Late Bloomer go to the right ducks, and the highlights do not repeat them', byId.early && byId.early.e.pl.key === 'fiv' && awardDesc(byId.early).includes('9') && byId.climber && byId.climber.e.pl.key === 'win' && /7th/.test(awardDesc(byId.climber)) && hlS0.some(h => /led the flock for 9 seconds and finished 5th/.test(h)) && !hlS.some(h => /led the flock|climbed from/.test(h)), awS.awards.map(a => a.id).join(',') + ' | ' + hlS.join(' | '));
+    const sfl12 = players.slice(0, 12).map((p, i) => ({ i, pl: { key: p.key }, tl: SIM.simulate(flightSeed(raceSeed, p.key, 0), cond, course, null, {}) }));
+    const rsA = salvoRaceStory(sfl12, { results: {} }), rsB = salvoRaceStory(sfl12, { results: {} });
+    const ledSum = [...rsA.led.values()].reduce((a, b) => a + b, 0), endS = Math.max(...sfl12.map(f => f.tl.endT));
+    check('the race story is read from the flights: the same every time, one leader at a time, places inside the field', sfl12.every(f => (rsA.led.get(f) || 0) === (rsB.led.get(f) || 0) && rsA.low.get(f) === rsB.low.get(f)) && ledSum <= endS - 3 + 0.15 && ledSum > (endS - 3) * 0.8 && [...rsA.low.values()].every(r => r >= 1 && r <= 12), ledSum.toFixed(1) + ' s led of ' + (endS - 3).toFixed(1));
     const close = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent' };
     const cds = awardDescs(close);
     check('a long award line has its other versions ready, shortest first', cds.length === C.AWARDS.closest.desc.length && cds[0] === awardDesc(close) && cds.slice(1).every((d, i, a) => !i || a[i - 1].length <= d.length));
@@ -5008,6 +5027,10 @@ function recordFlight(q, tl) {
 }
 
 /* ---------- awards + highlights ---------- */
+// the race as it was run: in front for 6 s or more and then off the podium; or on the podium after being a third of
+// the field further back, well into the flight (from salvoRaceStory)
+function storyEarly(e, rank) { return rank >= 4 && e.r.led >= 6; }
+function storyClimb(e, rank, n) { return !!e.r.low && rank <= 3 && e.r.low - rank >= Math.max(3, Math.round(n / 3)); }
 function computeAwards(R) {
   const st = standings();
   if (!st.length) return { awards: [], feather: null };
@@ -5021,6 +5044,15 @@ function computeAwards(R) {
   const hat = st.find(e => e.r.hatWin); if (hat) out.push({ id: 'hat', e: hat, v: '' });
   const bread = st.find(e => has(e, 'bread')); if (bread) out.push({ id: 'bread', e: bread, v: '' });
   const comeback = st.find(e => e.r.misfire); if (comeback) out.push({ id: 'comeback', e: comeback, v: '' });
+  // the race as it was run (in the salvo): the duck that led for a long stretch and then finished off the podium, and
+  // the biggest climb from well back in the flock to the podium
+  if (st.length >= 3) {
+    const early = st.filter((e, i) => storyEarly(e, i + 1)).sort((a, b) => b.r.led - a.r.led)[0];
+    if (early) out.push({ id: 'early', e: early, v: String(Math.round(early.r.led)), other: ordinal(st.indexOf(early) + 1) });
+    const climbOf = e => (e.r.low || 0) - (st.indexOf(e) + 1);
+    const climb = st.filter((e, i) => storyClimb(e, i + 1, st.length)).sort((a, b) => climbOf(b) - climbOf(a))[0];
+    if (climb) out.push({ id: 'climber', e: climb, v: ordinal(climb.r.low), other: ordinal(st.indexOf(climb) + 1) });
+  }
   const alt = by(e => e.r.alt); out.push({ id: 'altitude', e: alt, v: fmtFt(alt.r.alt) });
   const air = by(e => e.r.air); out.push({ id: 'airtime', e: air, v: air.r.air.toFixed(1) });
   const chaos = by(e => e.r.n); if (chaos.r.n >= 2) out.push({ id: 'chaos', e: chaos, v: String(chaos.r.n) });
@@ -5097,7 +5129,9 @@ function awardDescs(a) {
   return [first].concat(all.filter(t => t !== first).sort((x, y) => x.length - y.length));
 }
 function awardDesc(a) { return awardDescs(a)[0]; }
-function computeHighlights(R, max) {
+// awards: when given, a story one of the awards already tells about that duck is only used if there is nothing else
+const AWARD_STORY = { wrongway: 'backfire', space: 'space', hat: 'hatWin', bread: 'bread', comeback: 'misfire', napper: 'hammock', early: 'early', climber: 'climber' };
+function computeHighlights(R, max, awards) {
   const N = max || 5;
   const st = standings();
   const cands = [];
@@ -5116,16 +5150,22 @@ function computeHighlights(R, max) {
       cands.push({ s: (score[id] || 20) + (e.pi % 7) * 0.1, t, who: duck, id });
     }
     if (e.r.on) cands.push({ s: 29 + (e.pi % 7) * 0.1, t: duck + ' came down right on top of ' + e.r.on + '.', who: duck, id: 'stack' });
+    // the race as it was run (the same tests as the Early Bird and Late Bloomer awards)
+    const rank = st.indexOf(e) + 1;
+    if (st.length >= 3 && storyEarly(e, rank)) cands.push({ s: 47 + (e.pi % 7) * 0.1, t: duck + ' led the flock for ' + Math.round(e.r.led) + ' seconds and finished ' + ordinal(rank) + '.', who: duck, id: 'early' });
+    if (st.length >= 3 && storyClimb(e, rank, st.length)) cands.push({ s: 49 + (e.pi % 7) * 0.1, t: duck + ' climbed from ' + ordinal(e.r.low) + ' to ' + ordinal(rank) + '.', who: duck, id: 'climber' });
   }
   // the race itself is the story when the Golden Loaf was decided by a few feet
   if (st.length > 1) {
     const g = shownGap(st[0].dist, st[1].dist, showsTenths(st, 0) || showsTenths(st, 1));
     if (g < 25) cands.push({ s: 80, t: st[0].pl.duck.name + ' beat ' + st[1].pl.duck.name + ' to the Golden Loaf by ' + marginText(g) + '.', who: st[0].pl.duck.name, id: 'photo' });
   }
+  if (awards) { const told = new Set(awards.filter(a => AWARD_STORY[a.id]).map(a => a.e.pl.duck.name + '|' + AWARD_STORY[a.id])); for (const c of cands) if (told.has(c.who + '|' + c.id)) c.s -= 1000; }
   cands.sort((a, b) => b.s - a.s);
   // five different stories: no duck twice and no kind of event twice while there is anything else to tell, and the
   // winner's best moment is always among them
-  const picked = [], used = new Set(), usedId = new Set();
+  // (a kind of story one of the awards tells counts as told already)
+  const picked = [], used = new Set(), usedId = new Set(awards ? awards.map(a => AWARD_STORY[a.id]).filter(Boolean) : []);
   const take = c => { picked.push(c); used.add(c.who); usedId.add(c.id); };
   for (const c of cands) { if (picked.length >= N) break; if (!used.has(c.who) && !usedId.has(c.id)) take(c); }
   for (const c of cands) { if (picked.length >= N) break; if (!picked.includes(c) && !used.has(c.who)) take(c); }
@@ -5133,7 +5173,7 @@ function computeHighlights(R, max) {
   for (const c of cands) { if (picked.length >= N) break; if (!picked.includes(c)) take(c); }
   // (a set piece that caught half the flock is still told once: the winner's moment takes the place of the same kind
   // of story when one is already on the list)
-  const champ = st.length ? st[0].pl.duck.name : null, cw = cands.find(c => c.who === champ);
+  const champ = st.length ? st[0].pl.duck.name : null, cw = cands.find(c => c.who === champ && c.s > -500);   // (not a story its award already tells)
   if (cw && !picked.some(c => c.who === champ)) {
     const same = picked.findIndex(c => c.id === cw.id);
     if (same >= 0) picked.splice(same, 1); else if (picked.length >= N) picked.pop();
@@ -5158,7 +5198,7 @@ function computeHighlights(R, max) {
 function resultsText(R) {
   const st = standings();
   const { awards, feather } = computeAwards(R);
-  const hl = computeHighlights(R);
+  const hl = computeHighlights(R, 5, awards);
   const cond = S.cond;
   const head = 'Duck Duck BOOM! · ' + shortDate(R.day) + ' · ' + st.length + ' duck' + (st.length === 1 ? '' : 's') + ' · ' + modName(cond) + ' · Race ID ' + R.id + (R.practice ? ' · Practice' : '');
   const lines = [head];
@@ -5186,7 +5226,7 @@ function finalizeRace() {
       teams: teams().map(t => t.name),
       res: st.map(e => ({ p: e.pl.name, t: e.pl.team, d: e.pl.duck.name, r: e.pl.duck.rarity, dist: Math.round(e.dist * 100) / 100, alt: e.r.alt })),
       awards: awards.map(a => ({ id: a.id, p: a.e.pl.name })),
-      hl: computeHighlights(R, 3),
+      hl: computeHighlights(R, 3, awards),
       legend: R.legend.slice(0, 12),
     };
     const pk = billPickKey(R), pi = st.findIndex(e => e.pl.key === pk);
@@ -6788,6 +6828,38 @@ function salvoPhotoT(fl) {
   return t > 3 && fl.filter(f => f.tl.endT > t + 0.3).length <= 2 ? t : -1;
 }
 
+// The race as it was run: how long each duck led the field (flight seconds, from 3 s in) and the worst place it was in
+// while it was still moving, from 40% of the way through the volley (right after the launch everybody is bunched up
+// and the places mean little). Read from the flights, so it is the same whether the volley was watched, skipped or
+// replayed. Earlier volleys' ducks count where they landed.
+function salvoRaceStory(fl, R) {
+  const inV = new Set(fl.map(f => f.pl.key));
+  const fixed = Object.keys(R.results).filter(k => !inV.has(k)).map(k => R.results[k].dist);
+  const top0 = fixed.length ? Math.max(...fixed) : -1e9;
+  const endT = Math.max(...fl.map(f => f.tl.endT)), led = new Map(), low = new Map();
+  for (let t = 3; t <= endT; t += 0.1) {
+    const pos = [];
+    for (const f of fl) {
+      const tl = f.tl;
+      if (t < tl.launchT + 0.4) continue;
+      if (t >= tl.endT) { pos.push({ f, x: tl.final, moving: false }); continue; }
+      const i = clamp(Math.round(t * tl.fps), 0, tl.n - 1);
+      if (tl.vis[i]) pos.push({ f, x: tl.x[i], moving: true });
+    }
+    let top = top0, lead = null;
+    for (const p of pos) if (p.x > top) { top = p.x; lead = p.f; }
+    if (lead) led.set(lead, (led.get(lead) || 0) + 0.1);
+    if (t < endT * 0.4) continue;
+    for (const p of pos) {
+      if (!p.moving) continue;
+      let r = 1;
+      for (const q of pos) if (q.x > p.x) r++;
+      for (const d of fixed) if (d > p.x) r++;
+      if (r > (low.get(p.f) || 0)) low.set(p.f, r);
+    }
+  }
+  return { led, low };
+}
 // Duck stacks: a duck that comes to rest within a few feet of one already resting there hops up onto its back (up to
 // four high). Only for show, worked out from the flights themselves (so a replay stacks the same way): every distance
 // is still where the duck's feet stopped.
@@ -6846,7 +6918,7 @@ function salvoFire(replay) {
   SV.spot = null; SV.spotK = 0;
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
-  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null;
+  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null; SV.reignN = 0; SV.leadSim = 0;
   if (!replay) SV.result = null;   // after a replay the winner card comes back
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
@@ -7083,15 +7155,20 @@ function updateSalvoFlight(dt) {
   const front = live[0] || null;
   if (front) SV.front = front;   // the distance counter follows it even when a duck flies alone (no race, no lead changes)
   if (front && n > 1) {
-    if (!SV.lead) { SV.lead = front; SV.leadSince = pb.T; }
+    if (!SV.lead) { SV.lead = front; SV.leadSince = pb.T; SV.leadSim = t; }
     else if (front !== SV.lead) {
       if (SV.cand !== front) { SV.cand = front; SV.candAt = pb.T; }
       else if (pb.T - SV.candAt > 0.45) {
-        SV.lead = front; SV.leadSince = pb.T; SV.cand = null;
+        const old = SV.lead, reign = t - (SV.leadSim || 0);
+        SV.lead = front; SV.leadSince = pb.T; SV.leadSim = t; SV.cand = null;
         const showBest = Math.max(-1e9, ...Object.values(R.results).map(r => r.dist));   // earlier volleys' best
         const showLead = front.x > showBest;
         if (t > 3.5 && showLead && front.pl.key === billPickKey(R) && !pb.fired.has('pickLead') && !SV.replay) { pb.fired.add('pickLead'); salvoSay('salvoPickLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 1.2); }
-        if (t > 3.5 && showLead) { salvoSnd('rankup', 0.3, 1); salvoTag(front, 'LEADS!', { color: '#9be58b', px: 32, dur: 1.4 }); if (!SV.replay && moving > 1) salvoSay('salvoLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 0 }, 4.5); }
+        if (t > 3.5 && showLead) { salvoSnd('rankup', 0.3, 1); salvoTag(front, 'LEADS!', { color: '#9be58b', px: 32, dur: 1.4 }); if (!SV.replay && moving > 1) {
+          // a duck that had been in front for a long stretch gets a send-off
+          if (old && old !== front && reign >= 6 && (SV.reignN || 0) < 2) { SV.reignN = (SV.reignN || 0) + 1; salvoSay('salvoReignEnd', { duck: front.pl.duck.name, player: front.pl.name, old: old.pl.duck.name }, { prio: 1 }, 1.4); }
+          else salvoSay('salvoLead', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 0 }, 4.5);
+        } }
       }
     } else SV.cand = null;
   }
@@ -7220,12 +7297,14 @@ function salvoEnd(quiet) {
   if (SV.drumOn) { SFX.stopDrum(0.04); if (!quiet) SFX.play('cymbal'); SV.drumOn = false; }
   if (SV.replay) { SV.replay = false; SV.phase = 'idle'; SV.pt = 0; salvoIdleBig(); return; }
   const before = leaderEntry(), prevRecord = R.record;
+  const story = salvoRaceStory(SV.fl, R);
   const pbs = [];
   for (const f of SV.fl) {
     const prevBest = R.results[f.pl.key] ? R.results[f.pl.key].dist : null;
     recordFlight(f.q, f.tl);
     f.counted = prevBest == null || f.tl.final > prevBest;
     if (f.counted && f.stackOn && R.results[f.pl.key]) R.results[f.pl.key].on = f.stackOn.pl.duck.name;   // (a duck stack makes a story)
+    if (f.counted && R.results[f.pl.key] && SV.fl.length > 1) { const r = R.results[f.pl.key]; r.led = +(story.led.get(f) || 0).toFixed(1); if (story.low.has(f)) r.low = story.low.get(f); }
     const was = R.pbs && R.pbs[f.pl.key];
     if (!R.practice && was != null && f.tl.final > was && f.tl.final > 0 && !f.q.bonus) { R.pbs[f.pl.key] = Math.round(f.tl.final); pbs.push(f); f.pb = true; }
   }
@@ -7792,7 +7871,7 @@ function finishedShow() {
   return l && l.saved && !l.practice && Array.isArray(l.players) && l.players.length && Array.isArray(l.queue) ? l : null;
 }
 function showLabel(c) { return (c.day === todayKey() ? "Today's show" : 'Unfinished show from ' + shortDate(c.day)) + ' · ' + c.players.length + ' duck' + (c.players.length === 1 ? '' : 's') + ' · ' + (c.stage === 'launch' ? Math.min(c.idx, c.queue.length) + ' of ' + c.queue.length + ' launched' : c.stage === 'results' ? 'results' : 'reveal'); }
-function viewLastResults(c) { S.race = c; refreshWorld(); RS.back = true; RS.page = 2; RS.t = 0; go('results'); }
+function viewLastResults(c) { S.race = c; refreshWorld(); RS.back = true; RS.page = 2; RS.t = 0; RS.ru = null; go('results'); }
 function stopShowAudio() { SFX.stopLong(0.08); Voice.stop(); }
 function primary(fromPointer) {
   if (Modal.isOpen) return;
@@ -8099,7 +8178,7 @@ function startResults() {
   const R = S.race;
   RS.page = 1; RS.t = 0;
   const A = computeAwards(R);
-  RS.aw = A.awards; RS.feather = A.feather; RS.hl = computeHighlights(R, 3);
+  RS.aw = A.awards; RS.feather = A.feather; RS.hl = computeHighlights(R, 3, A.awards);
   Particles.clear(); Caps.reset();
   RS.tod = teamOfDay(R);
   RS.conf = 0;
@@ -8114,7 +8193,7 @@ function crownWinner() {
   Caps.reset();
   setBig('DONE', true);
   const st = standings();
-  RS.crowned = !st.length;
+  RS.crowned = !st.length; RS.ru = null;
   if (!st.length) return;
   // a drumroll while second and third rise and the loaf comes down; the cymbal lands with it (crownMoment)
   SFX.startDrum(CROWN_T - 0.2);
@@ -8132,6 +8211,8 @@ function crownMoment() {
   const newChamp = !R.practice && st.length > 1 && !!cw && R.career.shows >= 3 && cw.races > 0 && cw.wins === 0;
   if (RS.margin != null) say('closeWin', { duck: st[0].pl.duck.name, margin: marginText(RS.margin) }, { prio: 2, delay: 0.3 });
   else say(newChamp ? 'firstWin' : 'winner', { duck: st[0].pl.duck.name, player: st[0].pl.name }, { prio: 2, delay: 0.3 });
+  // the runner-up has something to say about it
+  if (st.length > 1) RS.ru = { text: Lines.next(RS.margin != null ? 'runnerUpClose' : 'runnerUp', {}, true), at: RS.t + 1.4 };
   if (RS.feather) say('feather', { duck: RS.feather.pl.duck.name }, { delay: 2.9 });
   if (RS.tod) say('teamDay', { team: RS.tod.name }, { delay: 5.3 });
   const pk = billPickKey(R), pi = st.findIndex(e => e.pl.key === pk);
@@ -8212,6 +8293,7 @@ function drawPodium(ctx, st) {
       txt(ctx, e.pl.duck.name, sp.x, ty, { px: 32, color: '#fff', sw: 6, maxW: 330 });
       ctx.font = font(20);   // at the smallest size it may shrink to, a long name gives way and the distance stays whole
       txt(ctx, fitTail(ctx, e.pl.name, ' · ' + fmtDist(st, sp.i), 330), sp.x, ty + 38, { px: 28, color: '#ffd23f', sw: 5, maxW: 330 });
+      if (sp.i === 1 && RS.ru && RS.ru.text) drawPodiumQuip(ctx, RS.ru, sp.x, ty - 30);
     }
   }
   const w = st[0];
@@ -8274,6 +8356,20 @@ function drawPodium(ctx, st) {
     if (pages > 1) txt(ctx, 'page ' + (pg + 1) + ' of ' + pages, x + 200, y + 76 + rows * 44 - 6, { px: 22, color: '#6b6577', sw: 0 });
   }
 }
+// the runner-up's one-liner: a small bubble above its name (clear of the winner's lines and the loaf), for a few seconds
+function drawPodiumQuip(ctx, q, x, y) {
+  const t = RS.t - q.at;
+  if (t < 0 || t > 4) return;
+  const k = easeBack(clamp(t / 0.25, 0, 1)) * clamp((4 - t) / 0.3, 0, 1);
+  ctx.save(); ctx.font = font(28);
+  const w = Math.min(380, ctx.measureText(q.text).width + 36), h = 50, bx = clamp(x - w / 2, 20, 780 - w), by = y - h;
+  ctx.translate(x, y); ctx.scale(k, k); ctx.translate(-x, -y);
+  ctx.beginPath(); ctx.moveTo(x - 12, by + h - 4); ctx.lineTo(x, y + 14); ctx.lineTo(x + 12, by + h - 4); ctx.closePath(); fillStroke(ctx, '#ffffff', 4);
+  rr(ctx, bx, by, w, h, 18); fillStroke(ctx, '#ffffff', 4);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 10, by + h - 6, 20, 6);
+  txt(ctx, q.text, bx + w / 2, by + h / 2 + 1, { px: 28, color: OUT, sw: 0, maxW: w - 24 });
+  ctx.restore();
+}
 function awardIcon(ctx, id, x, y, s) {
   ctx.save(); ctx.translate(x, y); ctx.scale(s / 60, s / 60);
   switch (id) {
@@ -8290,6 +8386,8 @@ function awardIcon(ctx, id, x, y, s) {
     case 'clean': circ(ctx, 0, 2, 21); fillStroke(ctx, '#4a4458', 5); circ(ctx, -7, -5, 6); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill(); break;   // a cannonball, nothing else
     case 'knocks': ctx.rotate(-0.7); rr(ctx, -27, -11, 54, 22, 11); fillStroke(ctx, '#f2c48d', 5); rr(ctx, -9, -11, 18, 22, 3); fillStroke(ctx, '#e3a066', 4); ctx.fillStyle = OUT; for (const [dx, dy] of [[-18, -3], [-18, 3], [18, -3], [18, 3]]) { circ(ctx, dx, dy, 1.8); ctx.fill(); } break;   // a sticking plaster
     case 'lowrider': ctx.lineCap = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = OUT; ctx.beginPath(); ctx.moveTo(-26, 16); ctx.lineTo(26, 16); ctx.stroke(); ctx.setLineDash([7, 6]); ctx.beginPath(); ctx.moveTo(-24, 12); ctx.quadraticCurveTo(0, -10, 22, 10); ctx.stroke(); ctx.setLineDash([]); circ(ctx, 22, 8, 6); fillStroke(ctx, '#4ad7ff', 4); break;   // a flat little arc
+    case 'early': ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(-14, -26); ctx.lineTo(24, -16); ctx.lineTo(-14, -4); ctx.closePath(); fillStroke(ctx, '#9be58b', 5); ctx.lineCap = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.beginPath(); ctx.moveTo(-14, 26); ctx.lineTo(-14, -26); ctx.stroke(); break;   // a flag, planted early
+    case 'climber': ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(-26, 20); ctx.lineTo(-8, 2); ctx.lineTo(4, 12); ctx.lineTo(18, -10); ctx.lineTo(10, -14); ctx.lineTo(26, -24); ctx.lineTo(24, -6); ctx.lineTo(18, -10); ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.stroke(); ctx.beginPath(); ctx.moveTo(10, -14); ctx.lineTo(26, -24); ctx.lineTo(24, -6); ctx.closePath(); ctx.fillStyle = '#9be58b'; ctx.fill(); ctx.stroke(); break;   // a line going up
     default: heartPath(ctx, 0, 0, 22); fillStroke(ctx, '#ff6fb5', 5); break;
   }
   ctx.restore();
