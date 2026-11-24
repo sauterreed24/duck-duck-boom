@@ -574,10 +574,6 @@ C.LINES = {
   // the reveal: Bill reads out one duck's scouting report (its stats and bio are otherwise only on the one-by-one intro card)
   scoutStat: ['Scouting report on {duck}. {stat}: {value}.', 'A quick word from the scouts on {duck}. {stat}? {value}.', 'The file on {duck} says {stat}: {value}. Make of that what you will.', 'Scouts are very excited about {duck}. {stat}: {value}.'],
   scoutBio: ['Scouting report on {duck}: {bio}', 'Everything you need to know about {duck}: {bio}', 'A little background on {duck}. {bio}'],
-  // the over/under: a line for the winning flight, set so it is a coin flip; the room shouts its call
-  ouCall: ['Over/under on the winning flight today: {line}. Everybody shout OVER or UNDER!', "Today's line for the farthest duck: {line}. Over or under? Call it out!", 'The over/under for the winning flight is {line}. One guess each. Out loud.', 'Set your expectations, folks: {line} for the winner. Over or under?'],
-  ouOver: ['{duck} is past {line} and not coming back! The OVER hits!', "That's the OVER! {duck} is beyond {line}!", 'OVER! {duck} clears the line at {line}!', 'The OVER crowd is celebrating. {duck} is past {line}!'],
-  ouUnder: ['Nobody got past {line}. The UNDER takes it!', 'The line was {line}. The UNDER wins it! Fine flying, though.', 'UNDER! {line} was a bridge too far today.', 'The UNDER crowd called it: nobody reached {line}.'],
   billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
   billPickWon: ['Called it! Bill\'s pick, {duck}, took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick, {duck}, WON! Nobody tell my editor.'],
   billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board."],
@@ -829,13 +825,14 @@ const Store = (() => {
 // and no camera flash
 const REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function defaultSettings() {
-  return { teams: deepClone(C.TEAM_DEFAULTS), volume: 0.6, muted: false, shake: !REDUCED_MOTION, voice: false, turboDefault: false, autoAdvance: false, practice: false, bonusAmmo: false, salvo: true, music: true };
+  return { teams: deepClone(C.TEAM_DEFAULTS), volume: 0.6, muted: false, shake: !REDUCED_MOTION, voice: false, turboDefault: false, autoAdvance: false, practice: false, bonusAmmo: false, salvo: true, music: true, musicVol: 0.5 };
 }
 function loadSettings() {
   const s = Object.assign(defaultSettings(), Store.get('settings', {}) || {});
   if (!Array.isArray(s.teams) || s.teams.length !== 3) s.teams = deepClone(C.TEAM_DEFAULTS);
   s.teams = s.teams.map((t, i) => ({ name: cleanName(t && t.name) || C.TEAM_DEFAULTS[i].name, color: (t && /^#[0-9a-f]{6}$/i.test(t.color)) ? t.color : C.TEAM_DEFAULTS[i].color, shape: C.TEAM_DEFAULTS[i].shape }));
   s.volume = clamp(+s.volume || 0, 0, 1);
+  s.musicVol = s.musicVol == null || !isFinite(+s.musicVol) ? 0.5 : clamp(+s.musicVol, 0, 1);
   s.practice = false; // practice is a per-visit choice, never carried to another day
   return s;
 }
@@ -1191,7 +1188,7 @@ function generateCourse(dayKey, cond, lazy) {
   if (!ent) { if (COURSES.size > 500) COURSES.clear(); const course = buildCourse(dayKey, cond); ent = { course, job: balanceSteps(course, cond) }; COURSES.set(key, ent); }
   if (ent.job && !lazy) { try { while (!ent.job.next().done); } catch (e) { COURSES.delete(key); throw e; } ent.job = null; }   // a failed job is never mistaken for a finished one
   const out = { dayKey: ent.course.dayKey, pieces: ent.course.pieces.map(p => Object.assign({}, p, { data: Object.assign({}, p.data) })) };
-  if (ent.job) out.rough = true; else if (ent.course.dists) out.dists = ent.course.dists;
+  if (ent.job) out.rough = true;
   return out;
 }
 // Carry on any unfinished course test flights for about ms milliseconds. True while there is still work left.
@@ -1283,11 +1280,10 @@ function* balanceSteps(course, cond) {   // a generator, so the work can be done
   // a rough cut first (the big offenders), then two finer looks at the course as it then stands (the second catches
   // what the first one's own changes stirred up)
   for (let pass = 0; pass < 3; pass++) {
-    const got = {}, N = pass ? 160 : 80, dists = [];
+    const got = {}, N = pass ? 160 : 80;
     for (let i = 0; i < N; i++) {
       if (i) yield;
       const tl = SIM.simulate(hash('testfly', course.dayKey, pass, i), cond, course, null, { record: false, probe: true });
-      dists.push(tl.final);
       // a piece the duck reached counts by its odds of being live, whether or not it was this time (far less noise
       // than counting hits). A pond counts every duck that came down in it to stay (swam, or was bounced out by a
       // lily pad) by its odds of staying. Skipping across a pond is not a stop.
@@ -1296,7 +1292,6 @@ function* balanceSteps(course, cond) {   // a generator, so the work can be done
       tl.reach.forEach(id => { seen[id] = 1; });
       for (const pc of course.pieces) if (seen[pc.id]) got[pc.id] = (got[pc.id] || 0) + (pc.type === 'pond' ? pc.tame || 1 : SIM.rollOdds(pc, tl.chaos));
     }
-    if (pass === 2) course.dists = dists.sort((a, b) => a - b);   // (the over/under is set from these)
     const share = {}, kind = {};
     for (const pc of course.pieces) { share[pc.id] = (got[pc.id] || 0) / N; kind[pc.ev] = (kind[pc.ev] || 0) + share[pc.id]; }
     for (const pc of course.pieces) {
@@ -2191,15 +2186,10 @@ function runSelfTest() {
   }
   check('the kicker ramp: on most days, in a gap of its own, and it sends a sliding duck back up into the air', rampDays >= 20 && rampClash === 0 && sent >= 5 && sentOk === sent, rampDays + '/40 days, ' + rampClash + ' clashes, ' + sentOk + '/' + sent + ' forced launches');
   check('the notification gag shows up when asked and never changes a distance', notes >= 6 && noteSame === 8, notes + '/8 placed');
-  // the over/under: set from today's test flights, higher for a bigger show, inside the range those flights covered
-  { const keepRace = S.race; try {
-    const lines = [1, 3, 12, 40].map(n => { S.race = { queue: new Array(n).fill(0) }; return ouLine(S.race); });
-    const dd = generateCourse(S.day, S.cond).dists || [];
-    check('the over/under grows with the show and stays inside the test flights', lines.every(v => v != null && v % 50 === 0 && v >= dd[0] - 50 && v <= dd[dd.length - 1] + 50) && lines.every((v, i) => !i || v >= lines[i - 1]), lines.join(', '));
-  } finally { S.race = keepRace; } }
-  // the music: both tunes are whole (a known chord and eight melody slots in every bar, every note a real pitch)
-  const cues = SFX._CUES, chordOk = ['F', 'Dm', 'Am', 'Bb', 'C', 'Gm', 'G', 'E'];
-  check('the music: both tunes are complete and every note parses', ['lobby', 'race'].every(k => cues[k] && cues[k].chords.length === cues[k].melN.length && cues[k].chords.every(c => chordOk.includes(c)) && cues[k].melN.every(r => r.length === 8 && r.every(f => f === 0 || f === -1 || (f > 100 && f < 2000)))));
+  // the music: every tune is whole (a known chord and eight melody slots in every bar, every note a real pitch, every
+  // drum pattern sixteen steps)
+  const songsOk = ['lobby', 'race', 'arm'].every(k => { const sg = MUSIC_SONGS[k]; return sg && sg.sections.every(sec => sec.ch.every(c => MUSIC_CHORDS[c]) && sec.melN.length === sec.ch.length && sec.melN.every(r => r.length === 8 && r.every(f => f === 0 || f === -1 || (f > 100 && f < 2000))) && [sec.kick, sec.snare, sec.hat].concat(sec.fill ? [sec.fill] : []).every(p => p.length === 16)); });
+  check('the music: every tune is complete and every note parses', songsOk && Object.values(MUSIC_CHORDS).every(c => c.keys.split(' ').every(n => MUSIC_NOTE(n) > 0) && MUSIC_NOTE(c.root) > 0));
   // content lint: nothing Bill or a duck says trips the blocklist
   const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.NOTIFY, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]), ...Object.values(C.OUTLOOK_SKY), C.OUTLOOK);
   const holes = [].concat(...[C.LINES, C.DUCK_LINES].map(T => Object.entries(T).filter(([k, a]) => Object.keys(a).length !== a.length || a.some(x => typeof x !== 'string' || !x.trim())).map(([k]) => k)));
@@ -3629,6 +3619,224 @@ function drawBigButton(ctx, x, y, st, t) {
 // Every sound is synthesized with the Web Audio API and runs through one master compressor.
 // Melodies are original. Audio starts on the first click (browser autoplay rules).
 
+/* ---------- music: original tunes from a small synthesizer, on their own channel under the sound effects ----------
+   makeMusic(ctx, out) works on any audio context: the game's own (scheduled a quarter of a second ahead from the frame
+   loop, so it pauses with the game and picks up cleanly after a stall) or an offline one (DDB.renderMusic, to listen
+   to a tune on its own). Each tune is a little song: sections with their own chords, melody, bass line and drums,
+   fills at the ends of phrases, a soft room reverb and an echo on the lead. The race tune follows the flight: the
+   lead steps out when only stragglers are left, and the whole band goes muffled in slow motion. */
+const MUSIC_NOTE = n => { const m = /^([A-G])(b|#)?(\d)$/.exec(n); if (!m) return 0; const k = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 }[m[1]] + (m[2] === 'b' ? -1 : m[2] === '#' ? 1 : 0) + (+m[3] - 4) * 12; return 440 * Math.pow(2, k / 12); };
+// chords: the voicing the keys play (warm sevenths, close together so the changes move smoothly) and the bass root
+const MUSIC_CHORDS = {
+  F: { keys: 'F3 A3 C4 E4', root: 'F2' }, Am: { keys: 'E3 G3 A3 C4', root: 'A2' }, Bb: { keys: 'F3 A3 Bb3 D4', root: 'Bb1' },
+  C: { keys: 'E3 G3 Bb3 C4', root: 'C2' }, Dm: { keys: 'F3 A3 C4 D4', root: 'D2' }, Gm: { keys: 'F3 G3 Bb3 D4', root: 'G1' },
+  // the race's power chords (no sevenths: punchier) and the tension pedal
+  rAm: { keys: 'A3 C4 E4', root: 'A1' }, rF: { keys: 'A3 C4 F4', root: 'F1' }, rC: { keys: 'G3 C4 E4', root: 'C2' }, rG: { keys: 'G3 B3 D4', root: 'G1' },
+  rE: { keys: 'G#3 B3 E4', root: 'E1' }, rDm: { keys: 'A3 D4 F4', root: 'D2' }, tA: { keys: 'A3 B3 E4', root: 'A1' }, tF: { keys: 'A3 C4 F4', root: 'F1' }, tE: { keys: 'G#3 B3 E4', root: 'E1' },
+};
+const MUSIC_SONGS = {
+  // the lobby: a lazy, sunny shuffle while people gather and between the big moments (about 80 s before it repeats)
+  lobby: { bpm: 100, swing: 0.3, gain: 0.62, loopFrom: 1,
+    sections: [
+      { name: 'intro', chords: 'F F Bb C', mel: ['', '', '', ''], kick: 'x...............', snare: '................', hat: '..x...x...x...x.', keys: 1, pad: 0 },
+      { name: 'theme', chords: 'F Am Bb C F Dm Gm C',
+        mel: ['A4 . C5 . A4 G4 F4 .', 'E4 . F4 G4 A4 . . .', 'D5 . C5 . Bb4 A4 G4 .', 'G4 A4 G4 E4 C4 . . .', 'A4 . C5 . F5 . E5 D5', 'A4 . F4 . D5 . C5 .', 'Bb4 A4 G4 . D4 E4 F4 G4', 'E4 . G4 . C5 . . .'],
+        kick: 'x.......x.......', snare: '....x.......x...', hat: '..x...x...x...x.', keys: 1, pad: 0 },
+      { name: 'variation', chords: 'F Am Bb C Dm Bb C F',
+        mel: ['A4 . C5 . A4 G4 F4 .', 'E4 . F4 G4 A4 . C5 .', 'D5 . F5 . D5 C5 Bb4 .', 'C5 . . . G4 . . .', 'F5 . E5 D5 A4 . D5 .', 'D5 . C5 Bb4 F4 . G4 A4', 'Bb4 . G4 . E4 . G4 .', 'F4 . . . - - - -'],
+        kick: 'x.......x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', keys: 1, pad: 1 },
+      { name: 'bridge', chords: 'Bb C Am Dm Gm C F F',
+        mel: ['F4 . . . D5 . C5 .', 'E5 . . . C5 . G4 .', 'A4 . . . C5 . E5 .', 'D5 . . . A4 . F4 .', 'G4 . Bb4 . D5 . C5 Bb4', 'C5 . . . E5 . G5 .', 'F5 . . . C5 . A4 .', 'F4 . . . - - - -'],
+        kick: 'x.......x.....x.', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', keys: 1, pad: 1 },
+      { name: 'turnaround', chords: 'Bb Bb C C',
+        mel: ['', 'D5 . C5 . Bb4 . A4 .', '', 'G4 . A4 . Bb4 . C5 .'],
+        kick: 'x...............', snare: '................', hat: '..x...x...x...x.', keys: 1, pad: 1, fill: 'x.x.x.xxx.xxxxxx' },
+    ] },
+  // the race: driving, for the flight; the drumroll takes over for the last seconds
+  race: { bpm: 150, swing: 0, gain: 0.55, loopFrom: 1,
+    sections: [
+      { name: 'build', chords: 'rAm rE', mel: ['', ''], kick: 'x...x...x...x...', snare: '................', hat: 'x.x.x.x.x.x.x.x.', keys: 0, pad: 0, fill: 'x.x.x.x.xxxxxxxx', bass: 'pulse' },
+      { name: 'riff', chords: 'rAm rF rC rG rAm rF rC rE',
+        mel: ['A4 . C5 A4 E5 . D5 C5', 'C5 . A4 F4 A4 . C5 D5', 'E5 . D5 C5 G4 . C5 E5', 'D5 . B4 G4 D5 . E5 D5', 'A4 . C5 A4 E5 . G5 E5', 'F5 . E5 C5 A4 . C5 F5', 'E5 . C5 G4 C5 . E5 G5', 'G#4 . B4 E5 G#4 . . .'],
+        kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.', keys: 1, pad: 0, fill: '....x.......xxxx', bass: 'drive' },
+      { name: 'chorus', chords: 'rF rG rAm rAm rF rG rE rE',
+        mel: ['A5 . . . F5 G5 . .', 'G5 . . . D5 . B4 .', 'C6 . . . A5 B5 . .', 'E5 . . . - - - -', 'A5 . . . F5 G5 . .', 'B5 . . . D6 . B5 .', 'G#5 . . . E5 . . .', 'B4 . E5 . G#5 . B5 .'],
+        kick: 'x...x...x...x.x.', snare: '....x.......x...', hat: 'x.xox.xox.xox.xo', keys: 0, pad: 1, fill: '....x...x.x.xxxx', bass: 'octave' },
+    ] },
+  // the tension pulse while the ducks load and the host is about to light the fuse
+  arm: { bpm: 120, swing: 0, gain: 0.5, loopFrom: 0,
+    sections: [
+      { name: 'pulse', chords: 'tA tA tF tF tA tA tF tE', mel: ['', '', '', '', '', '', '', ''], kick: 'x.......x.......', snare: '................', hat: '..x...x...x...x.', keys: 0, pad: 1, bass: 'pulse', rise: 1 },
+    ] },
+};
+for (const k in MUSIC_SONGS) {
+  for (const sec of MUSIC_SONGS[k].sections) {
+    sec.ch = sec.chords.split(' ');
+    sec.melN = sec.ch.map((c, i) => (sec.mel[i] || '- - - - - - - -').split(' ').map(x => x === '.' ? 0 : x === '-' ? -1 : MUSIC_NOTE(x)));
+  }
+  const S0 = MUSIC_SONGS[k].sections;
+  MUSIC_SONGS[k].bars = S0.reduce((a, s) => a + s.ch.length, 0);
+}
+const MUSIC_TRIM = 0.17;   // the band's level in the game's mix: well under the sound effects
+function makeMusic(ctx, out, opt) {
+  // the band's own little mixing desk: a slow-motion lowpass, a light glue compressor, a room reverb, an echo
+  const bus = ctx.createGain(); bus.gain.value = 1;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 18000; lp.Q.value = 0.5;
+  const glue = ctx.createDynamicsCompressor(); glue.threshold.value = -20; glue.ratio.value = 3; glue.knee.value = 10; glue.attack.value = 0.01; glue.release.value = 0.2;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 38; hp.Q.value = 0.7;   // no sub-rumble on laptop speakers
+  const trim = ctx.createGain(); trim.gain.value = MUSIC_TRIM;
+  bus.connect(hp); hp.connect(lp); lp.connect(glue); glue.connect(trim); trim.connect(out);
+  const rev = ctx.createConvolver(), rlen = Math.floor(ctx.sampleRate * 1.7), ir = ctx.createBuffer(2, rlen, ctx.sampleRate), rr = new Rng(77);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < rlen; i++) { const k = i / rlen; d[i] = i < ctx.sampleRate * 0.012 ? 0 : (rr.next() * 2 - 1) * Math.pow(1 - k, 3.2) * 0.6; } }
+  rev.buffer = ir; const revOut = ctx.createGain(); revOut.gain.value = 0.55; rev.connect(revOut); revOut.connect(bus);
+  const echo = ctx.createDelay(1.5), efb = ctx.createGain(), elp = ctx.createBiquadFilter(), eOut = ctx.createGain();
+  efb.gain.value = 0.32; elp.type = 'lowpass'; elp.frequency.value = 2600; eOut.gain.value = 0.32;
+  echo.connect(elp); elp.connect(efb); efb.connect(echo); elp.connect(eOut); eOut.connect(bus); eOut.connect(rev);
+  const nbuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), nd = nbuf.getChannelData(0), nr = new Rng(91);
+  for (let i = 0; i < nd.length; i++) nd[i] = nr.next() * 2 - 1;
+  let cur = null, mood = { level: 1, lp: 1 };
+
+  // ---- instruments (each note: oscillators -> envelope -> the cue's dry / reverb / echo sends) ----
+  function env(t, a, peak, hold, rel) { const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); if (hold > 0) g.gain.setValueAtTime(peak, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + Math.max(0, hold) + rel); return g; }
+  function send(node, c, dry, wet, ech, pan) {
+    let n = node;
+    if (pan && ctx.createStereoPanner) { const p = ctx.createStereoPanner(); p.pan.value = pan; n.connect(p); n = p; }
+    if (dry) { const g = ctx.createGain(); g.gain.value = dry; n.connect(g); g.connect(c.dry); }
+    if (wet) { const g = ctx.createGain(); g.gain.value = wet; n.connect(g); g.connect(c.rev); }
+    if (ech) { const g = ctx.createGain(); g.gain.value = ech; n.connect(g); g.connect(c.echo); }
+  }
+  function osc(type, f, t, end, detune) { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); if (detune) o.detune.value = detune; o.start(t); o.stop(end); return o; }
+  function noiseSrc(t, end) { const s = ctx.createBufferSource(); s.buffer = nbuf; s.loop = true; s.start(t, (t * 7.31) % 0.9); s.stop(end); return s; }
+  const I = {
+    kick(c, t, v) {
+      const o = osc('sine', 150, t, t + 0.4); o.frequency.exponentialRampToValueAtTime(46, t + 0.12);
+      const g = env(t, 0.003, 0.38 * v, 0.02, 0.24); o.connect(g); send(g, c, 1, 0, 0);
+      const n = noiseSrc(t, t + 0.03), f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 2500; const ng = env(t, 0.001, 0.1 * v, 0, 0.02); n.connect(f); f.connect(ng); send(ng, c, 1, 0, 0);   // the beater's click
+    },
+    snare(c, t, v) {
+      const n = noiseSrc(t, t + 0.3), f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1900; f.Q.value = 0.7;
+      const g = env(t, 0.002, 0.4 * v, 0, 0.16); n.connect(f); f.connect(g); send(g, c, 1, 0.22, 0);
+      const o = osc('triangle', 210, t, t + 0.15); o.frequency.exponentialRampToValueAtTime(150, t + 0.08); const og = env(t, 0.002, 0.14 * v, 0, 0.08); o.connect(og); send(og, c, 1, 0.1, 0);
+    },
+    rim(c, t, v) { const o = osc('triangle', 820, t, t + 0.06); const g = env(t, 0.001, 0.2 * v, 0, 0.04); o.connect(g); send(g, c, 1, 0.25, 0); const n = noiseSrc(t, t + 0.04), f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3000; const ng = env(t, 0.001, 0.08 * v, 0, 0.03); n.connect(f); f.connect(ng); send(ng, c, 1, 0.2, 0); },
+    hat(c, t, v, open) { const n = noiseSrc(t, t + 0.4), f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7500; const g = env(t, 0.001, (open ? 0.2 : 0.18) * v, 0, open ? 0.2 : 0.035); n.connect(f); f.connect(g); send(g, c, 1, open ? 0.12 : 0.04, 0, 0.25); },
+    shaker(c, t, v) { const n = noiseSrc(t, t + 0.12), f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 6200; f.Q.value = 1.2; const g = env(t, 0.012, 0.5 * v, 0, 0.05); n.connect(f); f.connect(g); send(g, c, 1, 0.08, 0, -0.2); },
+    bass(c, t, f, d, v, bright) {
+      // two oscillators through a filter that closes after each attack: a round, plucked bass
+      const end = t + d + 0.2, flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.Q.value = 2;
+      flt.frequency.setValueAtTime(bright ? 1500 : 900, t); flt.frequency.exponentialRampToValueAtTime(bright ? 420 : 260, t + 0.18);
+      const g = env(t, 0.006, 0.2 * v, Math.max(0, d - 0.06), 0.09), edge = ctx.createGain(); edge.gain.value = bright ? 0.5 : 0.3;
+      osc('triangle', f, t, end).connect(flt); const o2 = osc(bright ? 'sawtooth' : 'square', f, t, end, -6); o2.connect(edge); edge.connect(flt); flt.connect(g); send(g, c, 0.8, 0, 0);
+    },
+    keys(c, t, notes, d, v) {
+      // a soft electric-piano chord: sine + an octave of triangle, a little apart in the stereo field
+      notes.forEach((f, i) => {
+        const g = env(t, 0.008, 0.075 * v, Math.max(0, d - 0.1), 0.25), flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 5000;
+        osc('sine', f, t, t + d + 0.4).connect(flt); osc('triangle', f * 2, t, t + d + 0.4, 4).connect(flt); flt.connect(g); send(g, c, 0.9, 0.35, 0, (i - (notes.length - 1) / 2) * 0.25);
+        const tine = osc('sine', f * 4, t, t + 0.3), tg = env(t, 0.002, 0.03 * v, 0, 0.22); tine.connect(tg); send(tg, c, 0.8, 0.3, 0, (i - (notes.length - 1) / 2) * 0.3);   // the bell of an electric piano
+      });
+    },
+    stab(c, t, notes, d, v) { notes.forEach((f, i) => { const g = env(t, 0.004, 0.08 * v, 0, d), flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.setValueAtTime(3600, t); flt.frequency.exponentialRampToValueAtTime(900, t + d); osc('sawtooth', f, t, t + d + 0.1, -5).connect(flt); osc('sawtooth', f, t, t + d + 0.1, 5).connect(flt); flt.connect(g); send(g, c, 0.8, 0.25, 0, (i - 1) * 0.3); }); },
+    pad(c, t, notes, d, v) {
+      notes.forEach((f, i) => {
+        const g = env(t, Math.min(0.6, d * 0.3), 0.045 * v, Math.max(0, d - 0.6), 0.5), flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 1100;
+        osc('sawtooth', f, t, t + d + 0.6, -7).connect(flt); osc('sawtooth', f, t, t + d + 0.6, 7).connect(flt); flt.connect(g); send(g, c, 0.7, 0.6, 0, (i % 2 ? 0.35 : -0.35));
+      });
+    },
+    flute(c, t, f, d, v) {
+      // the lobby's lead: a breathy flute, its vibrato arriving a moment after the note starts
+      const end = t + d + 0.3, o = osc('sine', f, t, end), o2 = osc('triangle', f * 2, t, end), lfo = osc('sine', 5.2, t, end), lg = ctx.createGain();
+      lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.012, t + Math.min(0.35, d)); lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+      const g = env(t, 0.03, 0.08 * v, Math.max(0, d - 0.08), 0.12), g2 = ctx.createGain(); g2.gain.value = 0.32; o.connect(g); o2.connect(g2); g2.connect(g);
+      const n = noiseSrc(t, t + 0.12), nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = f * 3; nf.Q.value = 2; const ng = env(t, 0.01, 0.05 * v, 0, 0.09); n.connect(nf); nf.connect(ng); ng.connect(g);
+      send(g, c, 0.85, 0.45, 0.22);
+    },
+    lead(c, t, f, d, v) {
+      // the race's lead: two detuned saws through a filter that opens with each note
+      const end = t + d + 0.2, flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.Q.value = 3;
+      flt.frequency.setValueAtTime(900, t); flt.frequency.exponentialRampToValueAtTime(3800, t + 0.04); flt.frequency.exponentialRampToValueAtTime(1600, t + Math.max(0.08, d));
+      osc('sawtooth', f, t, end, -8).connect(flt); osc('sawtooth', f, t, end, 8).connect(flt); osc('square', f / 2, t, end).connect(flt);
+      const g = env(t, 0.006, 0.05 * v, Math.max(0, d - 0.05), 0.08); flt.connect(g); send(g, c, 0.85, 0.25, 0.25);
+    },
+  };
+
+  if (opt && opt.solo) for (const k in I) if (k !== opt.solo) I[k] = () => {};   // (QA: one instrument on its own)
+  // ---- the sequencer ----
+  function where(song, bar) {
+    const secs = song.sections, b = bar < song.bars ? bar : (() => { const intro = secs.slice(0, song.loopFrom).reduce((a, s) => a + s.ch.length, 0), body = song.bars - intro; return intro + ((bar - intro) % body); })();
+    let k = b;
+    for (let i = 0; i < secs.length; i++) { if (k < secs[i].ch.length) return { sec: secs[i], bar: k, last: k === secs[i].ch.length - 1 }; k -= secs[i].ch.length; }
+    return { sec: secs[secs.length - 1], bar: 0, last: false };
+  }
+  const NOTES = name => MUSIC_CHORDS[name].keys.split(' ').map(MUSIC_NOTE);
+  function step(c, n, t) {
+    const song = MUSIC_SONGS[c.name], beat = 60 / song.bpm, s16 = beat / 4;
+    const bar = Math.floor(n / 16), i = n % 16, w = where(song, bar), sec = w.sec, chName = sec.ch[w.bar], ch = MUSIC_CHORDS[chName], root = MUSIC_NOTE(ch.root);
+    const nextCh = MUSIC_CHORDS[w.last ? where(song, bar + 1).sec.ch[where(song, bar + 1).bar] : sec.ch[w.bar + 1] || chName];
+    const lvl = c.name === 'race' ? mood.level : 1;
+    const fillBar = sec.fill && w.last;
+    // drums
+    const kick = fillBar && i >= 8 ? '........' : sec.kick;
+    if ((fillBar && i >= 8 ? '.' : kick[i]) === 'x') I.kick(c, t, 1);
+    if (c.name === 'lobby') { if (sec.snare[i] === 'x') I.rim(c, t, 1); }
+    else if (sec.snare[i] === 'x' && lvl > 0.3) I.snare(c, t, 1);
+    if (fillBar && i >= 8 && sec.fill[i] === 'x') (c.name === 'lobby' ? I.rim : I.snare)(c, t, 0.5 + 0.5 * (i - 8) / 7);
+    const h = sec.hat[i];
+    if (h !== '.' && lvl > 0.3) (c.name === 'lobby' ? I.shaker : I.hat)(c, t, (i % 4 === 0 ? 1 : 0.7), h === 'o');
+    // bass
+    const style = sec.bass || 'walk';
+    if (style === 'walk') {
+      const nr = MUSIC_NOTE(nextCh.root), fifth = root * 1.5;
+      if (i === 0) I.bass(c, t, root, s16 * 5, 1); if (i === 6) I.bass(c, t, fifth, s16 * 2, 0.8); if (i === 8) I.bass(c, t, root, s16 * 4, 0.9); if (i === 12) I.bass(c, t, fifth, s16 * 2, 0.8);
+      if (i === 14) I.bass(c, t, nr * Math.pow(2, -1 / 12) * (nr > root * 1.4 ? 0.5 : 1), s16 * 2, 0.7);   // a chromatic step up into the next chord
+    } else if (style === 'drive') { if (i % 2 === 0) I.bass(c, t, i === 6 || i === 14 ? root * 2 : root, s16 * 1.7, i % 4 === 0 ? 1 : 0.75, true); }
+    else if (style === 'octave') { if (i % 2 === 0) I.bass(c, t, i % 4 === 2 ? root * 2 : root, s16 * 1.7, 0.9, true); }
+    else if (style === 'pulse') { if (i % 2 === 0) I.bass(c, t, root, s16 * 1.5, (i % 4 === 0 ? 0.9 : 0.6) * (sec.rise ? 0.6 + 0.4 * (w.bar % 8) / 7 : 1), !!sec.rise); }
+    // harmony
+    const notes = NOTES(chName);
+    if (c.name === 'lobby' && sec.keys && (i === 2 || i === 6 || i === 10 || i === 14)) I.keys(c, t, notes, s16 * 1.3, i === 2 || i === 10 ? 1 : 0.75);
+    if (c.name === 'race' && sec.keys && lvl > 0.5 && (i === 2 || i === 6 || i === 10 || i === 14)) I.stab(c, t, notes, s16 * 1.4, 1);
+    if (sec.pad && i === 0 && lvl > 0.5) I.pad(c, t, notes, beat * 4, c.name === 'arm' ? 1.4 : 1);
+    // melody (8th notes; a held note lasts until the next one)
+    if (i % 2 === 0 && (c.name !== 'race' || lvl > 0.8)) {
+      const row = sec.melN[w.bar], k = i / 2, f = row[k];
+      if (f > 0) { let len = 1; while (k + len < 8 && row[k + len] === 0) len++; const d = len * s16 * 2 * 0.9; (c.name === 'lobby' ? I.flute : I.lead)(c, t, f, d, 1); }
+    }
+  }
+  return {
+    get name() { return cur ? cur.name : null; },
+    // switch tunes: the old one fades out, the new one starts from its top
+    play(name, when) {
+      const t = when != null ? when : ctx.currentTime;
+      if (cur && cur.name === name) return;
+      if (cur) { const old = cur; for (const g of [old.dry, old.rev, old.echo]) { try { g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(0.0001, t, 0.2); } catch (e) { /* ignore */ } } if (typeof setTimeout === 'function') setTimeout(() => { for (const g of [old.dry, old.rev, old.echo]) try { g.disconnect(); } catch (e) { /* ignore */ } }, 3000); }
+      cur = null;
+      if (!name || !MUSIC_SONGS[name]) return;
+      const song = MUSIC_SONGS[name], mk = (dest, v) => { const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.setTargetAtTime(v, t + 0.04, 0.2); g.connect(dest); return g; };
+      cur = { name, n: 0, nextT: t + 0.06, dry: mk(bus, song.gain), rev: mk(rev, song.gain), echo: mk(echo, song.gain) };
+      echo.delayTime.setValueAtTime(60 / song.bpm * 0.75, t);   // a dotted-eighth echo
+    },
+    // schedule every step up to time `until` (after a stall the band picks up the beat; it never plays a burst)
+    tick(until, now) {
+      if (!cur) return;
+      const song = MUSIC_SONGS[cur.name], s16 = 60 / song.bpm / 4;
+      if (now != null && cur.nextT < now - 0.05) { const skip = Math.ceil((now + 0.05 - cur.nextT) / s16); cur.n += skip; cur.nextT += skip * s16; }
+      while (cur.nextT < until) {
+        const sw = cur.n % 4 === 2 ? song.swing * s16 : 0;   // (the lobby swings its 8th notes)
+        try { step(cur, cur.n, cur.nextT + sw); } catch (e) { /* a bad note never stops the band */ }
+        cur.n++; cur.nextT += s16;
+      }
+    },
+    // level: 1 everything, lower drops the race's lead (and below 0.5 its chords); lp: 1 open, lower muffles it
+    // the music's own volume (1: the default mix; 0..2)
+    level(v, when) { trim.gain.setTargetAtTime(MUSIC_TRIM * clamp(v, 0, 2), when != null ? when : ctx.currentTime, 0.05); },
+    mood(m, when) {
+      const t = when != null ? when : ctx.currentTime;
+      if (m.level != null) mood.level = m.level;
+      if (m.lp != null && m.lp !== mood.lp) { mood.lp = m.lp; lp.frequency.setTargetAtTime(Math.max(300, 18000 * Math.pow(m.lp, 2.2)), t, 0.25); }
+    },
+  };
+}
 const SFX = (() => {
   let ac = null, master = null, comp = null, bus = null, fbus = null, D = null, noiseBuf = null, vol = 0.6, muted = false, drum = null, limN = null;
   const nr = new Rng(424242);
@@ -3698,80 +3906,18 @@ const SFX = (() => {
     try { const g = drum.env.gain, t = ac.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0.0001, g.value), t); g.linearRampToValueAtTime(0.16, t + Math.max(0.3, swell)); } catch (e) { /* ignore */ }
   }
 
-  /* ---------- music: two original loops on their own channel, under the sound effects ----------
-     A small step sequencer (16th notes). It is scheduled a quarter of a second ahead from the game's frame loop, so it
-     pauses with the game (the audio clock stops) and picks up cleanly after a stall. The music channel skips the
-     effects' compressor (so a BOOM never pumps it) and joins the mix at the limiter, under the master volume. */
-  const CH = { F: [349.23, 440, 523.25], Dm: [293.66, 349.23, 440], Am: [220, 261.63, 329.63], Bb: [233.08, 293.66, 349.23], C: [261.63, 329.63, 392], Gm: [196, 233.08, 293.66], G: [196, 246.94, 293.66], E: [164.81, 207.65, 246.94] };
-  const NT = n => { const m = /^([A-G])(b|#)?(\d)$/.exec(n); if (!m) return 0; const k = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 }[m[1]] + (m[2] === 'b' ? -1 : m[2] === '#' ? 1 : 0) + (+m[3] - 4) * 12; return 440 * Math.pow(2, k / 12); };
-  // the tunes: one chord per bar, a melody on 8th notes ('.' holds, '-' rests)
-  const CUES = {
-    // the lobby: a lazy, sunny shuffle while people join, and between the big moments
-    lobby: { bpm: 104, swing: 0.16, gain: 0.7,
-      chords: ['F', 'Am', 'Bb', 'C', 'F', 'Dm', 'Gm', 'C', 'F', 'Am', 'Bb', 'C', 'Bb', 'C', 'F', 'F'],
-      mel: ['A4 . C5 . A4 G4 F4 .', 'E4 . F4 G4 A4 . . .', 'D5 . C5 . Bb4 A4 G4 .', 'G4 A4 G4 E4 C4 . . .', 'A4 . C5 . F5 . E5 D5', 'A4 . F4 . D5 . C5 .', 'Bb4 A4 G4 . D4 E4 F4 G4', 'E4 . G4 . C5 . . .',
-        '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', 'D5 . C5 . Bb4 . A4 .', 'G4 . E4 . C5 . Bb4 .', 'A4 . . . C5 . . .', 'F4 . . . - - - -'] },
-    // the race: driving, for the flight (the drumroll takes over for the last seconds)
-    race: { bpm: 148, swing: 0, gain: 0.6,
-      chords: ['Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'E', 'Am', 'F', 'C', 'G', 'Am', 'F', 'G', 'E'],
-      mel: ['A4 . C5 A4 E5 . D5 C5', 'C5 . A4 F4 A4 . C5 D5', 'E5 . D5 C5 G4 . C5 E5', 'D5 . B4 G4 D5 . E5 D5', 'A4 . C5 A4 E5 . G5 E5', 'F5 . E5 C5 A4 . C5 F5', 'E5 . C5 G4 C5 . E5 G5', 'G#4 . B4 E5 G#4 . . .',
-        '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', 'A5 . E5 C5 A4 . C5 E5', 'F5 . C5 A4 F4 . A4 C5', 'D5 . B4 G4 D5 . G5 .', 'E5 . . . G#4 . . .'] },
-  };
-  for (const k in CUES) CUES[k].melN = CUES[k].mel.map(b => b.split(' ').map(x => x === '.' ? 0 : x === '-' ? -1 : NT(x)));
-  let mus = null, musName = null, musOn = true;
-  function musicVoice(cue, step, t, out) {
-    const c = CUES[cue], beat = 60 / c.bpm, s16 = beat / 4;
-    const bar = Math.floor(step / 16) % c.chords.length, i16 = step % 16, ch = CH[c.chords[bar]];
-    const root = ch[0] / (ch[0] > 300 ? 4 : 2);
-    if (cue === 'lobby') {
-      if (i16 === 0 || i16 === 8) tone('sine', 140, 48, t, 0.16, 0.16, { dest: out });   // soft kick
-      if (i16 === 4 || i16 === 12) noise(t, 0.07, 'bandpass', 2400, 1800, 1.2, 0.09, { dest: out });   // rim
-      if (i16 % 2 === 0) noise(t, 0.035, 'highpass', 6500, 6500, 0.7, i16 % 4 ? 0.025 : 0.04, { dest: out });   // shaker
-      if (i16 === 0) tone('triangle', root, root, t, beat * 1.6, 0.15, { dest: out });
-      if (i16 === 8) tone('triangle', root * 1.5, root * 1.5, t, beat * 1.4, 0.12, { dest: out });
-      if (i16 === 14) tone('triangle', root * 2, root * 2, t, beat * 0.4, 0.1, { dest: out });
-      if (i16 === 4 || i16 === 12) for (const f of ch) tone('triangle', f, f, t, beat * 0.5, 0.045, { dest: out, filter: 'lowpass', ff: 1800 });   // ukulele-ish offbeat strum
-    } else {
-      if (i16 % 4 === 0) tone('sine', 150, 42, t, 0.14, 0.2, { dest: out });   // four on the floor
-      if (i16 === 4 || i16 === 12) { noise(t, 0.11, 'bandpass', 1900, 1400, 0.8, 0.16, { dest: out }); tone('triangle', 200, 160, t, 0.06, 0.06, { dest: out }); }
-      noise(t, 0.025, 'highpass', 8000, 8000, 0.7, i16 % 2 ? 0.018 : 0.032, { dest: out });
-      if (i16 % 2 === 0) { const f = i16 % 8 === 6 ? root * 1.5 : root; tone('sawtooth', f, f, t, s16 * 1.6, 0.085, { dest: out, filter: 'lowpass', ff: 520 }); }   // driving 8th-note bass
-      if (i16 === 2 || i16 === 6 || i16 === 10 || i16 === 14) for (const f of ch) tone('square', f, f, t, s16 * 1.2, 0.022, { dest: out, filter: 'lowpass', ff: 1500 });
-    }
-    // the melody (8th notes; a held note lasts until the next one)
-    if (i16 % 2 === 0) {
-      const row = c.melN[bar], k = i16 / 2, f = row[k];
-      if (f > 0) {
-        let len = 1; while (k + len < 8 && row[k + len] === 0) len++;
-        const d = len * s16 * 2 * 0.92;
-        if (cue === 'lobby') { tone('sine', f, f, t, d, 0.075, { dest: out, a: 0.02, vib: [5.5, f * 0.012] }); tone('triangle', f * 2, f * 2, t, d * 0.7, 0.012, { dest: out, a: 0.02 }); }
-        else { tone('square', f, f, t, d * 0.85, 0.04, { dest: out, filter: 'lowpass', ff: 2600, a: 0.008 }); tone('triangle', f, f, t, d, 0.05, { dest: out, a: 0.008 }); }
-      }
-    }
-  }
-  // which loop should be playing (null: none); switching crossfades and starts the new one from its top
+  /* ---------- music (makeMusic, above): the game's band, on its own channel into the limiter ---------- */
+  let mus = null, musOn = true, musLevel = 1;
   function music(name) {
     if (!ac || !limN) return;
+    if (!mus) { mus = makeMusic(ac, limN); mus.level(musLevel); }
     if (!musOn || muted) name = null;
-    if (name === musName) return;
-    const t = ac.currentTime;
-    if (mus) { const old = mus.g; try { old.gain.cancelScheduledValues(t); old.gain.setTargetAtTime(0.0001, t, 0.18); } catch (e) { /* ignore */ } setTimeout(() => { try { old.disconnect(); } catch (e) { /* ignore */ } }, 1600); }
-    musName = name; mus = null;
-    if (!name) return;
-    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.setTargetAtTime(CUES[name].gain, t + 0.05, 0.25); g.connect(limN);
-    mus = { name, g, step: 0, nextT: t + 0.08 };
+    if (name !== mus.name) mus.play(name, ac.currentTime);
   }
-  function musicTick() {
-    if (!ac || !mus || ac.state !== 'running') return;
-    const c = CUES[mus.name], s16 = 60 / c.bpm / 4, now0 = ac.currentTime;
-    if (mus.nextT < now0 - 0.05) { const skip = Math.ceil((now0 + 0.05 - mus.nextT) / s16); mus.step += skip; mus.nextT += skip * s16; }   // after a stall: pick up the beat, never a burst
-    while (mus.nextT < now0 + 0.25) {
-      const sw = mus.step % 2 ? c.swing * s16 : 0;
-      try { musicVoice(mus.name, mus.step, mus.nextT + sw, mus.g); } catch (e) { /* ignore */ }
-      mus.step++; mus.nextT += s16;
-    }
-  }
+  function musicTick() { if (mus && ac && ac.state === 'running') mus.tick(ac.currentTime + 0.25, ac.currentTime); }
+  function musicMood(m) { if (mus && ac) mus.mood(m, ac.currentTime); }
   function setMusicOn(on) { musOn = !!on; if (!musOn) music(null); }
+  function setMusicLevel(v) { musLevel = clamp(v, 0, 2); if (mus) mus.level(musLevel); }
   // pause freezes every scheduled sound in step with the game
   let held = false;
   // no state checks: suspend()/resume() apply in call order, so a quick off-on (Cancel in a confirm box) still ends suspended
@@ -3947,7 +4093,7 @@ const SFX = (() => {
   }
   // QA hook: an analyser on the master output so tests can measure levels
   function tap() { if (!ac) return null; const an = ac.createAnalyser(); an.fftSize = 2048; master.connect(an); return an; }
-  return { init, resume, play, stopLong, startDrum, stopDrum, retimeDrum, pause, music, musicTick, setMusicOn, get musicName() { return musName; }, _CUES: CUES, get drumOn() { return !!drum; }, get state() { return ac ? ac.state : 'none'; }, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
+  return { init, resume, play, stopLong, startDrum, stopDrum, retimeDrum, pause, music, musicTick, musicMood, setMusicOn, setMusicLevel, get musicName() { return mus ? mus.name : null; }, get drumOn() { return !!drum; }, get state() { return ac ? ac.state : 'none'; }, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
 })();
 
 /* ---------- announcer voice (Web Speech, off by default) ---------- */
@@ -4733,7 +4879,7 @@ function openSettings(fromPause) {
     '<div class="grid2">' +
     '<div class="field">Volume <input type="range" min="0" max="100" id="svol" value="' + Math.round(st.volume * 100) + '"> <span id="svolv">' + Math.round(st.volume * 100) + '%</span></div>' +
     '<label class="field"><input type="checkbox" id="smute"' + (st.muted ? ' checked' : '') + '> Mute (M)</label>' +
-    '<label class="field"><input type="checkbox" id="smusic"' + (st.music !== false ? ' checked' : '') + '> Music (N)</label>' +
+    '<div class="field"><label><input type="checkbox" id="smusic"' + (st.music !== false ? ' checked' : '') + '> Music (N)</label> <input type="range" min="0" max="100" id="smvol" value="' + Math.round(st.musicVol * 100) + '" title="Music volume" style="width:200px"> <span id="smvolv">' + Math.round(st.musicVol * 100) + '%</span></div>' +
     '<label class="field"><input type="checkbox" id="sshake"' + (st.shake ? ' checked' : '') + '> Screen shake</label>' +
     '<label class="field"><input type="checkbox" id="svoice"' + (st.voice ? ' checked' : '') + '> Announcer voice (reads Bill\'s lines aloud)</label>' +
     '<label class="field"><input type="checkbox" id="sturbo"' + (st.turboDefault ? ' checked' : '') + '> Start every show in turbo</label>' +
@@ -4758,6 +4904,7 @@ function openSettings(fromPause) {
       el.querySelector('#smute').onchange = e => { st.muted = e.target.checked; SFX.setMuted(st.muted); if (st.muted) Voice.stop(); saveSettings(); };
       el.querySelector('#sshake').onchange = e => { st.shake = e.target.checked; saveSettings(); };
       el.querySelector('#smusic').onchange = e => { st.music = e.target.checked; SFX.setMusicOn(st.music); saveSettings(); };
+      el.querySelector('#smvol').oninput = e => { st.musicVol = e.target.value / 100; el.querySelector('#smvolv').textContent = e.target.value + '%'; SFX.setMusicLevel(st.musicVol * 2); saveSettings(); };
       el.querySelector('#svoice').onchange = e => { st.voice = e.target.checked; saveSettings(); if (st.voice) { Voice.pause(false); Voice.speak('Bill Featherstone here. Testing, testing.'); } else Voice.stop(); };
       el.querySelector('#sturbo').onchange = e => { st.turboDefault = e.target.checked; saveSettings(); };
       el.querySelector('#ssalvo').onchange = e => { st.salvo = e.target.checked; saveSettings(); };
@@ -5423,7 +5570,6 @@ function resultsText(R) {
   if (aw.length) lines.push('Awards: ' + aw.join(' · '));
   const tod = teamOfDay(R);
   if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
-  if (R.ou != null && st.length) lines.push('Over/under ' + fmtFt(R.ou) + ': ' + (st[0].dist > R.ou ? 'OVER' : 'UNDER'));
   if (hl.length) lines.push('Highlight: ' + hl[0]);
   const so = C.LINES.signoff;   // Bill signs off (the same line every time this show is copied)
   lines.push('Bill says: ' + so[hash(R.seed >>> 0, 'signoff') % so.length]);
@@ -5510,7 +5656,6 @@ function setPhase(p) {
     else if (firstShot && R.champ === pl.key && R.players.length > 1) say('champIntro', vars, { prio: 1 });
     else if (firstShot && !R.practice && R.career && R.career.shows >= 3 && !R.career.who[pl.key]) say('debutIntro', vars, { prio: 1 });   // someone new to an established show
     else say('intro', vars, { prio: 1 });
-    if (R.idx === 0 && R.ou != null) say('ouCall', { line: fmtFt(R.ou) }, { prio: 1, delay: 1.6 });
     SFX.play('quack', d.pitch, 2);
     if (d.rarity === 'legendary' || d.rarity === 'epic') SFX.play('sting', d.rarity);
   }
@@ -5897,8 +6042,6 @@ function updateFlight(dt) {
   L.prevY = s.y; L.prevVy = s.vy;
   // pass the leader's flag
   if (L.leaderX != null && !L.shownLeader && s.x > L.leaderX && s.vis && t > tl.launchT + 0.5) { L.shownLeader = true; say('passLeader', { duck: L.pl.duck.name }, { prio: 1 }); SFX.play('ooh'); }
-  // the over/under: called as soon as a duck that will finish past the line crosses it
-  if (s.vis && t > tl.launchT + 0.5 && ouCross(L.pl, s.x, tl.final, L.replay)) { SFX.play('ooh'); Caps.big('THE OVER!', { px: 90, color: '#8fd3ff', dur: 2 }); say('ouOver', { duck: L.pl.duck.name, player: L.pl.name, line: fmtFt(S.race.ou) }, { prio: 1, delay: 0.3 }); }
   // the live leaderboard follows the duck; a soft blip marks every rival it passes
   if (pb.rivals && t >= tl.launchT && s.vis) {
     L.liveX = s.x;
@@ -6090,7 +6233,6 @@ function onResult() {
   else if (wrongWay) say('wrongWay', { duck: d.name }, { delay: 0.3 });
   else if (!newRecord && !newLeader) say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', { duck: d.name, distance: fmtFt(D) }, { delay: 0.2 });
   if (personalBest && !newRecord) say('personalBest', { player: pl.name, duck: d.name }, { delay: 2.2 });
-  if (R.idx >= R.queue.length && R.ou != null && !R.ouHit && lead && lead.dist <= R.ou) say('ouUnder', { line: fmtFt(R.ou) }, { prio: 1, delay: 3.0 });
   // the duck pipes up once a NEW LEADER / RECORD banner has had its moment
   const qd = newRecord ? 3.1 : newLeader ? 2.5 : 0.6;
   if (tl.hat && tl.hat.wins) { say('hatWins', {}, { prio: 2, delay: 1.2 }); quip('hatwin', { delay: Math.max(1.4, qd) }); }
@@ -6342,7 +6484,6 @@ function drawFieldMarks(ctx, V, noLabels, extra) {
   if (lead && !(L.pl && lead.pl.key === L.pl.key && (L.phase === 'result' || L.phase === 'idle'))) ghosts.push({ x: lead.dist, label: 'LEADER', color: teamOf(lead.pl).color });
   if (R.lastWin != null) ghosts.push({ x: R.lastWin, label: 'LAST RACE', color: '#ffffff' });
   if (R.record != null) ghosts.push({ x: R.record, label: 'RECORD', color: '#ffd23f' });
-  if (R.ou != null) ghosts.push({ x: R.ou, label: 'OVER/UNDER', color: '#8fd3ff' });
   ghosts.sort((a, b) => a.x - b.x);
   let lastSx = -1e9, stack = 0;
   for (const g of ghosts) {
@@ -6937,7 +7078,6 @@ function salvoLoad(first) {
     else if (R.idx > 0) Caps.say(n === 1 ? 'One more for the cannon: ' + SV.fl[0].pl.name + "'s duck, " + SV.fl[0].pl.duck.name + '!' : 'Another volley! ' + n + ' ducks for the cannon.', { prio: 1 });
     else if (n === 1) say('solo', { duck: SV.fl[0].pl.duck.name }, { delay: 0.2 });
     else say('salvoLoad', { n }, { prio: 1 });
-    if (R.idx === 0 && R.ou != null) say('ouCall', { line: fmtFt(R.ou) }, { prio: 1, delay: 1.8 });   // everybody makes their call while the ducks hop in
   };
   SFX.stopLong(0.1);
   if (first) start(); else { L.phase = 'salvo'; SV.phase = 'loading'; SV.pt = 0; setBig('LOADING…', false); Iris.start(start, 960, 540); }
@@ -7361,8 +7501,6 @@ function updateSalvoFlight(dt) {
       if (g.id === 'shades' && !f.fired.has('gc' + i) && t >= g.t + 0.6) { f.fired.add('gc' + i); salvoSnd('cool', 0.4); }
     });
     if (tl.hat && !f.fired.has('hat') && t >= tl.hat.t0) { f.fired.add('hat'); salvoSnd('whoosh', 0.4, 0.4); }
-    // the over/under: called as soon as a duck that will finish past the line crosses it
-    if (s.vis && ouCross(f.pl, s.x, tl.final, SV.replay)) { salvoTag(f, 'THE OVER!', { color: '#8fd3ff', px: 34, dur: 2 }); salvoSnd('ooh', 1); say('ouOver', { duck: d.name, player: f.pl.name, line: fmtFt(R.ou) }, { prio: 1, delay: 0.2 }); SV.lineAt = S.rt; }
     // bounces: dust, a thud, a squash
     const gy = SIM.groundY(s.x);
     if (f.prevY > gy + 1.5 && s.y <= gy + 1.5 && s.vis) {
@@ -7582,7 +7720,6 @@ function salvoEnd(quiet) {
   }
   else { SFX.play('aww'); say('salvoNoCatch', { duck: lead.pl.duck.name, player: lead.pl.name, distance: fmtFt(lead.dist) }, { prio: 2, delay: 0.3 }); }
   if (pbs.length && !newRecord) Caps.say(pbs.length === 1 ? 'And a personal best for ' + pbs[0].pl.name + '!' : pbs.length + ' personal bests in that volley!', { delay: 3.0 });
-  if (R.idx >= R.queue.length && R.ou != null && !R.ouHit && lead && lead.dist <= R.ou) say('ouUnder', { line: fmtFt(R.ou) }, { prio: 1, delay: 3.4 });
   const ls = SV.lateStack;
   if (ls && ls.stackOn) say(ls.stackLvl >= 2 ? 'salvoTower' : 'salvoStack', { n: ls.stackLvl + 1, duck: ls.pl.duck.name, other: ls.stackOn.pl.duck.name, player: ls.pl.name }, { delay: 3.2 });
   burst('confetti', 60, { x: 760, y: 240, sp0: 200, sp1: 560, l0: 1.4, l1: 2.4, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
@@ -8296,23 +8433,6 @@ function drawScoutCard(ctx, rc, pl) {
   });
   ctx.restore();
 }
-// The over/under: the winning distance a show this size beats half the time on today's course (from the course's own
-// test flights, so it is the same for every show of the day and costs nothing), to the nearest 50 ft.
-function ouLine(R) {
-  const course = generateCourse(S.day, S.cond), d = course.dists;
-  const n = Math.max(1, R.queue.length);
-  if (!d || d.length < 20) return null;
-  const q = clamp(Math.pow(0.5, 1 / n) * (d.length + 1) - 1, 0, d.length - 1), i = Math.floor(q), f = q - i;   // (Weibull positions: the top of a short sample is not read too low)
-  const v = d[i] + (d[Math.min(d.length - 1, i + 1)] - d[i]) * f;
-  return v > 150 ? Math.round(v / 50) * 50 : null;
-}
-// a duck that will finish past the line has just crossed it: the OVER is called (once a show, never in a replay)
-function ouCross(pl, x, final, replay) {
-  const R = S.race;
-  if (!R || R.ou == null || R.ouHit || replay || x <= R.ou || final <= R.ou) return false;
-  R.ouHit = true;
-  return true;
-}
 function updateReveal(dt) {
   const R = S.race;
   RV.t += dt;
@@ -8337,7 +8457,6 @@ function updateReveal(dt) {
       const pk = billPickKey(R), pp = pk && R.players.find(p => p.key === pk);
       R.pick = pk || null; saveRace();
       if (pp) say('billPick', { player: pp.name, duck: pp.duck.name }, { prio: 1, delay: 2.2 });
-      if (R.ou === undefined) { R.ou = ouLine(R); R.ouHit = false; saveRace(); }   // (on the card now; Bill calls it while the cannon loads)
     }
   }
   if (RV.fc >= 0 && RV.fc < 50) { RV.fc += dt; if (RV.fc > 0.6 && !Big.enabled) setBig("LET'S LAUNCH!", true); }
@@ -8446,8 +8565,7 @@ function forecastOutlook(cond) {
 function drawForecast(ctx, k) {
   const cond = S.cond;
   ctx.save(); ctx.translate(960, 470); ctx.scale(k, k); ctx.translate(-960, -470);
-  const ouOn = !!(S.race && S.race.ou != null);   // (the card grows upward to make room for the over/under)
-  const x = 410, y = ouOn ? 104 : 150, w = 1100, h = ouOn ? 700 : 640;
+  const x = 410, y = 150, w = 1100, h = 640;
   rr(ctx, x, y, w, h, 36); fillStrokeLifted(ctx, '#fff8e6', 6);
   rr(ctx, x, y, w, 96, 36); ctx.fillStyle = '#3f8fd9'; ctx.fill(); ctx.fillRect(x, y + 60, w, 36); rr(ctx, x, y, w, h, 36); ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.stroke();
   txt(ctx, 'POND FORECAST', 960, y + 50, { px: 54, color: '#fff', sw: 8 });
@@ -8471,12 +8589,6 @@ function drawForecast(ctx, k) {
   line('MODIFIER OF THE DAY', M.name, M.blurb, cond.mod === 'standard' ? OUT : '#c22f1f');
   const SE = C.SEASONS[cond.season];
   line('SEASON', SE.name + (cond.friday ? ' + ' + C.FRIYAY.name : ''), cond.friday ? C.FRIYAY.blurb : SE.blurb);
-  if (S.race && S.race.ou != null) {
-    const lab = 'OVER/UNDER on the winning flight: ' + fmtFt(S.race.ou);
-    ctx.font = font(30); const pw = ctx.measureText(lab).width + 48;
-    rr(ctx, 960 - pw / 2, y + h - 112, pw, 48, 16); fillStroke(ctx, '#8fd3ff', 4);
-    txt(ctx, lab, 960, y + h - 87, { px: 30, color: OUT, sw: 0 });
-  }
   const pk = S.race && S.race.pick && S.race.players.find(p => p.key === S.race.pick);
   if (pk) txt(ctx, "Bill's pick: " + pk.duck.name + ' (' + pk.name + ')', 960, y + h - 34, { px: 30, color: '#c22f1f', sw: 0, maxW: w - 60 });
   else txt(ctx, 'Same conditions for every duck today.', 960, y + h - 34, { px: 28, color: '#6b6577', sw: 0 });
@@ -8832,8 +8944,8 @@ function drawFame(ctx, dt) {
     F.players.slice(0, 12).forEach((p, i) => { const y = 200 + i * 54; txt(ctx, (i + 1) + '. ' + p.name, 80, y, { px: 30, minPx: 24, color: OUT, sw: 0, align: 'left', maxW: 330 }); txt(ctx, p.wins + ' win' + (p.wins === 1 ? '' : 's') + ' · ' + p.podiums + ' podium' + (p.podiums === 1 ? '' : 's') + ' · best ' + fmtFt(p.best), 900, y, { px: 26, minPx: 20, color: '#4a4458', sw: 0, align: 'right', weight: 800, maxW: 500 }); });
     panel(980, 120, 900, 250, 'TEAM WINS');
     teams().forEach((tm, i) => { const row = F.teams.find(x => x.i === i); const y = 200 + i * 56; teamShape(ctx, tm.shape, 1030, y, 14); ctx.fillStyle = tm.color; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = OUT; ctx.stroke(); txt(ctx, tm.name, 1060, y, { px: 30, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, String(row ? row.wins : 0), 1840, y, { px: 32, color: OUT, sw: 0, align: 'right' }); });
-    panel(980, 390, 900, 130, 'CURRENT WIN STREAK');
-    txt(ctx, F.streak ? F.streak.name + ' · ' + F.streak.n + ' in a row' : '—', 1430, F.picks.n ? 458 : 470, { px: 34, color: OUT, sw: 0, maxW: 840 });
+    panel(980, 390, 900, 130, F.streak && F.streak.n < 2 ? 'LAST WINNER' : 'CURRENT WIN STREAK');   // (one win is not a streak yet)
+    txt(ctx, F.streak ? F.streak.name + (F.streak.n > 1 ? ' · ' + F.streak.n + ' in a row' : '') : '—', 1430, F.picks.n ? 458 : 470, { px: 34, color: OUT, sw: 0, maxW: 840 });
     if (F.picks.n) txt(ctx, "Bill's picks to win: " + F.picks.hits + ' right out of ' + F.picks.n, 1430, 496, { px: 24, color: '#6b6577', sw: 0, maxW: 840, weight: 800 });
     panel(980, 540, 900, 340, 'DUCK OF THE MONTH · ' + MONTHS[parseDayKey(S.day).getMonth()].toUpperCase());
     if (F.monthBest) { txt(ctx, F.monthBest.d, 1430, 624, { px: 34, color: OUT, sw: 0, maxW: 840 }); txt(ctx, F.monthBest.p + ' · ' + fmtFt(F.monthBest.dist) + ' · longest launch this month', 1430, 664, { px: 26, color: '#6b6577', sw: 0, maxW: 840, weight: 800 }); }
@@ -8950,7 +9062,7 @@ let audioPrimed = false, primedAt = -9;
 function primeAudio() {
   if (audioPrimed) { SFX.resume(); return; }
   audioPrimed = true; primedAt = S.rt;
-  SFX.init(); SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted); SFX.setMusicOn(S.settings.music !== false); SFX.resume();
+  SFX.init(); SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted); SFX.setMusicOn(S.settings.music !== false); SFX.setMusicLevel(S.settings.musicVol * 2); SFX.resume();
   if (S.screen === 'title') setTimeout(() => SFX.play('jingle'), 60);
 }
 CV.addEventListener('pointermove', e => { const p = toLogical(e); S.mouse = p; const b = hitButton(p.x, p.y); S.hover = b ? b.id : null; CV.style.cursor = b ? 'pointer' : 'default'; });
@@ -9023,9 +9135,10 @@ function draw(dt) {
   Iris.draw(ctx);
   if (S.paused) { ctx.fillStyle = 'rgba(31,26,46,0.3)'; ctx.fillRect(0, 0, 1920, 1080); }
 }
-// The music for this moment: the lobby tune while people gather and between the big moments, the race tune while
-// ducks fly. Silence for the fuse, the countdown and the boom, for the result card's cheer, under the final drumroll,
-// and through the crowning until the fanfare is done.
+// The music for this moment: the lobby tune while people gather and between the big moments, a tension pulse while
+// the ducks load and the host is about to light the fuse, the race tune while ducks fly. Silence for the countdown
+// and the boom, for the result card's cheer, under the final drumroll, and through the crowning until the fanfare is
+// done.
 function musicWanted() {
   if (!S.settings.music) return null;
   switch (S.screen) {
@@ -9033,12 +9146,24 @@ function musicWanted() {
     case 'roster': case 'reveal': case 'fame': return 'lobby';
     case 'launch': {
       if (SFX.drumOn) return null;
-      if (L.phase === 'salvo') return SV.phase === 'flight' && SV.pb && !SV.pb.done && SV.pb.T > 0.9 ? 'race' : null;
-      return L.phase === 'flight' && L.pb && L.tl && L.pb.simT > L.tl.launchT + 0.9 ? 'race' : null;
+      if (L.phase === 'salvo') return SV.phase === 'flight' && SV.pb && !SV.pb.done && SV.pb.T > 0.9 ? 'race' : (SV.phase === 'load' || SV.phase === 'armed') && !SV.replay ? 'arm' : null;
+      if (L.phase === 'flight') return L.pb && L.tl && L.pb.simT > L.tl.launchT + 0.9 ? 'race' : null;
+      return L.phase === 'ladder' || L.phase === 'armed' ? 'arm' : null;
     }
     case 'results': return RS.page === 0 ? (RS.crowned && RS.t - (RS.crownAt || 0) > 4.5 ? 'lobby' : null) : 'lobby';
     default: return null;
   }
+}
+// how the race tune plays right now: with only stragglers left its lead steps out (so the chase and Bill's calls
+// breathe), and in slow motion (a spotlight) the whole band goes muffled
+function musicMood() {
+  if (S.screen !== 'launch') return { level: 1, lp: 1 };
+  if (L.phase === 'salvo' && SV.phase === 'flight' && SV.pb) {
+    const n = SV.fl.length, mv = SV.fl.filter(f => !f.done).length;
+    return { level: n >= 3 && mv <= Math.max(1, Math.floor(n * 0.4)) ? 0.65 : 1, lp: SV.spotK > 0.3 || SV.pb.rate < 0.75 ? 0.22 : 1 };
+  }
+  if (L.phase === 'flight' && L.pb) return { level: 1, lp: L.pb.rate < 0.75 ? 0.22 : 1 };
+  return { level: 1, lp: 1 };
 }
 let lastNow = 0;
 function frame(now) {
@@ -9063,7 +9188,7 @@ function frame(now) {
   // pause freezes everything the audience sees: the show, captions (their clock, S.rt, stops too) and screen wipes
   if (!S.paused) S.rt += dt;
   if (!S.paused) { S.time += dt; try { update(dt); } catch (err) { console.error(err); } Particles.update(dt); Shake.update(dt); Caps.update(); Iris.update(dt); }
-  if (audioPrimed) { try { SFX.music(S.paused ? SFX.musicName : musicWanted()); SFX.musicTick(); } catch (e) { console.error(e); } }
+  if (audioPrimed) { try { SFX.music(S.paused ? SFX.musicName : musicWanted()); SFX.musicMood(musicMood()); SFX.musicTick(); } catch (e) { console.error(e); } }
   S.fdt = S.paused ? 0 : dt;   // draw-time animations (rows gliding, captions settling) run on real time, not per frame
   try { draw(dt); } catch (err) { console.error(err); }
   if (S.debugOn && (Math.floor(S.rt * 4) !== Math.floor((S.rt - dt) * 4))) DebugPanel.tick();
@@ -9074,6 +9199,8 @@ const DDB = {
   balance(n, opts) { const r = runBalance(n || 10000, opts); console.log(printBalance(r)); console.table(r.events); return r; },
   selfTest() { const r = runSelfTest(); console.log((r.ok ? 'SELF TEST PASSED' : 'SELF TEST FAILED') + '\n' + r.checks.join('\n')); return r; },
   sim, generateDuck, dailyConditions, generateCourse, state: S, store: Store,
+  // render a tune on its own (for listening to it, or checking it): resolves with an AudioBuffer
+  renderMusic(name, seconds, mood, solo) { const sr = 44100, oc = new OfflineAudioContext(2, Math.ceil(sr * (seconds || 30)), sr), m = makeMusic(oc, oc.destination, { solo }); if (mood) m.mood(mood, 0); m.play(name, 0); m.tick(seconds || 30); return oc.startRendering(); },
 };
 window.DDB = DDB;
 
