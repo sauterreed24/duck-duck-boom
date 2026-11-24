@@ -567,6 +567,9 @@ C.LINES = {
   lastDuckLong: ['{duck} is our last duck. It would take a miracle. Miracles happen.', 'Last duck! The lead is big, but this is a cannon.'],
   hatOff: ['There goes the hat!', 'Hat overboard!', 'And the hat has a mind of its own!'],
   hatWins: ['Technically, the hat wins.', 'The hat flew farther than the duck. Think about that one.', 'Folks, the HAT beat the duck.'],
+  // the reveal: Bill reads out one duck's scouting report (its stats and bio are otherwise only on the one-by-one intro card)
+  scoutStat: ['Scouting report on {duck}. {stat}: {value}.', 'A quick word from the scouts on {duck}. {stat}? {value}.', 'The file on {duck} says {stat}: {value}. Make of that what you will.', 'Scouts are very excited about {duck}. {stat}: {value}.'],
+  scoutBio: ['Scouting report on {duck}: {bio}', 'Everything you need to know about {duck}: {bio}', 'A little background on {duck}. {bio}'],
   billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
   billPickWon: ['Called it! Bill\'s pick, {duck}, took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick, {duck}, WON! Nobody tell my editor.'],
   billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board."],
@@ -2222,6 +2225,10 @@ function runSelfTest() {
     const rsA = salvoRaceStory(sfl12, { results: {} }), rsB = salvoRaceStory(sfl12, { results: {} });
     const ledSum = [...rsA.led.values()].reduce((a, b) => a + b, 0), endS = Math.max(...sfl12.map(f => f.tl.endT));
     check('the race story is read from the flights: the same every time, one leader at a time, places inside the field', sfl12.every(f => (rsA.led.get(f) || 0) === (rsB.led.get(f) || 0) && rsA.low.get(f) === rsB.low.get(f)) && ledSum <= endS - 3 + 0.15 && ledSum > (endS - 3) * 0.8 && [...rsA.low.values()].every(r => r >= 1 && r <= 12), ledSum.toFixed(1) + ' s led of ' + (endS - 3).toFixed(1));
+    // the scouting report: every duck has one (bio and three stats), and its card stays on screen beside any card
+    const scoutOk = [1, 4, 12, 25, 40].every(n => cardGrid(n).every(rc => { const p = scoutCardAt(rc, 470, 330); return p.x >= 20 && p.x + 470 <= 1900 && p.y >= 100 && p.y + 330 <= 930 && (p.x >= rc.x + rc.w || p.x + 470 <= rc.x || n === 1); }));
+    const someDucks = players.slice(0, 20).map(p => generateDuck(duckSeed(day, p.name, 0), {}));
+    check('every duck has a scouting report, and it fits beside its card', scoutOk && someDucks.every(d => d.bio && d.stats && d.stats.length === 3 && d.stats.every(st => st.k && st.v && !/\{n\}/.test(st.v))));
     const close = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent' };
     const cds = awardDescs(close);
     check('a long award line has its other versions ready, shortest first', cds.length === C.AWARDS.closest.desc.length && cds[0] === awardDesc(close) && cds.slice(1).every((d, i, a) => !i || a[i - 1].length <= d.length));
@@ -7934,13 +7941,15 @@ function drawTitle(ctx, dt) {
   const V = makeView(150, GROUND_Y + 30, 4.2);
   drawWorld(ctx, { cond: S.cond, course: S.course, V, t, pieceState: () => ({ time: t }), space: 0, orbX: 1765 });   // the sun or moon clear of the logo
   // attract mode: every few seconds Thunderbill lobs a demo duck off into the distance
-  const ang = 40, CYC = 6.5, u = t % CYC, cyc = Math.floor(t / CYC);
+  const ang = 40, CYC = 6.5, tc = t - (DEMO.shift || 0), u = ((tc % CYC) + CYC) % CYC, cyc = Math.floor(tc / CYC);
   const mz = cannonMuzzle(ang);
   if (S.screen === 'title' && cyc !== DEMO.cyc) {
     DEMO.cyc = cyc; DEMO.duck = generateDuck(hash('demo', cyc, S.day), {});
     for (let i = 0; i < 6; i++) Particles.add({ type: 'smoke', layer: 'screen', x: V.sx(mz.x) + fx.range(-10, 10), y: V.sy(mz.y) + fx.range(-10, 10), vx: fx.range(20, 90), vy: fx.range(-60, -10), drag: 1.5, life: fx.range(0.9, 1.6), r: fx.range(18, 30), a: 0.7 });
-    if (cyc > 0) SFX.play('puff');
+    if (DEMO.now) { SFX.play('boom'); Shake.add(4); DEMO.now = false; } else if (cyc > 0) SFX.play('puff');
   }
+  // while people join, the host can fire Thunderbill on demand: a click on the cannon sends the next duck right now
+  if (S.screen === 'title') S.buttons.push({ id: 'demo', x: V.sx(-60), y: V.sy(78), w: V.sx(40) - V.sx(-60), h: V.sy(8) - V.sy(78), fn: () => { if (S.rt - (DEMO.firedAt || -9) < 0.5) return; DEMO.firedAt = S.rt; DEMO.now = true; DEMO.shift = S.time - (DEMO.cyc + 1) * CYC; } });
   const recoil = u < 0.5 ? Math.sin(u / 0.5 * Math.PI) : 0;
   ART.cannon(ctx, V, { angle: ang, burn: 0, smolder: true, t, stick: true, reach: 0, recoil });
 
@@ -8006,9 +8015,46 @@ function startReveal() {
 }
 function revealPrimary() {
   const R = S.race;
-  if (!RV.done) { RV.flipped = RV.flipped.map(() => true); RV.done = true; R.revealDone = true; saveRace(); setBig(lockLabel(), true); SFX.play('flip'); return; }
+  if (!RV.done) { RV.flipped = RV.flipped.map(() => true); RV.done = true; R.revealDone = true; saveRace(); setBig(lockLabel(), true); SFX.play('flip'); revealDoneLines(); return; }
   if (RV.shuf < 0) { RV.shuf = 0; R.shuffled = true; R.stage = 'forecast'; saveRace(); SFX.play('whoosh', 1.2); setBig("LET'S LAUNCH!", false); return; }
   if (RV.fc >= 0.6 || RV.fc > 50) { SFX.play('click'); Iris.start(() => { if (S.race) launchBegin(); }, 960, 540); }
+}
+// every card is up: how to reroll, then a scouting report on one duck (seeded, so a reload reads the same one)
+function revealDoneLines() {
+  const R = S.race;
+  Caps.say('Point at a duck for its scouting report. Click one to reroll it.', {});
+  const pl = R.players.length ? R.players[hash(R.seed, 'scout') % R.players.length] : null, d = pl && pl.duck;
+  if (!d) return;
+  const st = d.stats && d.stats.length ? d.stats[hash(R.seed, 'scoutstat') % d.stats.length] : null;
+  if (st && hash(R.seed, 'scoutkind') % 3) say('scoutStat', { duck: d.name, stat: st.k, value: st.v }, { delay: 2.6 });
+  else if (d.bio) say('scoutBio', { duck: d.name, bio: d.bio }, { delay: 2.6 });
+}
+// beside the card (right, else left), on screen and clear of Bill's bar
+function scoutCardAt(rc, W, H) {
+  let x = rc.x + rc.w + 14; if (x + W > 1900) x = rc.x - 14 - W;
+  if (x < 20) x = clamp(rc.x + rc.w / 2 - W / 2, 20, 1900 - W);
+  return { x, y: clamp(rc.y + rc.h / 2 - H / 2, 100, 930 - H) };
+}
+// a duck's scouting report next to its card while the host points at it (before the ducks are locked in)
+function drawScoutCard(ctx, rc, pl) {
+  const d = pl.duck, W = 470, pad = 20, tw = W - pad * 2;
+  ctx.save();
+  ctx.font = font(26, 800); const bl = wrapText(ctx, '\u201c' + d.bio + '\u201d', tw, 3);
+  const stats = d.stats || [];
+  const H = pad + 34 + 8 + bl.length * 32 + 10 + stats.length * 40 + pad;
+  const { x, y } = scoutCardAt(rc, W, H);
+  rr(ctx, x, y, W, H, 24); fillStrokeLifted(ctx, '#fff8e6', 5);
+  const nameY = y + pad + 17, bioY = y + pad + 34 + 8 + 16, statY = y + pad + 34 + 8 + bl.length * 32 + 10 + 17;
+  txt(ctx, d.name, x + pad, nameY, { px: 30, minPx: 22, color: OUT, sw: 0, align: 'left', maxW: tw });
+  bl.forEach((ln, i) => txt(ctx, ln, x + pad, bioY + i * 32, { px: 26, color: '#4a4458', sw: 0, align: 'left', weight: 800 }));
+  stats.forEach((st, i) => {
+    const yy = statY + i * 40;
+    rr(ctx, x + pad, yy - 17, tw, 34, 10); ctx.fillStyle = '#f1e9d4'; ctx.fill();
+    ctx.font = font(22, 800); const kw = ctx.measureText(st.k + ': ').width;
+    txt(ctx, st.k + ':', x + pad + 12, yy + 1, { px: 22, color: '#6b6577', sw: 0, align: 'left', weight: 800 });
+    txt(ctx, st.v, x + pad + 12 + kw, yy + 1, { px: 22, minPx: 18, color: OUT, sw: 0, align: 'left', maxW: tw - kw - 24 });
+  });
+  ctx.restore();
 }
 function updateReveal(dt) {
   const R = S.race;
@@ -8024,7 +8070,7 @@ function updateReveal(dt) {
         if (pl.duck.rarity === 'legendary') SFX.play('shimmer');
       }
     });
-    if (RV.flipped.every(Boolean)) { RV.done = true; R.revealDone = true; saveRace(); setBig(lockLabel(), true); Caps.say('Click any duck to reroll it. Then lock them in!', {}); }
+    if (RV.flipped.every(Boolean)) { RV.done = true; R.revealDone = true; saveRace(); setBig(lockLabel(), true); revealDoneLines(); }
   }
   if (RV.shuf >= 0 && RV.shuf < 50) {
     RV.shuf += dt;
@@ -8071,6 +8117,8 @@ function drawReveal(ctx, dt) {
     drawCard(ctx, rc, pl, flipK, RV.shuf >= 0 && R.mode !== 'salvo' ? (pos[i] + 1) : null, RV.fc >= 0 && R.pick === pl.key);
     if (RV.done && RV.shuf < 0) S.buttons.push({ id: 'card' + i, x: rc.x, y: rc.y, w: rc.w, h: rc.h, fn: () => { rerollDuck(i); RV.rerollAt[i] = S.rt; if (R.players[i].duck.rarity === 'epic' || R.players[i].duck.rarity === 'legendary') RV.stampAt[i] = S.rt + 0.25; SFX.play('flip'); SFX.play('sting', R.players[i].duck.rarity); Toast.show('Rerolled ' + pl.name + "'s duck"); } });
   });
+  // the host is pointing at a duck: its scouting report (drawn after every card, so no neighbour covers it)
+  if (RV.done && RV.shuf < 0 && S.hover && /^card\d+$/.test(S.hover)) { const i = +S.hover.slice(4), pl = R.players[i]; if (pl && grid[i]) drawScoutCard(ctx, grid[i], pl); }
   // rarity stamps: slammed onto the card's picture, then they fade (the pill on the card keeps saying it)
   if (RV.shuf < 0 && RV.stampAt) for (const k in RV.stampAt) {
     const age = S.rt - RV.stampAt[k], a = grid[k], d = R.players[k] && R.players[k].duck;
