@@ -505,8 +505,8 @@ C.LINES = {
   mod_turbocannon: ['Thunderbill packed extra powder today. Hold on to your feathers.', 'Turbo Cannon day. Fifteen percent more boom.', 'Extra powder in the barrel today. Stand back.'],
   wind_tail_strong: ['A big tailwind today. Free distance for everyone.', 'That tailwind is doing half the work today.', 'Wind at their backs today. Lovely.'],
   wind_head_strong: ['A stiff headwind today. Every foot is earned.', 'Flying into the wind today. Nothing comes easy.', 'That headwind is not helping anybody.'],
-  sky_fog: ['Foggy out there. We will find the ducks eventually.', "It's a pea-souper today. Listen for the quack."],
-  sky_night: ['A night launch today. The stars are out for it.', 'Launching under the stars tonight. Very romantic.'],
+  sky_fog: ['Foggy out there. We will find the ducks eventually.', "It's a pea-souper today. Listen for the quack.", "Thick fog today. The ducks know where they're going. Probably.", "Foggy skies. Duck spotters, stay sharp."],
+  sky_night: ['A night launch today. The stars are out for it.', 'Launching under the stars tonight. Very romantic.', "Night shift today. The ducks brought headlamps."],
   // the salvo: every duck in the cannon at once
   salvoLoad: ['All {n} of them. In one cannon. What could possibly go wrong?', '{n} ducks, one barrel. Squeeze in, everybody!', "Ol' Thunderbill is taking all {n} at once today. Mind the elbows.", 'Everybody in! {n} ducks and not a seatbelt between them.', "That is {n} ducks in one cannon. The manual says four. We don't have the manual.", "{n} ducks, one barrel. This is either a launch or a very full elevator.", "Loading {n} ducks. Please hold your questions until after the boom.", "Wings tucked, beaks forward, and absolutely no reply-all.", "{n} passengers and zero emergency exits. Lovely.", "Squeeze in, everyone. It is a cannon, not a conference room.", "Thunderbill is officially at capacity. Thunderbill does not care."],
   salvoCount: ['Count it down with me, folks!', 'Everybody together now: three, two, one!', 'The fuse is ready. Help me count!', 'All aboard? Then count with me!', 'Big breath, everybody. Count it down!', "Unmute yourselves for this one! Three! Two! One!", "Count it down, everybody. Yes, the camera-off crowd too!", "Fingers off the mute button. Count it with me!", "This is the only countdown today that ends well. Count it!"],
@@ -560,15 +560,15 @@ C.LINES = {
   landLong: ['WHAT A FLIGHT!', "That's a monster launch!", 'Folks, I need a minute.', 'The judges are reviewing the tape. The judges are also ducks.', 'Somebody measure that again! Actually, the computer did it. Wow!', 'That duck has places to be!', 'Look at that distance!', "That one's going on the fridge!", "Put that one in the quarterly report!", "That duck just got promoted."],
   photoWon: ['By a FEATHER! {duck} takes it by {margin}!', 'Photo says YES! {duck} by {margin}!', 'That was close! {duck} edges ahead by {margin}!'],
   photoLost: ['Just {margin} short! So close!', 'Heartbreaker! {margin} short of the lead!', 'The photo says... {margin} short. Oof.'],
-  closeWin: ['And the Golden Loaf goes to {duck}... by just {margin}!', '{duck} wins it by {margin}! What a finish!'],
+  closeWin: ['And the Golden Loaf goes to {duck}... by just {margin}!', '{duck} wins it by {margin}! What a finish!', "By just {margin}! The Golden Loaf goes to {duck}!", "{duck} takes the Golden Loaf by {margin}! Check the photo!"],
   wrongWay: ['Well, that is one direction.', 'Bold. Backwards, but bold.', 'The scoreboard is confused. So am I.'],
-  champIntro: ['Our defending champion! {player}\'s duck, {duck}!', 'Last show\'s Golden Loaf winner is back: {player}\'s duck, {duck}!'],
-  streakIntro: ['{player} is going for {n} in a row! Here comes {duck}!'],
-  personalBest: ['A new personal best for {player}!', 'That is {player}\'s best flight EVER!'],
+  champIntro: ['Our defending champion! {player}\'s duck, {duck}!', 'Last show\'s Golden Loaf winner is back: {player}\'s duck, {duck}!', "Here comes the defending champion: {player}'s duck, {duck}!"],
+  streakIntro: ['{player} is going for {n} in a row! Here comes {duck}!', "{player} could make it {n} straight! Here comes {duck}!", "{n} in a row is on the line for {player}! Here's {duck}!"],
+  personalBest: ['A new personal best for {player}!', 'That is {player}\'s best flight EVER!', "Personal best for {player}! Frame that one!"],
   photoFinish: ["It's close... it's CLOSE...", 'Photo finish! Get the camera!', "Too close to call! Let's go to the replay booth!"],
   lastDuck: ['{duck} is our last duck... and can still take the lead!', 'It all comes down to {duck}!', 'Last duck of the day. Anything can happen!'],
   lastShot: ['Last shot of the day! {duck} gets one more go!', 'One final bonus shot. It all comes down to {duck}!', 'The very last shot of the show belongs to {duck}!'],
-  lastDuckLong: ['{duck} is our last duck. It would take a miracle. Miracles happen.', 'Last duck! The lead is big, but this is a cannon.'],
+  lastDuckLong: ['{duck} is our last duck. It would take a miracle. Miracles happen.', 'Last duck! The lead is big, but this is a cannon.', "Last duck! {duck} needs a big one. A really big one."],
   hatOff: ['There goes the hat!', 'Hat overboard!', 'And the hat has a mind of its own!'],
   hatWins: ['Technically, the hat wins.', 'The hat flew farther than the duck. Think about that one.', 'Folks, the HAT beat the duck.'],
   // the reveal: Bill reads out one duck's scouting report (its stats and bio are otherwise only on the one-by-one intro card)
@@ -576,24 +576,24 @@ C.LINES = {
   scoutBio: ['Scouting report on {duck}: {bio}', 'Everything you need to know about {duck}: {bio}', 'A little background on {duck}. {bio}'],
   billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
   billPickWon: ['Called it! Bill\'s pick, {duck}, took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick, {duck}, WON! Nobody tell my editor.'],
-  billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board."],
+  billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board.", "Bill's pick, {duck}, finished {rank}. Bill is fine. Totally fine."],
   countInFirst: ['First launch of the show! Count it down with me, folks!', 'First duck of the show! Everybody count it down!'],
   countIn: ['Everybody, count it down!', 'Here we go! Three, two, one...', 'Count it with me, folks!', 'Fingers on the countdown, everyone!', 'Say it with me!'],
-  teamDay: ['{team} takes Team of the Day!', 'Team of the Day goes to {team}. Synchronized flapping pays off.'],
+  teamDay: ['{team} takes Team of the Day!', 'Team of the Day goes to {team}. Synchronized flapping pays off.', "{team} is Team of the Day! Group photo, everybody!"],
   solo: ["Just one duck today, and it's {duck} versus the record!", "A solo flight! {duck} is up against history."],
   winner: ['And the Golden Loaf goes to {duck}!', '{duck} takes home the Golden Loaf! Unbelievable!', 'Your champion of the pond: {duck}!'],
   feather: ['And the Good Sport Feather goes to {duck}. Wear it proudly.', 'Every flight counts. {duck}, this feather is for you.', '{duck} takes home the Good Sport Feather. A true sport.'],
   // per-event reactions (Bill reacts a beat after the impact)
-  ev_trampoline: ['BOING! {duck} found the trampoline!', "That's not a bounce, that's a lifestyle!"],
-  ev_castle: ['{duck} is having a GREAT time in the bounce castle!', 'Ricochet! Ricochet! Ricochet!'],
-  ev_pepper: ['{duck} ate the spicy pepper! Rocket mode!', 'That is a flame trail, folks. That duck is SPICY.'],
-  ev_drone: ['Coffee delivery! {duck} is WIRED!', 'An espresso drone, right on time!'],
-  ev_bell: ['{duck} rang the bell! Listen to that ding!', 'DING! What a sound!'],
+  ev_trampoline: ['BOING! {duck} found the trampoline!', "That's not a bounce, that's a lifestyle!", "{duck} hits the trampoline and goes right back up!", "Bounce house rules: everybody goes higher!"],
+  ev_castle: ['{duck} is having a GREAT time in the bounce castle!', 'Ricochet! Ricochet! Ricochet!', "{duck} has booked the bounce castle for the afternoon!", "The bounce castle is NOT a meeting room, {duck}!"],
+  ev_pepper: ['{duck} ate the spicy pepper! Rocket mode!', 'That is a flame trail, folks. That duck is SPICY.', "Spicy pepper! {duck} has a new top speed!", "Somebody get {duck} a glass of milk!"],
+  ev_drone: ['Coffee delivery! {duck} is WIRED!', 'An espresso drone, right on time!', "{duck} grabbed a double espresso. At altitude!", "Caffeine boost for {duck}! This flight is now productive!"],
+  ev_bell: ['{duck} rang the bell! Listen to that ding!', 'DING! What a sound!', "Ring that bell, {duck}! Somebody closed a deal!", "The bell has been rung! Lunch is on {duck}!"],
   ev_jetstream: ['{duck} caught the jet stream!', 'Riding the wind like a little feathered surfboard!', 'The wind has picked up {duck}!', 'Tailwind express! {duck} is FLYING!', 'Somebody tell the wind to slow down!'],
-  ev_pelican: ['The Pelican Express has arrived! All aboard!', 'That pelican is NOT on the schedule!'],
+  ev_pelican: ['The Pelican Express has arrived! All aboard!', 'That pelican is NOT on the schedule!', "{duck} caught a ride on a pelican!", "Pelican Express, now boarding {duck}!"],
   ev_migration: ['{duck} has joined the migration! Heading south!', 'Look at that formation! {duck} fits right in!', 'Flock mode activated!', '{duck} is drafting behind the flock!', 'V for VICTORY, {duck}!'],
-  ev_glider: ['Where did {duck} get a hang glider?!', 'A long, lazy glide. Very relaxing.'],
-  ev_skip: ['{duck} is skipping like a stone!', 'Look at that form on the water!'],
+  ev_glider: ['Where did {duck} get a hang glider?!', 'A long, lazy glide. Very relaxing.', "{duck} is hang gliding! Look at that technique!", "{duck} has gone full nature documentary."],
+  ev_skip: ['{duck} is skipping like a stone!', 'Look at that form on the water!', "Skip, skip, skip! {duck} is a natural!", "{duck} refuses to get wet. Look at those skips!"],
   ev_plop: ['{duck} is in the pond now. Honestly? Fair.', '{duck} has decided to go for a swim instead.', 'Splash! {duck} has found the pond.', 'The pond claims another one!', '{duck} is doing laps now. Lovely stroke.', 'Swim break for {duck}!'],
   ev_lilypad: ['Lily pad! {duck} bounces right back out!', 'Boing! Saved by a lily pad!', 'The pond says: not today, {duck}!', '{duck} hops off a lily pad like a frog!'],
   ev_notify: ["Somebody's phone is going off. In the air.", '{duck} is checking notifications. Mid-flight. Bold.', "Do not disturb, {duck}! You're flying!", 'Hold on, {duck} has to take this.'],
@@ -601,31 +601,31 @@ C.LINES = {
   ev_banana: ['Banana peel! {duck} is sliding for days!', 'Classic. Absolutely classic.', 'Who left that banana there?!', '{duck} is ice skating on a banana!'],
   ev_walkway: ['{duck} is on the moving walkway!', 'Please stand to the right, {duck}.', 'Moving walkway! {duck} is commuting!', 'Look at {duck} just cruising!', 'Mind the gap, {duck}!'],
   ev_geese: ['{duck} just got HONKED!', 'The geese have no respect for the sport!', 'HONK HONK! The geese are furious!', 'A goose ambush!', 'Those geese do NOT like visitors!'],
-  ev_billboard: ['Right into the billboard!', '{duck} is reading the billboard. Up close.'],
-  ev_tree: ['{duck} is stuck in the tree!', 'Is that a squirrel? It IS! Thank you, squirrel!'],
-  ev_clothesline: ['Tangled in the laundry! {duck} has a sock now!', "That's one way to accessorize."],
+  ev_billboard: ['Right into the billboard!', '{duck} is reading the billboard. Up close.', "{duck} hit the billboard. Strong brand awareness.", "Bonk! That billboard has seen things."],
+  ev_tree: ['{duck} is stuck in the tree!', 'Is that a squirrel? It IS! Thank you, squirrel!', "The tree has claimed {duck}. Temporarily.", "{duck} is up a tree. Somebody call a squirrel!"],
+  ev_clothesline: ['Tangled in the laundry! {duck} has a sock now!', "That's one way to accessorize.", "{duck} has picked up some laundry on the way!", "Clothesline! {duck} is wearing somebody's sock!"],
   ev_mud: ['SPLORT! {duck} is in the mud!', 'That is a magnificent mud mustache.', '{duck} will need a bath after this.', 'Mud spa, anyone?'],
-  ev_hammock: ['{duck} found a hammock... and is taking a nap.', 'Shhh. {duck} is resting.'],
+  ev_hammock: ['{duck} found a hammock... and is taking a nap.', 'Shhh. {duck} is resting.', "{duck} is out of office. In a hammock.", "Nap time for {duck}. Do not disturb."],
   ev_bread: ['{duck} has chosen bread over glory.', "Is that bread? It's bread. We've lost {duck}.", 'The bread wins again. It always does.', '{duck} has stopped for a snack. Respect.'],
-  ev_ooo: ['An out-of-office reply! {duck} bounced right back!', '"I am currently out of the office." Classic.'],
-  ev_replyall: ['A reply-all storm! Envelopes everywhere!', 'Somebody hit reply-all, and {duck} is paying for it.'],
-  ev_onhold: ['{duck} is ON HOLD.', 'Your call is important to us. Please continue to wait.'],
-  ev_gatekeeper: ['The Gatekeeper wants to know what this is regarding.', 'Full stop at the front desk!'],
-  ev_ufo: ['Is that... a UFO?!', '{duck} has been abducted! Bring that duck back!'],
+  ev_ooo: ['An out-of-office reply! {duck} bounced right back!', '"I am currently out of the office." Classic.', "{duck} hit an out-of-office and bounced straight back!", "Out of office until Monday. {duck} will have to wait."],
+  ev_replyall: ['A reply-all storm! Envelopes everywhere!', 'Somebody hit reply-all, and {duck} is paying for it.', "Envelopes everywhere! {duck} is stuck in the thread!", "Please remove {duck} from this thread!", "{duck} flew into a reply-all storm. Nobody is safe."],
+  ev_onhold: ['{duck} is ON HOLD.', 'Your call is important to us. Please continue to wait.', "{duck} is on hold. Enjoy the smooth jazz.", "Hold music for {duck}. Please stay on the line."],
+  ev_gatekeeper: ['The Gatekeeper wants to know what this is regarding.', 'Full stop at the front desk!', "The Gatekeeper is asking {duck} for an appointment!", "{duck} did not get past the front desk!"],
+  ev_ufo: ['Is that... a UFO?!', '{duck} has been abducted! Bring that duck back!', "Lights in the sky! {duck} is going up!", "Close encounter! {duck} is being beamed up!"],
   ev_tornado_fwd: ['And it throws {duck} clean down the field!', 'What a slingshot! Thank you, weather!', '{duck} is out the top and still going!', 'The tornado giveth!'],
   ev_tornado_back: ['Oh no. Wrong way, {duck}!', 'It sent {duck} back where they came from!', 'The tornado taketh away.'],
-  ev_ufo_ahead: ['And they dropped {duck} WAY down the field!', 'Alien taxi service! Thank you!'],
-  ev_ufo_behind: ['They put {duck} back... a little behind.', 'The aliens took a wrong turn.'],
+  ev_ufo_ahead: ['And they dropped {duck} WAY down the field!', 'Alien taxi service! Thank you!', "The aliens gave {duck} a lift down the field!"],
+  ev_ufo_behind: ['They put {duck} back... a little behind.', 'The aliens took a wrong turn.', "{duck} is back, but a little behind. Thanks, aliens."],
   ev_ufo_antennae: ['{duck} is back, and... wearing antennae?', 'Same spot. New antennae. Okay!'],
-  ev_wormhole: ['A WORMHOLE! Where will {duck} come out?!', 'Physics has left the building.'],
-  ev_tornado: ['TORNADO! {duck} is spinning like a top!', 'Round and round and... there they go!'],
-  ev_pinball: ['Bing! Bing! Bing! Pinball chaos!', 'Somebody stop that duck from bouncing!'],
-  ev_crate: ['Mystery crate! Spin that wheel!', 'Crate expectations, folks!'],
-  ev_crate_tinyhat: ["It's... a TINY HAT. Congratulations.", 'A tiny hat! Fashion over function!'],
-  ev_crate_rocket: ['ROCKET! The crate gave {duck} a rocket!', 'Rocket from the crate! Off they go!'],
-  ev_crate_balloons: ['Balloons! {duck} is floating!', 'A bunch of balloons! Up, up!'],
-  ev_crate_reverse: ['Oh no, the crate said GO BACK!', 'Backwards! The crate sent {duck} backwards!'],
-  ev_cannonception: ['Thunderbill Junior is open for business!', "A cannon on the course? Who approved this? Great idea, though."],
+  ev_wormhole: ['A WORMHOLE! Where will {duck} come out?!', 'Physics has left the building.', "{duck} went into a wormhole! Nobody panic!", "Where did {duck} go? Through a wormhole!"],
+  ev_tornado: ['TORNADO! {duck} is spinning like a top!', 'Round and round and... there they go!', "{duck} is caught in the tornado!", "TWISTER! Hold on to your hat, {duck}!"],
+  ev_pinball: ['Bing! Bing! Bing! Pinball chaos!', 'Somebody stop that duck from bouncing!', "{duck} is in the bumpers! Bing! Bong!", "Extra ball! {duck} is ricocheting everywhere!"],
+  ev_crate: ['Mystery crate! Spin that wheel!', 'Crate expectations, folks!', "{duck} found a mystery crate! What's inside?", "A mystery crate for {duck}! Spin, spin, spin!"],
+  ev_crate_tinyhat: ["It's... a TINY HAT. Congratulations.", 'A tiny hat! Fashion over function!', "A tiny hat for {duck}! Very small. Very stylish."],
+  ev_crate_rocket: ['ROCKET! The crate gave {duck} a rocket!', 'Rocket from the crate! Off they go!', "The crate had a rocket in it! Go, {duck}!"],
+  ev_crate_balloons: ['Balloons! {duck} is floating!', 'A bunch of balloons! Up, up!', "{duck} is floating away on a bunch of balloons!"],
+  ev_crate_reverse: ['Oh no, the crate said GO BACK!', 'Backwards! The crate sent {duck} backwards!', "Reverse gear! The crate sent {duck} the wrong way!"],
+  ev_cannonception: ['Thunderbill Junior is open for business!', "A cannon on the course? Who approved this? Great idea, though.", "Another cannon! {duck} gets launched AGAIN!", "Thunderbill Junior sends {duck} for a second ride!"],
   ev_space: ['{duck} is going to SPACE!', "We've lost visual. We've lost radio. We've lost the duck.", 'Liftoff! {duck} just left the atmosphere!'],
   ev_seagull: ['A seagull just stole the hat!', 'Hat theft! In front of everyone!'],
   ev_selfie: ['{duck} is taking a selfie. Priorities.', 'Say "bread"!'],
@@ -651,33 +651,33 @@ C.DUCK_LINES = {
   wrongWay: ['Wrong way?! Says who?', 'I prefer to call it reverse.', 'Okay, which way is the pond?'],
   pb: ['New personal best!', 'Best. Flight. EVER.', 'Did anyone get that on camera?!'],
   landBad: ['Totally on purpose.', "I'm fine! I'm fine!", 'Is it over? Did I win?', 'Worth it.', "I'll be in my pond.", 'That was a warm-up.', "Per my last quack, that was intentional.", "Let's call that a soft launch.", "We'll circle back to that.", "Learning experience!"],
-  tree: ['Little help?', 'I live here now.'],
-  bread: ['Carbs!', 'Worth it.'],
-  mud: ['Mud spa. Very fancy.', 'I feel exfoliated.'],
-  onhold: ['Hello? Hello?', 'Representative. REPRESENTATIVE.'],
-  gatekeeper: ["It's regarding... a flight?", 'I have an appointment!'],
-  hammock: ['Zzz...', 'Five more minutes...'],
-  ufo: ['Take me to your pond!', 'Do you have bread up here?'],
+  tree: ['Little help?', 'I live here now.', "Nice view up here!", "Squirrel? Hello?"],
+  bread: ['Carbs!', 'Worth it.', "Bread time!", "No regrets."],
+  mud: ['Mud spa. Very fancy.', 'I feel exfoliated.', "Spa day!", "Do not tell my mom."],
+  onhold: ['Hello? Hello?', 'Representative. REPRESENTATIVE.', "This hold music is great.", "I will wait. Again."],
+  gatekeeper: ["It's regarding... a flight?", 'I have an appointment!', "Is there a sign-in sheet?", "I'm on the list!"],
+  hammock: ['Zzz...', 'Five more minutes...', "Do not disturb.", "Wake me at five."],
+  ufo: ['Take me to your pond!', 'Do you have bread up here?', "Beam me up!", "Is there Wi-Fi up here?"],
   space: ['Space is so quiet!', 'I can see ALL the ponds!'],
-  banana: ['Whoaaa!', 'Who leaves a banana here?!'],
+  banana: ['Whoaaa!', 'Who leaves a banana here?!', "Slippery!", "Banana for scale!"],
   ramp: ['SENDING IT!', 'Big air!', 'Did everyone see that?!', 'Radical. Is that the word?'],
   lilypad: ['Ribbit!', 'Thanks, lily pad!', 'Not swimming today!'],
-  glider: ['This is nice.', 'Wheee, very relaxing.'],
-  pelican: ['Thanks for the lift!', 'Is this the express?'],
-  drone: ['Coffee! COFFEE!', 'I can see TOMORROW!'],
-  pepper: ['HOT HOT HOT!', 'MY BEAK IS ON FIRE!'],
-  geese: ['Hey, watch it!', 'Rude!'],
-  bell: ['Ding ding!', 'Meeting booked!'],
-  clothesline: ['Is this sock mine now?', 'Fashion!'],
-  ooo: ['But I had a question!', 'Rude!'],
-  replyall: ['UNSUBSCRIBE!', 'Stop replying all!'],
-  wormhole: ['Where am I?!', 'Wheeeeoooo!'],
-  tornado: ['Which way is the pond?!', 'Spinnnnn!'],
-  skip: ['Skip! Skip! Skip!', 'Wheee!'],
-  walkway: ['Is this the express lane?', 'Love this for me.'],
-  billboard: ['Ow. Fine. I am fine.', 'Good sign though.'],
-  trampoline: ['Again! Again!', 'Higher! HIGHER!'],
-  plop: ['Pond, sweet pond.', 'Bath time!'],
+  glider: ['This is nice.', 'Wheee, very relaxing.', "I should do this more often.", "Nature is healing."],
+  pelican: ['Thanks for the lift!', 'Is this the express?', "Window seat, please!", "Is there a snack cart?"],
+  drone: ['Coffee! COFFEE!', 'I can see TOMORROW!', "Extra shot, please!", "I can hear colors!"],
+  pepper: ['HOT HOT HOT!', 'MY BEAK IS ON FIRE!', "SPICY!", "Need. Milk."],
+  geese: ['Hey, watch it!', 'Rude!', "HONK yourself!", "Personal space, please!"],
+  bell: ['Ding ding!', 'Meeting booked!', "Deal closed!", "Ring ring!"],
+  clothesline: ['Is this sock mine now?', 'Fashion!', "New wardrobe!", "Laundry day!"],
+  ooo: ['But I had a question!', 'Rude!', "Back on MONDAY?!", "An auto-reply?!"],
+  replyall: ['UNSUBSCRIBE!', 'Stop replying all!', "Please remove me from this list!", "Who added me?!"],
+  wormhole: ['Where am I?!', 'Wheeeeoooo!', "Is it Tuesday here?", "Physics, please!"],
+  tornado: ['Which way is the pond?!', 'Spinnnnn!', "I am the storm!", "Too much spin!"],
+  skip: ['Skip! Skip! Skip!', 'Wheee!', "Like a stone!", "Don't touch the water!"],
+  walkway: ['Is this the express lane?', 'Love this for me.', "No running on the walkway!", "This counts as cardio."],
+  billboard: ['Ow. Fine. I am fine.', 'Good sign though.', "Read the ad!", "Bonk."],
+  trampoline: ['Again! Again!', 'Higher! HIGHER!', "Boing! Boing!", "Best. Office. Perk."],
+  plop: ['Pond, sweet pond.', 'Bath time!', "Cannonball!", "The water is lovely!"],
   selfie: ['Get my good side!', 'For the pond group chat!'],
   hatwin: ['My hat! MY HAT!', 'Show-off.'],
   dizzy: ['Quack?', 'Which way is up?'],
@@ -4628,7 +4628,7 @@ const Caps = {
     // a filler remark only speaks when Bill is free right now: it never waits in line, never replaces anything,
     // and leaves the bar after a few seconds
     if (o.filler && !this.free()) return false;
-    const item = { text, min: Math.max(2.0, o.min || 0), at: S.rt + (o.delay || 0), prio: o.prio || 0, filler: o.filler || null, max: o.filler ? 2.8 : 0 };
+    const item = { text, min: Math.max(2.0, o.min || 0), at: S.rt + (o.delay || 0), prio: o.prio || 0, filler: o.filler || null, max: o.filler ? 2.8 : 0, tag: o.tag || null, stale: o.stale || null };
     this.lastAt = Math.max(this.lastAt, item.at);
     // Bill never falls behind the action: a newer line replaces anything still waiting at the same or lower priority
     // (lines scheduled for later at the same priority are a planned sequence and stay)
@@ -4649,12 +4649,17 @@ const Caps = {
   // seconds until the newest impact caption has had `min` seconds on screen (0 when none is that fresh)
   freshBig(min) { let w = 0; for (const b of this.bigs) { const age = S.rt - b.t0; if (age < min && age < b.dur) w = Math.max(w, min - age); } return w; },
   shift(d) { if (!(d > 0)) return; this.lastAt += d; this.queue.forEach(q => { q.at += d; }); this.curStart += d; this.bigs.forEach(b => { b.t0 += d; }); if (this.bubble) this.bubble.t0 += d; },
+  // a line that only makes sense until something happens ("count it down!" once the cannon has fired) leaves the bar then
+  retire(tag) { if (this.cur && this.cur.tag === tag) this.cur = null; this.queue = this.queue.filter(q => q.tag !== tag); },
   bubbleSay(text, o) { if (!text) return; this.lastAt = Math.max(this.lastAt, S.rt + ((o && o.delay) || 0)); this.bubble = { text, t0: S.rt + ((o && o.delay) || 0), dur: Math.max(2, (o && o.dur) || 2.4) }; },
   update() {
     const now = S.rt;
     // a real line waits for the current one's 2 s; a filler steps aside for it after a moment
     if (this.cur && now - this.curStart >= (this.cur.filler ? 0.9 : this.cur.min) && this.queue.some(q => q.at <= now)) this.cur = null;
     if (this.cur && now - this.curStart > (this.cur.max || this.cur.min + 3.5)) this.cur = null;
+    // a line about the moment ("still 3 ducks moving!") leaves once it is no longer true, after a moment to read it
+    if (this.cur && this.cur.stale && now - this.curStart >= 1.2 && this.cur.stale(this.cur.text)) this.cur = null;
+    this.queue = this.queue.filter(q => !q.stale || !q.stale(q.text));
     if (!this.cur) {
       const i = this.queue.findIndex(q => q.at <= now);
       if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; Voice.speak(this.cur.text); }
@@ -5678,7 +5683,7 @@ function setPhase(p) {
     SFX.play('click');
     quip('peek', { delay: 0.2 });
     // get the call involved: the first launch of the day (and now and then after) invites a count-along
-    if (!L.q.bonus && (S.race.idx === 0 || hash(S.race.seed, 'countin', S.race.idx) % 5 === 0)) say(S.race.idx === 0 ? 'countInFirst' : 'countIn', {}, { prio: 1 });
+    if (!L.q.bonus && (S.race.idx === 0 || hash(S.race.seed, 'countin', S.race.idx) % 5 === 0)) say(S.race.idx === 0 ? 'countInFirst' : 'countIn', {}, { prio: 1, tag: 'count' });
   }
   if (p === 'countdown') {
     setBig('LIGHT THE FUSE', false);
@@ -5942,7 +5947,7 @@ function boomFX(misfire) {
   if (misfire) {
     SFX.play('puff');
     Particles.add({ type: 'smoke', ws: true, x: m.x, y: m.y, vx: 4, vy: 3, life: 1.4, r: 30, a: 0.7 });
-    Caps.big('FIRE IN THE DUCK!', { px: 86, y: 250 });
+    Caps.retire('count'); Caps.big('FIRE IN THE DUCK!', { px: 86, y: 250 });
     Caps.big('...?', { px: 120, delay: 1.0, color: '#ffffff', y: 330 });
     say('misfire', { duck: L.pl.duck.name }, { delay: 0.8, prio: 1 });
     return;
@@ -5955,7 +5960,7 @@ function boomFX(misfire) {
   for (let i = 0; i < 9; i++) Particles.add({ type: 'smoke', ws: true, x: m.x + fx.range(-4, 4), y: m.y + fx.range(-4, 4), vx: Math.cos(a) * fx.range(10, 50) + fx.range(-10, 10), vy: Math.sin(a) * fx.range(10, 50) + fx.range(-5, 10), drag: 1.5, life: fx.range(1.2, 2.2), r: fx.range(24, 40), a: 0.8 });
   burst('feather', 12, { x: m.x, y: m.y, a0: -a, spread: 1.2, sp0: 20, sp1: 70, l0: 1.2, l1: 2.2, r0: 8, r1: 14, colors: [C.COLORS[L.pl.duck.color].c, '#ffffff'], extra: { ws: true, g: -12, drag: 1.2 } });
   // up top, so Ol' Thunderbill's big moment stays in view
-  Caps.big('FIRE IN THE DUCK!', { px: 86, dur: 2, y: 250 });
+  Caps.retire('count'); Caps.big('FIRE IN THE DUCK!', { px: 86, dur: 2, y: 250 });
   if (L.tl.special === 'backfire') { Caps.big('WRONG WAY!', { px: 110, delay: 0.9, color: '#ff8a7a', y: 410 }); say('backfire', { duck: L.pl.duck.name }, { delay: 0.6, prio: 1 }); }   // (below FIRE IN THE DUCK!, which is still up)
   else if (L.fuseOut) { /* the fake-out has its own punchline */ }
   else { say('launch', { duck: L.pl.duck.name }, { delay: 0.5 }); if (!L.tl.gags.some(g => g.id === 'scream')) quip('launch', { delay: 2.1 }); }   // once the big caption has cleared
@@ -7315,7 +7320,7 @@ function salvoFire(replay) {
     for (let i = 0; i < 16; i++) Particles.add({ type: 'smoke', ws: true, x: m.x + fx.range(-5, 5), y: m.y + fx.range(-5, 5), vx: Math.cos(a) * fx.range(10, 70) + fx.range(-14, 14), vy: Math.sin(a) * fx.range(10, 70) + fx.range(-6, 12), drag: 1.5, life: fx.range(1.2, 2.4), r: fx.range(26, 46), a: 0.8 });
     burst('feather', 22, { x: m.x, y: m.y, a0: -a, spread: 1.4, sp0: 20, sp1: 90, l0: 1.2, l1: 2.4, r0: 8, r1: 14, colors: normal.slice(0, 6).map(f => C.COLORS[f.pl.duck.color].c).concat(['#ffffff']), extra: { ws: true, g: -12, drag: 1.2 } });
   } else SFX.play('puff');
-  Caps.big(SV.fl.length > 1 ? 'FIRE IN THE DUCKS!' : 'FIRE IN THE DUCK!', { px: 96, dur: 2, y: 620 });   // below the flock, which goes up and away
+  Caps.retire('count'); Caps.big(SV.fl.length > 1 ? 'FIRE IN THE DUCKS!' : 'FIRE IN THE DUCK!', { px: 96, dur: 2, y: 620 });   // below the flock, which goes up and away
   if (replay) Caps.big('INSTANT REPLAY', { px: 64, color: '#ffffff', y: 520, delay: 0.1 });
   else say(SV.fl.length > 1 ? 'salvoLaunch' : 'launch', { n: SV.fl.length, duck: SV.fl[0].pl.duck.name }, { delay: 0.5, prio: 1 });
   if (SV.fl.length > 2) SFX.play('cheer', 1.6);
@@ -7370,7 +7375,7 @@ function updateSalvo(dt) {
       const step = salvoLoadStep(), n = SV.fl.length;
       const loaded = clamp(Math.floor((SV.pt - 0.5 * pace) / step) + 1, 0, n);
       if (loaded > SV.loaded) { for (let i = SV.loaded; i < loaded; i++) { if (S.rt - (SV.sndAt.load || -9) > 0.07) { SV.sndAt.load = S.rt; SFX.play('quack', SV.fl[i].pl.duck.pitch * 1.15, 3); } } SV.loaded = loaded; }
-      if (SV.pt >= 0.5 * pace + n * step + 0.75 * pace) { SV.loaded = n; SV.phase = 'armed'; SV.pt = 0; setBig('LIGHT THE FUSE', true); SFX.play('click'); SFX.play('crank', 3); if (n > 1) say('salvoCount', {}, { prio: 1 }); }
+      if (SV.pt >= 0.5 * pace + n * step + 0.75 * pace) { SV.loaded = n; SV.phase = 'armed'; SV.pt = 0; setBig('LIGHT THE FUSE', true); SFX.play('click'); SFX.play('crank', 3); if (n > 1) say('salvoCount', {}, { prio: 1, tag: 'count' }); }
       salvoCam(dt, -110 - 15 * Math.min(n, 16), 150, 3.0);
       break;
     }
@@ -7411,6 +7416,11 @@ function salvoCamRest(dt) {
   // after the volley: settle on the winner (or the best of a bonus volley)
   const w = SV.result && SV.result.best;
   if (w) { const cam = L.cam; cam.z = approach(cam.z, 2.2, 1.2, dt); cam.cx = approach(cam.cx, w.x + 60 + 210 / cam.z, 1.8, dt); cam.gy = approach(cam.gy, GROUND_Y, 3, dt); }
+}
+// Bill's running call goes stale when what it says stops being true: the count of ducks still moving, or who is in front
+function callStale(front, moving) {
+  const nRe = new RegExp('(^|[^\\d,])' + moving + ' (ducks|of them|still|in motion|left)'), name = front.pl.duck.name, player = front.pl.name;
+  return text => SV.phase !== 'flight' || (SV.moving !== moving && nRe.test(text)) || (SV.front !== front && (text.includes(name) || text.includes(player)));
 }
 function salvoSay(pool, vars, o, gap) {
   // one voice at a time: Bill only starts a new salvo line when the last one has had its moment
@@ -7531,6 +7541,7 @@ function updateSalvoFlight(dt) {
       }
     } else { moving++; lastMover = f; }
   }
+  SV.moving = moving;
   // who is in front right now (ducks still in the barrel or hidden do not count)
   const live = SV.fl.filter(f => f.vis && t >= f.tl.launchT + 0.4);
   live.sort((a, b) => b.x - a.x);
@@ -7564,7 +7575,7 @@ function updateSalvoFlight(dt) {
     else if (front && n > 1 && moving > 1 && t > 4 && S.rt - SV.lineAt > 4.4 && pb.dur - pb.T > 3 && Caps.free()) {
       const ch = SV.chase && SV.chase.f, lead = SV.lead;
       if (ch && lead && ch.x < lead.x) salvoSay('salvoSoloChase', { duck: ch.pl.duck.name, player: ch.pl.name, distance: fmtFt(Math.max(0, ch.x)), gap: fmtFt(Math.max(1, lead.x - ch.x)), leader: lead.pl.name }, { prio: 0 }, 0);
-      else salvoSay('salvoCall', { duck: front.pl.duck.name, player: front.pl.name, distance: fmtFt(Math.max(0, front.x)), n: moving }, { prio: 0 }, 0);
+      else salvoSay('salvoCall', { duck: front.pl.duck.name, player: front.pl.name, distance: fmtFt(Math.max(0, front.x)), n: moving }, { prio: 0, stale: callStale(front, moving) }, 0);
     }
   }
   // the lines to beat (last show's winner, the pond record): the first duck across each gets a cheer
@@ -8338,7 +8349,7 @@ function drawTitle(ctx, dt) {
   // date + conditions teaser
   const px = 1150, py = 520;
   const story = titleStory(), sh = story.length ? 46 : 0;   // the card grows a line when there is a story to tell
-  rr(ctx, px - 400, py - 40, 800, 200 + sh, 30); fillStrokeLifted(ctx, 'rgba(255,248,230,0.96)', 6);
+  rr(ctx, px - 400, py - 40, 800, 200 + sh, 30); fillStrokeLifted(ctx, '#fff8e6', 6);   // solid: set pieces behind it don't ghost through
   txt(ctx, prettyDate(S.dbg.day || S.day), px, py + 4, { px: 44, color: OUT, sw: 0 });
   txt(ctx, "TODAY'S POND FORECAST", px, py + 58, { px: 26, color: '#e8412c', sw: 0 });
   txt(ctx, conditionsSummary(S.cond), px, py + 104, { px: 32, color: '#4a4458', sw: 0, maxW: 760, weight: 800 });
@@ -8368,8 +8379,9 @@ function drawTitle(ctx, dt) {
   if (fin) button(ctx, 'lastres', 1460, 948, 420, 76, 'Last results (' + shortDate(fin.day) + ')', { px: 26, bg: '#fff8e6', fn: () => viewLastResults(fin) });
   if (!SFX.ready) {
     const hy = py + 186 + sh + (c ? 40 : 0) + (Store.full ? 40 : 0);
-    if (hy > 730) { rr(ctx, px - 250, hy - 21, 500, 42, 14); ctx.fillStyle = 'rgba(31,26,46,0.7)'; ctx.fill(); }   // down among the distance signs: on a plate
-    txt(ctx, 'Click anywhere to turn on sound', px, hy, { px: 26, color: '#fff', sw: hy > 730 ? 0 : 6 });
+    // on a plate: it lands among the field's signs and set pieces, which would show through plain outlined text
+    rr(ctx, px - 250, hy - 27, 500, 50, 14); ctx.fillStyle = '#2a2438'; ctx.fill();   // tucked up against the card, and solid
+    txt(ctx, 'Click anywhere to turn on sound', px, hy, { px: 26, color: '#fff', sw: 0 });
   }
 }
 
