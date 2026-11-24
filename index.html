@@ -445,6 +445,7 @@ C.EVENTS = {
   plop: { name: 'Pond Plop', kind: 'obstacle', trig: 'piece', fx: 'plop', art: 'pond', sfx: 'splash', cap: 'SPLASH!', antic: 0.3, dist: true, hl: '{duck} landed in the pond at {x} and decided to just swim' },
   lilypad: { name: 'Lily Pad', kind: 'boost', trig: 'piece', fx: 'lilypad', art: 'pond', sfx: 'boing', cap: 'LILY PAD!', antic: 0.3, dist: true, hl: '{duck} bounced off a lily pad at {x} and hopped out of the pond' },
   banana: { name: 'Banana Peel', kind: 'boost', trig: 'piece', fx: 'banana', art: 'banana', sfx: 'slip', cap: 'SLIPPED!', antic: 0.3, dist: true, hl: '{duck} slipped on a banana peel at {x} and slid for days' },
+  ramp: { name: 'Kicker Ramp', kind: 'boost', trig: 'piece', fx: 'ramp', art: 'ramp', sfx: 'ramp', cap: 'SEND IT!', antic: 0.3, dist: true, hl: '{duck} came sliding into the kicker ramp at {x} and sent it' },
   walkway: { name: 'Moving Walkway', kind: 'boost', trig: 'piece', fx: 'walkway', art: 'walkway', sfx: 'walkway', cap: 'MOVING WALKWAY!', antic: 0.3, dist: true, hl: '{duck} rode the moving walkway at {x}' },
   geese: { name: 'Goose Squadron', kind: 'obstacle', trig: 'air', band: [70, 340], rate: 0.02, fx: 'geese', art: 'geese', sfx: 'honk', cap: 'HONKED!', antic: 1.0, dist: true, hl: '{duck} got HONKED by a goose squadron at {x}' },
   billboard: { name: 'Billboard', kind: 'obstacle', trig: 'piece', fx: 'billboard', art: 'billboard', sfx: 'bonk', cap: 'BONK!', antic: 0.5, dist: true, hl: '{duck} bonked into a billboard at {x}' },
@@ -473,8 +474,11 @@ C.EVENTS = {
   cows: { name: 'Cow Chorus', kind: 'gag', art: 'cows', sfx: 'moo', cap: 'MOOO.', antic: 0.3, hl: 'A field of cows looked up at {duck} in perfect unison' },
   balloon: { name: 'Balloon', kind: 'gag', art: 'balloon', sfx: 'pop', cap: '', antic: 1.0, hl: '{duck} passed a birthday balloon' },
   wave: { name: 'Wave', kind: 'gag', art: 'wave', sfx: 'quack', cap: '', antic: 0, hl: '{duck} waved at the camera' },
+  notify: { name: 'Notification', kind: 'gag', art: 'notify', sfx: 'notify', cap: '', antic: 0, hl: '{duck} got a notification mid-flight' },
   scream: { name: 'AAAAAA', kind: 'gag', art: 'scream', sfx: 'scream', cap: '', antic: 0, hl: '{duck} screamed the whole way up' },
 };
+// the notification gag: a phone notification pops up beside a duck in the air
+C.NOTIFY = ['Reminder: you are in a cannon.', 'Your flight is now boarding.', 'Low battery: 3%', 'New message from Mom: "Wear a helmet."', 'Calendar: "Land" in 5 minutes', 'Did you mean to fly? Yes / No', 'Update available. Install mid-flight?', 'You have walked 0 steps today.', 'Screen time is up 400% this week.', 'Your pond is out of bread.', 'Wi-Fi network found: PondNet', 'Rate your flight: \u2605\u2605\u2605\u2605\u2605', 'Your package is out for delivery. So are you.', 'Focus mode is on. Mostly.'];
 C.CRATE_PRIZES = [
   { id: 'tinyhat', label: 'TINY HAT', w: 32 },
   { id: 'rocket', label: 'ROCKET', w: 24 },
@@ -570,6 +574,10 @@ C.LINES = {
   // the reveal: Bill reads out one duck's scouting report (its stats and bio are otherwise only on the one-by-one intro card)
   scoutStat: ['Scouting report on {duck}. {stat}: {value}.', 'A quick word from the scouts on {duck}. {stat}? {value}.', 'The file on {duck} says {stat}: {value}. Make of that what you will.', 'Scouts are very excited about {duck}. {stat}: {value}.'],
   scoutBio: ['Scouting report on {duck}: {bio}', 'Everything you need to know about {duck}: {bio}', 'A little background on {duck}. {bio}'],
+  // the over/under: a line for the winning flight, set so it is a coin flip; the room shouts its call
+  ouCall: ['Over/under on the winning flight today: {line}. Everybody shout OVER or UNDER!', "Today's line for the farthest duck: {line}. Over or under? Call it out!", 'The over/under for the winning flight is {line}. One guess each. Out loud.', 'Set your expectations, folks: {line} for the winner. Over or under?'],
+  ouOver: ['{duck} is past {line} and not coming back! The OVER hits!', "That's the OVER! {duck} is beyond {line}!", 'OVER! {duck} clears the line at {line}!', 'The OVER crowd is celebrating. {duck} is past {line}!'],
+  ouUnder: ['Nobody got past {line}. The UNDER takes it!', 'The line was {line}. The UNDER wins it! Fine flying, though.', 'UNDER! {line} was a bridge too far today.', 'The UNDER crowd called it: nobody reached {line}.'],
   billPick: ["And Bill's pick to win today: {player}'s duck, {duck}. Don't quote me.", "My pick for the Golden Loaf: {player}'s duck, {duck}. I have a feeling.", "Bill's pick of the day: {player}'s duck, {duck}. Look at those wings."],
   billPickWon: ['Called it! Bill\'s pick, {duck}, took the Golden Loaf. Bill will be unbearable now.', 'Bill\'s pick, {duck}, WON! Nobody tell my editor.'],
   billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board."],
@@ -592,6 +600,8 @@ C.LINES = {
   ev_skip: ['{duck} is skipping like a stone!', 'Look at that form on the water!'],
   ev_plop: ['{duck} is in the pond now. Honestly? Fair.', '{duck} has decided to go for a swim instead.', 'Splash! {duck} has found the pond.', 'The pond claims another one!', '{duck} is doing laps now. Lovely stroke.', 'Swim break for {duck}!'],
   ev_lilypad: ['Lily pad! {duck} bounces right back out!', 'Boing! Saved by a lily pad!', 'The pond says: not today, {duck}!', '{duck} hops off a lily pad like a frog!'],
+  ev_notify: ["Somebody's phone is going off. In the air.", '{duck} is checking notifications. Mid-flight. Bold.', "Do not disturb, {duck}! You're flying!", 'Hold on, {duck} has to take this.'],
+  ev_ramp: ['{duck} found the ramp! SEND IT!', 'Ramp! {duck} is airborne again!', 'Who put a ramp there? Best decision of the day.', '{duck} sends it! Extreme sports, folks!', 'Off the ramp! {duck} is not done yet!'],
   ev_banana: ['Banana peel! {duck} is sliding for days!', 'Classic. Absolutely classic.', 'Who left that banana there?!', '{duck} is ice skating on a banana!'],
   ev_walkway: ['{duck} is on the moving walkway!', 'Please stand to the right, {duck}.', 'Moving walkway! {duck} is commuting!', 'Look at {duck} just cruising!', 'Mind the gap, {duck}!'],
   ev_geese: ['{duck} just got HONKED!', 'The geese have no respect for the sport!', 'HONK HONK! The geese are furious!', 'A goose ambush!', 'Those geese do NOT like visitors!'],
@@ -654,6 +664,7 @@ C.DUCK_LINES = {
   ufo: ['Take me to your pond!', 'Do you have bread up here?'],
   space: ['Space is so quiet!', 'I can see ALL the ponds!'],
   banana: ['Whoaaa!', 'Who leaves a banana here?!'],
+  ramp: ['SENDING IT!', 'Big air!', 'Did everyone see that?!', 'Radical. Is that the word?'],
   lilypad: ['Ribbit!', 'Thanks, lily pad!', 'Not swimming today!'],
   glider: ['This is nice.', 'Wheee, very relaxing.'],
   pelican: ['Thanks for the lift!', 'Is this the express?'],
@@ -818,7 +829,7 @@ const Store = (() => {
 // and no camera flash
 const REDUCED_MOTION = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function defaultSettings() {
-  return { teams: deepClone(C.TEAM_DEFAULTS), volume: 0.6, muted: false, shake: !REDUCED_MOTION, voice: false, turboDefault: false, autoAdvance: false, practice: false, bonusAmmo: false, salvo: true };
+  return { teams: deepClone(C.TEAM_DEFAULTS), volume: 0.6, muted: false, shake: !REDUCED_MOTION, voice: false, turboDefault: false, autoAdvance: false, practice: false, bonusAmmo: false, salvo: true, music: true };
 }
 function loadSettings() {
   const s = Object.assign(defaultSettings(), Store.get('settings', {}) || {});
@@ -1170,6 +1181,7 @@ const PIECE_DEFS = {
 };
 // Built courses, one per day and set of conditions: {course, job}. job is the unfinished test-flying, if any.
 const COURSES = new Map();
+const RAMP = { w: 40, h: 12 };   // the kicker ramp: a curved wedge, rising to its lip at the far end
 // lazy: for screens that only draw the field (title, roster). They get the course as it stands, marked rough, and the
 // test flights are finished in small slices by courseWork(). Anything that flies ducks asks without lazy and gets the
 // finished course (the job is completed on the spot if it has to be). The result is the same either way.
@@ -1179,7 +1191,7 @@ function generateCourse(dayKey, cond, lazy) {
   if (!ent) { if (COURSES.size > 500) COURSES.clear(); const course = buildCourse(dayKey, cond); ent = { course, job: balanceSteps(course, cond) }; COURSES.set(key, ent); }
   if (ent.job && !lazy) { try { while (!ent.job.next().done); } catch (e) { COURSES.delete(key); throw e; } ent.job = null; }   // a failed job is never mistaken for a finished one
   const out = { dayKey: ent.course.dayKey, pieces: ent.course.pieces.map(p => Object.assign({}, p, { data: Object.assign({}, p.data) })) };
-  if (ent.job) out.rough = true;
+  if (ent.job) out.rough = true; else if (ent.course.dists) out.dists = ent.course.dists;
   return out;
 }
 // Carry on any unfinished course test flights for about ms milliseconds. True while there is still work left.
@@ -1249,6 +1261,14 @@ function buildCourse(dayKey, cond) {
   for (let i = 0; i < crates; i++) add('crate', rng.range(320 + i * 800, 1100 + i * 800), { ev: 'crate', w: 0, y: Math.round(rng.range(70, 170)), h: 0, chance: 0.7 });
   // the tornado wanders back and forth, and every flight meets it somewhere else: it is never a wall in one spot
   if (rng.chance(0.6)) add('tornado', rng.range(900, 2600), { ev: 'tornado', w: 70, h: 300, chance: 0.5, data: { drift: 200, rate: 0.3 } });
+  // a kicker ramp on most days: it sends a duck that comes sliding along the ground back up into the air. It is placed
+  // from its own random stream after everything else, so the rest of the day's course is laid out as it always was.
+  const rrng = new Rng(hash('ramp', dayKey));
+  if (rrng.chance(0.8)) {
+    const spots = [];
+    for (let x = 650; x <= 2800; x += 10) if (free(x - 6, x + RAMP.w + 6)) spots.push(x);
+    if (spots.length) { const x = rrng.pick(spots); pieces.push({ id: 'ramp' + (uid++), type: 'ramp', ev: 'ramp', x, w: RAMP.w, h: RAMP.h, y: 0, chance: 0.8, data: {} }); occupied.push([x, x + RAMP.w]); }
+  }
   pieces.sort((a, b) => a.x - b.x);
   return { dayKey, pieces };
 }
@@ -1263,10 +1283,11 @@ function* balanceSteps(course, cond) {   // a generator, so the work can be done
   // a rough cut first (the big offenders), then two finer looks at the course as it then stands (the second catches
   // what the first one's own changes stirred up)
   for (let pass = 0; pass < 3; pass++) {
-    const got = {}, N = pass ? 160 : 80;
+    const got = {}, N = pass ? 160 : 80, dists = [];
     for (let i = 0; i < N; i++) {
       if (i) yield;
       const tl = SIM.simulate(hash('testfly', course.dayKey, pass, i), cond, course, null, { record: false, probe: true });
+      dists.push(tl.final);
       // a piece the duck reached counts by its odds of being live, whether or not it was this time (far less noise
       // than counting hits). A pond counts every duck that came down in it to stay (swam, or was bounced out by a
       // lily pad) by its odds of staying. Skipping across a pond is not a stop.
@@ -1275,6 +1296,7 @@ function* balanceSteps(course, cond) {   // a generator, so the work can be done
       tl.reach.forEach(id => { seen[id] = 1; });
       for (const pc of course.pieces) if (seen[pc.id]) got[pc.id] = (got[pc.id] || 0) + (pc.type === 'pond' ? pc.tame || 1 : SIM.rollOdds(pc, tl.chaos));
     }
+    if (pass === 2) course.dists = dists.sort((a, b) => a - b);   // (the over/under is set from these)
     const share = {}, kind = {};
     for (const pc of course.pieces) { share[pc.id] = (got[pc.id] || 0) / N; kind[pc.ev] = (kind[pc.ev] || 0) + share[pc.id]; }
     for (const pc of course.pieces) {
@@ -1301,7 +1323,7 @@ function driftLean(pc, seed, t) { const d = pc.data; return d && d.drift ? Math.
 // For the debug panel: drop a piece of the requested event right where a flight will meet it.
 function pieceTypeForEvent(ev) {
   for (const k of Object.keys(PIECE_DEFS)) if (PIECE_DEFS[k].ev === ev) return k;
-  return { skip: 'pond', plop: 'pond', lilypad: 'pond', walkway: 'walkway', bread: 'bench', cannonception: 'minicannon', jetstream: 'jetstream', replyall: 'stormcloud', wormhole: 'wormhole', crate: 'crate', tornado: 'tornado', cows: 'cows' }[ev] || null;
+  return { ramp: 'ramp', skip: 'pond', plop: 'pond', lilypad: 'pond', walkway: 'walkway', bread: 'bench', cannonception: 'minicannon', jetstream: 'jetstream', replyall: 'stormcloud', wormhole: 'wormhole', crate: 'crate', tornado: 'tornado', cows: 'cows' }[ev] || null;
 }
 
 
@@ -1360,6 +1382,7 @@ const SIM = (() => {
       case 'trampoline': return (mode === 0 && vy < 0 || mode === 1) && x >= pc.x && x <= pc.x + pc.w && y <= pc.h + 1;
       case 'banana': case 'walkway': case 'mud': return (mode === 1 || (mode === 0 && vy < 0)) && x >= pc.x && x <= pc.x + pc.w && y <= pc.h + 1;
       case 'pond': return (mode === 1 || (mode === 0 && vy < 0)) && x >= pc.x && x <= pc.x + pc.w && y <= 1;
+      case 'ramp': return mode === 1 && x >= pc.x && x <= pc.x + pc.w * 0.4;
       default: return false;
     }
   }
@@ -1385,11 +1408,13 @@ const SIM = (() => {
     const chaos = 0.14 + 1.55 * Math.pow(rng.next(), 1.5);
     const prng = new Rng(hash(seed, 'pieces'));
     const pieceRoll = pieces.map(pc => {
-      const roll = prng.next() < rollOdds(pc, chaos);
+      // (the ramp rolls from its own stream: every other piece rolls exactly as it did before the ramp existed)
+      const roll = (pc.type === 'ramp' ? new Rng(hash(seed, 'ramproll', pc.id)).next() : prng.next()) < rollOdds(pc, chaos);
       if (!only) return roll;
       return opts.force === pc.ev || (pc.type === 'pond' && (only === 'skip' || only === 'plop' || only === 'lilypad'));
     });
     const reach = opts.probe ? new Set() : null;   // course test flights: pieces reached, rolled or not
+    const rampIdx = []; pieces.forEach((pc, i) => { if (pc.type === 'ramp') rampIdx.push(i); });
     const isGround = pieces.map(pc => !!GROUND_TYPES[pc.type]), notTall = pieces.map((pc, i) => !pieceRoll[i] || !!pc.gag || isGround[i]);
     const spin0 = rng.range(-3, 3);
     // cosmetic streams (never touch rng above)
@@ -1464,6 +1489,16 @@ const SIM = (() => {
       bread(pc) { emit('bread', { piece: pc.id }, 2.3); startScript('dive', 2.3, { x0: s.x, y0: s.y, tx: Math.max(Math.min(s.x, pc.x - 8), pc.x - rng.range(6, 34)), ty: 0 }); s.pose = POSE.eat; },
       mud(pc) { emit('mud', { piece: pc.id }); s.extra.mudT = s.t; s.y = 0; deadStop(POSE.stand, { maxX: pc.x + pc.w - 4 }); },
       cannonception(pc) { emit('cannonception', { piece: pc.id }, 1.4); startScript('reload', 1.4, { x0: pc.x + pc.w * 0.6, y0: 18, vx: rng.range(150, 178), vy: rng.range(140, 165) }); s.vis = 0; },
+      // the kicker ramp: a duck sliding in fast rides up the curve and is launched off the lip, a little faster than it
+      // came in (it is a kicker). Riding up costs what climbing the ramp costs.
+      ramp(pc, k0) {
+        k0 = k0 || 0;
+        const v = Math.max(0, s.vx), vTop = Math.sqrt(Math.max(0, v * v - 2 * P.g * pc.h * (1 - k0 * k0)));
+        const dur = clamp(pc.w * (1 - k0) / Math.max(v, 1), 0.08, 0.6);
+        emit('ramp', { piece: pc.id }, dur);
+        startScript('ramp', dur, { pcx: pc.x, w: pc.w, h: pc.h, k0, out: vTop * rng.range(1.1, 1.3) + rng.range(22, 32), ang: rng.range(32, 42) * DEG, launch: true });
+        s.pose = POSE.slide;
+      },
       banana(pc) { emit('banana', { piece: pc.id }); s.slick = true; s.slickT = s.t; s.vx = Math.max(s.vx, 0) + rng.range(22, 34); s.spin = 9; s.y = 0; s.mode = MODE.ground; s.pose = POSE.slide; },
       walkway(pc) { emit('walkway', { piece: pc.id, end: pc.x + pc.w }, Math.max(0.5, (pc.x + pc.w - s.x) / 38)); s.y = groundY(s.x); startScript('walkway', 30, { end: pc.x + pc.w, speed: 38 + clamp(Math.max(0, s.vx) * 0.3, 0, 46) }); s.pose = POSE.stand; },
       pond(pc, rolled) {
@@ -1557,6 +1592,14 @@ const SIM = (() => {
           else if (tt < 1.5) { s.x = mx + 16; s.y = groundY(s.x); s.rot = 0; s.pose = POSE.dizzy; }
           else { s.vis = 0; s.x = mx; s.y = my; }
           if (u >= 1) { s.vis = 1; emit('refire', { bonus: sc.bonus }); s.sc = null; launch(angle, Math.min(1.12, power * sc.bonus)); }
+          return;
+        }
+        case 'ramp': {
+          // up the curve (the same quadratic the ramp is drawn with), then off the lip
+          const k = (sc.k0 || 0) + (1 - (sc.k0 || 0)) * clamp(u, 0, 1);
+          s.x = sc.pcx + sc.w * (2 * (1 - k) * k * 0.65 + k * k); s.y = sc.h * k * k;
+          s.rot = -Math.atan2(sc.h * 2 * k, sc.w * (2 * (1 - k) * 0.65 + 2 * k * (1 - 0.65))) * 0.8; s.pose = sc.launch ? POSE.scared : POSE.slide;
+          if (u >= 1) { s.x = sc.pcx + sc.w; s.y = sc.h; s.vx = Math.cos(sc.ang) * sc.out; s.vy = Math.sin(sc.ang) * sc.out; endScript(); s.pose = sc.launch ? POSE.scared : POSE.fly; if (sc.launch) s.spin = rng.range(-3, 3); }
           return;
         }
         case 'wobble': {
@@ -1741,6 +1784,8 @@ const SIM = (() => {
             if (rng.next() < rate * dt) { FX[id](); break; }
           }
         }
+        // a low hop that dips into the ramp's surface meets the ramp
+        if (s.mode === MODE.air && rampIdx.length) { const ri = rampAt(s.x); if (ri >= 0 && s.y <= rampY(pieces[ri], s.x) + 0.5) rampContact(ri); }
         // ground contact
         const gy = groundY(s.x);
         if (s.mode === MODE.air && s.y <= gy) {
@@ -1831,6 +1876,7 @@ const SIM = (() => {
         if (s.mode === MODE.ground && Math.abs(s.vx) < 6) return FX.pond(pc, false);   // slow sliders still get wet
         return FX.pond(pc, pieceRoll[i] && (s.skipEv != null || canWater()));
       }
+      if (pc.type === 'ramp') return rampContact(i);
       if (reach && !pieceRoll[i] && !s.used.has(pc.ev) && canFire() && inPiece(pc, s.x, s.y, s.vy, s.mode)) reach.add(pc.id);
       if (!pieceRoll[i] || s.used.has(pc.ev) || !canFire()) return false;
       if (!inPiece(pc, s.x, s.y, s.vy, s.mode)) return false;
@@ -1838,6 +1884,26 @@ const SIM = (() => {
       return true;
     }
     function deadStopNatural() { finish(); }
+    // The ramp is a solid thing on the ground, live or not: a duck sliding into it fast enough (and with the ramp live)
+    // is launched; one with enough speed to climb it rolls up and over the lip and hops off the end; a slow one stops at
+    // its foot. A duck coming down onto it from the air just lands (and slides on, into it or past it).
+    function rampAt(x) { for (const i of rampIdx) { const pc = pieces[i]; if (x >= pc.x && x <= pc.x + pc.w) return i; } return -1; }
+    function rampContact(i) {
+      const pc = pieces[i], air = s.mode === MODE.air;
+      if (s.mode !== MODE.ground && !air) return false;
+      if (s.vx <= 0) return false;   // (a duck going the wrong way passes it by)
+      if (!air && !inPiece(pc, s.x, s.y, s.vy, s.mode)) return false;
+      const v = Math.max(0, s.vx), fast = v >= 30 && !s.used.has('ramp') && canFire();
+      if (reach && fast && !pieceRoll[i]) reach.add(pc.id);
+      const k0 = air ? rampK(pc, s.x) : 0;
+      if (!air) s.x = pc.x;
+      if (fast && pieceRoll[i] && (!only || only === 'ramp')) { FX.ramp(pc, k0); return true; }
+      // no launch: up and over the lip (it costs the climb), or for a slow slider, a stop at the foot
+      const vTop = v * v - 2 * P.g * pc.h * (1 - k0 * k0);
+      if (vTop > 64) { startScript('ramp', clamp(pc.w * (1 - k0) / Math.max(v, 1), 0.08, 0.8), { pcx: pc.x, w: pc.w, h: pc.h, k0, out: Math.sqrt(vTop), ang: Math.atan(pc.h / pc.w) }); s.pose = POSE.slide; return true; }
+      if (air) return false;   // (a slow, low hop: it just comes down)
+      s.y = 0; s.vx = 0; finish(); return true;
+    }
 
     const final = s.x;
     const tl = {
@@ -1855,7 +1921,10 @@ const SIM = (() => {
     }
     return tl;
   }
-  const GROUND_TYPES = { trampoline: 1, banana: 1, walkway: 1, mud: 1, pond: 1 };
+  const GROUND_TYPES = { trampoline: 1, banana: 1, walkway: 1, mud: 1, pond: 1, ramp: 1 };
+  // the ramp's riding surface is the quadratic curve it is drawn with: x = w(1.3k - 0.3k^2), y = h k^2 for k in 0..1
+  function rampK(pc, x) { const xr = clamp((x - pc.x) / pc.w, 0, 1); return (1.3 - Math.sqrt(Math.max(0, 1.69 - 1.2 * xr))) / 0.6; }
+  function rampY(pc, x) { const k = rampK(pc, x); return pc.h * k * k; }
 
   /* ---------- cosmetics computed after the physics: gags + flying hat (never change distance) ---------- */
   function frameAt(tl, t) { return clamp(Math.round(t * tl.fps), 0, tl.n - 1); }
@@ -1912,6 +1981,16 @@ const SIM = (() => {
         if (tl.x[i] >= pc.x && tl.x[i] <= pc.x + pc.w && tl.mode[i] === MODE.air) { const t = i / tl.fps; if (isFree(t - 0.3, t + 1.5) || opts.force === 'cows') { gags.push({ id: 'cows', t, tEnd: t + 2.2, data: { piece: pc.id } }); } break; }
       }
     }
+    // a phone notification: placed after everything else, so every other gag is exactly where it always was
+    const wantNote = opts.force === 'notify' || opts.forceGag === 'notify';
+    if ((crng.chance(0.12) || wantNote) && gags.filter(g => g.id !== 'cows').length < 3) {
+      for (let k = 0; k < 14; k++) {
+        const t = crng.range(tl.launchT + 1.2, Math.max(tl.launchT + 1.3, tl.landT - 0.8));
+        if (!inAir(t) || !inAir(t + 1.6) || alt(t) < 40) continue;
+        if (!wantNote && !isFree(t - 0.6, t + 2.6)) continue;
+        gags.push({ id: 'notify', t, tEnd: t + 2.6, data: { msg: crng.int(0, C.NOTIFY.length - 1) } }); break;
+      }
+    }
     gags.sort((a, b) => a.t - b.t);
     tl.gags = gags;
   }
@@ -1946,11 +2025,15 @@ const SIM = (() => {
     const type = pieceTypeForEvent(ev);
     if (!type) return [];
     const dry = simulate(seed, cond, { pieces: [] }, duck, { record: true, special: 'none', noEvents: true });
-    const def = PIECE_DEFS[type] || { tornado: { w: [70, 70], h: 300 }, minicannon: { w: [46, 46], h: 26 }, bench: { w: [46, 46], h: 16 }, walkway: { w: [220, 220], h: 5 }, pond: { w: [200, 200], h: 0 } }[type] || {};
+    const def = PIECE_DEFS[type] || { ramp: { w: [RAMP.w, RAMP.w], h: RAMP.h }, tornado: { w: [70, 70], h: 300 }, minicannon: { w: [46, 46], h: 26 }, bench: { w: [46, 46], h: 16 }, walkway: { w: [220, 220], h: 5 }, pond: { w: [200, 200], h: 0 } }[type] || {};
     const land = dry.final;
     let x = land - 20, y = 0, w = def.w ? def.w[1] : 60, h = def.h || 0;
     const find = (pred) => { for (let i = 0; i < dry.n; i++) if (pred(i)) return i; return -1; };
-    if (['trampoline', 'banana', 'mud', 'pond', 'walkway'].includes(type)) {
+    if (type === 'ramp') {
+      // in the path of the duck's slide, while it is still going fast
+      const li = find(i => dry.mode[i] === MODE.ground && i + 1 < dry.n && (dry.x[i + 1] - dry.x[i]) * dry.fps > 45);
+      x = li >= 0 ? dry.x[li] + 4 : land - 60;
+    } else if (['trampoline', 'banana', 'mud', 'pond', 'walkway'].includes(type)) {
       const li = find(i => dry.mode[i] !== MODE.air && i / dry.fps > dry.launchT + 0.5);
       x = (li >= 0 ? dry.x[li] : land) - 30; w = type === 'pond' ? 200 : type === 'walkway' ? 220 : Math.max(w, 60);
     } else if (['tree', 'billboard', 'bell', 'clothesline', 'booth', 'desk', 'hammock', 'minicannon', 'castle', 'bumpers', 'tornado'].includes(type)) {
@@ -2088,8 +2171,37 @@ function runSelfTest() {
   let capped = 0, aloft = 0;
   for (let i = 0; i < 400; i++) { const tl = SIM.simulate(hash('selftest', i), ice, iceCourse, null, {}); if (tl.endT >= 69.9) capped++; const k = tl.n - 1; if (tl.y[k] > SIM.groundY(tl.x[k]) + 1) aloft++; }
   check('no flight runs into the time cap or ends in mid-air', capped === 0 && aloft === 0, capped + ' capped, ' + aloft + ' aloft of 400 Ice Rink flights');
+  // the kicker ramp: on most days, always in a gap of its own; a duck sliding into it fast is launched off the lip and
+  // comes down again; the notification gag never changes a distance
+  let rampDays = 0, rampClash = 0;
+  for (let d = 0; d < 40; d++) {
+    const dk = localDayKey(new Date(2026, 0, 1 + d * 9)), cc = dailyConditions(dk), co = generateCourse(dk, cc);
+    const rp = co.pieces.find(p => p.type === 'ramp'); if (!rp) continue; rampDays++;
+    if (co.pieces.some(p => p !== rp && p.y === 0 && p.w > 0 && p.type !== 'tornado' && p.x < rp.x + rp.w + 6 && p.x + p.w > rp.x - 6)) rampClash++;
+  }
+  let sent = 0, sentOk = 0, noteSame = 0, notes = 0;
+  for (let i = 0; i < 8; i++) {
+    const sd = hash('selframp', i), extra = SIM.forcedPieces(sd, cond, course, null, 'ramp');
+    const tl = SIM.simulate(sd, cond, { pieces: course.pieces.concat(extra) }, null, { force: 'ramp' });
+    const e = tl.events.find(x => x.id === 'ramp');
+    if (e) { sent++; let peak = 0; for (let k = SIM.frameAt(tl, e.tEnd); k < tl.n; k++) peak = Math.max(peak, tl.y[k]); if (peak > RAMP.h + 5 && isFinite(tl.final) && tl.mode[tl.n - 1] === SIM.MODE.done) sentOk++; }
+    const plainN = SIM.simulate(hash('selfnote', i), cond, course, null, {}), withN = SIM.simulate(hash('selfnote', i), cond, course, null, { force: 'notify' });
+    if (withN.gags.some(g => g.id === 'notify')) notes++;
+    if (plainN.final === withN.final) noteSame++;
+  }
+  check('the kicker ramp: on most days, in a gap of its own, and it sends a sliding duck back up into the air', rampDays >= 20 && rampClash === 0 && sent >= 5 && sentOk === sent, rampDays + '/40 days, ' + rampClash + ' clashes, ' + sentOk + '/' + sent + ' forced launches');
+  check('the notification gag shows up when asked and never changes a distance', notes >= 6 && noteSame === 8, notes + '/8 placed');
+  // the over/under: set from today's test flights, higher for a bigger show, inside the range those flights covered
+  { const keepRace = S.race; try {
+    const lines = [1, 3, 12, 40].map(n => { S.race = { queue: new Array(n).fill(0) }; return ouLine(S.race); });
+    const dd = generateCourse(S.day, S.cond).dists || [];
+    check('the over/under grows with the show and stays inside the test flights', lines.every(v => v != null && v % 50 === 0 && v >= dd[0] - 50 && v <= dd[dd.length - 1] + 50) && lines.every((v, i) => !i || v >= lines[i - 1]), lines.join(', '));
+  } finally { S.race = keepRace; } }
+  // the music: both tunes are whole (a known chord and eight melody slots in every bar, every note a real pitch)
+  const cues = SFX._CUES, chordOk = ['F', 'Dm', 'Am', 'Bb', 'C', 'Gm', 'G', 'E'];
+  check('the music: both tunes are complete and every note parses', ['lobby', 'race'].every(k => cues[k] && cues[k].chords.length === cues[k].melN.length && cues[k].chords.every(c => chordOk.includes(c)) && cues[k].melN.every(r => r.length === 8 && r.every(f => f === 0 || f === -1 || (f > 100 && f < 2000)))));
   // content lint: nothing Bill or a duck says trips the blocklist
-  const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]), ...Object.values(C.OUTLOOK_SKY), C.OUTLOOK);
+  const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.NOTIFY, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]), ...Object.values(C.OUTLOOK_SKY), C.OUTLOOK);
   const holes = [].concat(...[C.LINES, C.DUCK_LINES].map(T => Object.entries(T).filter(([k, a]) => Object.keys(a).length !== a.length || a.some(x => typeof x !== 'string' || !x.trim())).map(([k]) => k)));
   check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
@@ -3053,6 +3165,24 @@ ART.piece = {
     for (const rx of [-4, w + 3]) for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.moveTo(rx + k * 2, 0); ctx.lineTo(rx + k * 2 - 1, -12 - k * 3); ctx.lineWidth = L * 0.6; ctx.strokeStyle = '#3f8f3a'; ctx.stroke(); }
     if (st.ripples) for (const r of st.ripples) { const k = r.k; ell(ctx, r.x - pc.x, 0, 6 + k * 30, 2 + k * 5); ctx.lineWidth = L * 0.5 * (1 - k); ctx.strokeStyle = 'rgba(255,255,255,' + (1 - k) + ')'; ctx.stroke(); }
   },
+  // the kicker ramp: a curved wooden wedge rising to a red lip, with a pennant (it shivers when a duck goes off it)
+  ramp(ctx, pc, V, st) {
+    const L = wlw(V), w = pc.w, h = pc.h;
+    const surf = () => { ctx.moveTo(0, 0); ctx.quadraticCurveTo(w * 0.65, 0, w, -h); };
+    ctx.beginPath(); surf(); ctx.lineTo(w, 0); ctx.closePath(); fillStroke(ctx, '#c98a4b', L);
+    ctx.save(); ctx.beginPath(); surf(); ctx.lineTo(w, 0); ctx.closePath(); ctx.clip();
+    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = L * 0.6;
+    for (const k of [0.5, 0.72, 0.9]) { ctx.beginPath(); ctx.moveTo(w * k, 0); ctx.lineTo(w * k, -h); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(w * 0.5, 0); ctx.lineTo(w * 0.9, -h); ctx.stroke();
+    ctx.restore();
+    ctx.beginPath(); surf(); ctx.lineCap = 'round'; ctx.lineWidth = L * 2.4; ctx.strokeStyle = OUT; ctx.stroke(); ctx.lineWidth = L * 1.1; ctx.strokeStyle = '#f0dcb0'; ctx.stroke();
+    rr(ctx, w - 2.4, -h - 0.6, 3.4, h + 0.6, 1); fillStroke(ctx, '#e8412c', L * 0.6);
+    for (let k = 1; k < 4; k++) { ctx.fillStyle = '#ffffff'; ctx.fillRect(w - 2.2, -h + k * h / 4 - 0.6, 3, 1.2); }
+    const hit = st.hit != null && st.hit >= 0 && st.hit < 0.8 ? (0.8 - st.hit) : 0;
+    const fl = Math.sin((st.time || 0) * 5) * 0.8 + Math.sin((st.time || 0) * 31) * hit * 2.2;
+    ctx.beginPath(); ctx.moveTo(w + 0.9, -h); ctx.lineTo(w + 0.9, -h - 12); ctx.lineWidth = L * 0.8; ctx.strokeStyle = OUT; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(w + 0.9, -h - 12); ctx.lineTo(w + 9, -h - 9.5 + fl); ctx.lineTo(w + 0.9, -h - 7); ctx.closePath(); fillStroke(ctx, '#ffd23f', L * 0.6);
+  },
   walkway(ctx, pc, V, st) {
     const L = wlw(V), w = pc.w;
     rr(ctx, 0, -5, w, 5, 2); fillStroke(ctx, '#8a96a8', L);
@@ -3500,7 +3630,7 @@ function drawBigButton(ctx, x, y, st, t) {
 // Melodies are original. Audio starts on the first click (browser autoplay rules).
 
 const SFX = (() => {
-  let ac = null, master = null, comp = null, bus = null, fbus = null, D = null, noiseBuf = null, vol = 0.6, muted = false, drum = null;
+  let ac = null, master = null, comp = null, bus = null, fbus = null, D = null, noiseBuf = null, vol = 0.6, muted = false, drum = null, limN = null;
   const nr = new Rng(424242);
   const N = {
     C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0, B4: 493.88,
@@ -3519,7 +3649,7 @@ const SFX = (() => {
     // sources -> bus -> compressor -> limiter -> master volume -> speakers
     // (volume after the compressor scales the whole mix evenly; the limiter stops clipping)
     bus = ac.createGain(); bus.gain.value = 0.85;
-    const lim = ac.createDynamicsCompressor();
+    const lim = limN = ac.createDynamicsCompressor();
     lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.1;
     master = ac.createGain(); master.gain.value = muted ? 0 : vol;
     bus.connect(comp); comp.connect(lim); lim.connect(master); master.connect(ac.destination);
@@ -3567,13 +3697,88 @@ const SFX = (() => {
     if (!drum || !ac) return;
     try { const g = drum.env.gain, t = ac.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0.0001, g.value), t); g.linearRampToValueAtTime(0.16, t + Math.max(0.3, swell)); } catch (e) { /* ignore */ }
   }
+
+  /* ---------- music: two original loops on their own channel, under the sound effects ----------
+     A small step sequencer (16th notes). It is scheduled a quarter of a second ahead from the game's frame loop, so it
+     pauses with the game (the audio clock stops) and picks up cleanly after a stall. The music channel skips the
+     effects' compressor (so a BOOM never pumps it) and joins the mix at the limiter, under the master volume. */
+  const CH = { F: [349.23, 440, 523.25], Dm: [293.66, 349.23, 440], Am: [220, 261.63, 329.63], Bb: [233.08, 293.66, 349.23], C: [261.63, 329.63, 392], Gm: [196, 233.08, 293.66], G: [196, 246.94, 293.66], E: [164.81, 207.65, 246.94] };
+  const NT = n => { const m = /^([A-G])(b|#)?(\d)$/.exec(n); if (!m) return 0; const k = { C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2 }[m[1]] + (m[2] === 'b' ? -1 : m[2] === '#' ? 1 : 0) + (+m[3] - 4) * 12; return 440 * Math.pow(2, k / 12); };
+  // the tunes: one chord per bar, a melody on 8th notes ('.' holds, '-' rests)
+  const CUES = {
+    // the lobby: a lazy, sunny shuffle while people join, and between the big moments
+    lobby: { bpm: 104, swing: 0.16, gain: 0.7,
+      chords: ['F', 'Am', 'Bb', 'C', 'F', 'Dm', 'Gm', 'C', 'F', 'Am', 'Bb', 'C', 'Bb', 'C', 'F', 'F'],
+      mel: ['A4 . C5 . A4 G4 F4 .', 'E4 . F4 G4 A4 . . .', 'D5 . C5 . Bb4 A4 G4 .', 'G4 A4 G4 E4 C4 . . .', 'A4 . C5 . F5 . E5 D5', 'A4 . F4 . D5 . C5 .', 'Bb4 A4 G4 . D4 E4 F4 G4', 'E4 . G4 . C5 . . .',
+        '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', 'D5 . C5 . Bb4 . A4 .', 'G4 . E4 . C5 . Bb4 .', 'A4 . . . C5 . . .', 'F4 . . . - - - -'] },
+    // the race: driving, for the flight (the drumroll takes over for the last seconds)
+    race: { bpm: 148, swing: 0, gain: 0.6,
+      chords: ['Am', 'F', 'C', 'G', 'Am', 'F', 'C', 'E', 'Am', 'F', 'C', 'G', 'Am', 'F', 'G', 'E'],
+      mel: ['A4 . C5 A4 E5 . D5 C5', 'C5 . A4 F4 A4 . C5 D5', 'E5 . D5 C5 G4 . C5 E5', 'D5 . B4 G4 D5 . E5 D5', 'A4 . C5 A4 E5 . G5 E5', 'F5 . E5 C5 A4 . C5 F5', 'E5 . C5 G4 C5 . E5 G5', 'G#4 . B4 E5 G#4 . . .',
+        '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', '- - - - - - - -', 'A5 . E5 C5 A4 . C5 E5', 'F5 . C5 A4 F4 . A4 C5', 'D5 . B4 G4 D5 . G5 .', 'E5 . . . G#4 . . .'] },
+  };
+  for (const k in CUES) CUES[k].melN = CUES[k].mel.map(b => b.split(' ').map(x => x === '.' ? 0 : x === '-' ? -1 : NT(x)));
+  let mus = null, musName = null, musOn = true;
+  function musicVoice(cue, step, t, out) {
+    const c = CUES[cue], beat = 60 / c.bpm, s16 = beat / 4;
+    const bar = Math.floor(step / 16) % c.chords.length, i16 = step % 16, ch = CH[c.chords[bar]];
+    const root = ch[0] / (ch[0] > 300 ? 4 : 2);
+    if (cue === 'lobby') {
+      if (i16 === 0 || i16 === 8) tone('sine', 140, 48, t, 0.16, 0.16, { dest: out });   // soft kick
+      if (i16 === 4 || i16 === 12) noise(t, 0.07, 'bandpass', 2400, 1800, 1.2, 0.09, { dest: out });   // rim
+      if (i16 % 2 === 0) noise(t, 0.035, 'highpass', 6500, 6500, 0.7, i16 % 4 ? 0.025 : 0.04, { dest: out });   // shaker
+      if (i16 === 0) tone('triangle', root, root, t, beat * 1.6, 0.15, { dest: out });
+      if (i16 === 8) tone('triangle', root * 1.5, root * 1.5, t, beat * 1.4, 0.12, { dest: out });
+      if (i16 === 14) tone('triangle', root * 2, root * 2, t, beat * 0.4, 0.1, { dest: out });
+      if (i16 === 4 || i16 === 12) for (const f of ch) tone('triangle', f, f, t, beat * 0.5, 0.045, { dest: out, filter: 'lowpass', ff: 1800 });   // ukulele-ish offbeat strum
+    } else {
+      if (i16 % 4 === 0) tone('sine', 150, 42, t, 0.14, 0.2, { dest: out });   // four on the floor
+      if (i16 === 4 || i16 === 12) { noise(t, 0.11, 'bandpass', 1900, 1400, 0.8, 0.16, { dest: out }); tone('triangle', 200, 160, t, 0.06, 0.06, { dest: out }); }
+      noise(t, 0.025, 'highpass', 8000, 8000, 0.7, i16 % 2 ? 0.018 : 0.032, { dest: out });
+      if (i16 % 2 === 0) { const f = i16 % 8 === 6 ? root * 1.5 : root; tone('sawtooth', f, f, t, s16 * 1.6, 0.085, { dest: out, filter: 'lowpass', ff: 520 }); }   // driving 8th-note bass
+      if (i16 === 2 || i16 === 6 || i16 === 10 || i16 === 14) for (const f of ch) tone('square', f, f, t, s16 * 1.2, 0.022, { dest: out, filter: 'lowpass', ff: 1500 });
+    }
+    // the melody (8th notes; a held note lasts until the next one)
+    if (i16 % 2 === 0) {
+      const row = c.melN[bar], k = i16 / 2, f = row[k];
+      if (f > 0) {
+        let len = 1; while (k + len < 8 && row[k + len] === 0) len++;
+        const d = len * s16 * 2 * 0.92;
+        if (cue === 'lobby') { tone('sine', f, f, t, d, 0.075, { dest: out, a: 0.02, vib: [5.5, f * 0.012] }); tone('triangle', f * 2, f * 2, t, d * 0.7, 0.012, { dest: out, a: 0.02 }); }
+        else { tone('square', f, f, t, d * 0.85, 0.04, { dest: out, filter: 'lowpass', ff: 2600, a: 0.008 }); tone('triangle', f, f, t, d, 0.05, { dest: out, a: 0.008 }); }
+      }
+    }
+  }
+  // which loop should be playing (null: none); switching crossfades and starts the new one from its top
+  function music(name) {
+    if (!ac || !limN) return;
+    if (!musOn || muted) name = null;
+    if (name === musName) return;
+    const t = ac.currentTime;
+    if (mus) { const old = mus.g; try { old.gain.cancelScheduledValues(t); old.gain.setTargetAtTime(0.0001, t, 0.18); } catch (e) { /* ignore */ } setTimeout(() => { try { old.disconnect(); } catch (e) { /* ignore */ } }, 1600); }
+    musName = name; mus = null;
+    if (!name) return;
+    const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.setTargetAtTime(CUES[name].gain, t + 0.05, 0.25); g.connect(limN);
+    mus = { name, g, step: 0, nextT: t + 0.08 };
+  }
+  function musicTick() {
+    if (!ac || !mus || ac.state !== 'running') return;
+    const c = CUES[mus.name], s16 = 60 / c.bpm / 4, now0 = ac.currentTime;
+    if (mus.nextT < now0 - 0.05) { const skip = Math.ceil((now0 + 0.05 - mus.nextT) / s16); mus.step += skip; mus.nextT += skip * s16; }   // after a stall: pick up the beat, never a burst
+    while (mus.nextT < now0 + 0.25) {
+      const sw = mus.step % 2 ? c.swing * s16 : 0;
+      try { musicVoice(mus.name, mus.step, mus.nextT + sw, mus.g); } catch (e) { /* ignore */ }
+      mus.step++; mus.nextT += s16;
+    }
+  }
+  function setMusicOn(on) { musOn = !!on; if (!musOn) music(null); }
   // pause freezes every scheduled sound in step with the game
   let held = false;
   // no state checks: suspend()/resume() apply in call order, so a quick off-on (Cancel in a confirm box) still ends suspended
   function pause(on) { held = !!on; try { if (!ac || ac.state === 'closed') return; if (held) ac.suspend().catch(() => {}); else ac.resume().catch(() => {}); } catch (e) { /* ignore */ } }
   function resume() { try { if (!ac) init(); if (ac && ac.state === 'suspended' && !held) ac.resume(); } catch (e) { /* ignore */ } }
   function setVolume(v) { vol = clamp(v, 0, 1); if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.05); }
-  function setMuted(m) { muted = !!m; if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.03); }
+  function setMuted(m) { muted = !!m; if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.03); if (muted) music(null); }
   const now = () => ac.currentTime + 0.01;
   function gainEnv(t0, peak, a, d, sustain) {
     const g = ac.createGain();
@@ -3709,6 +3914,8 @@ const SFX = (() => {
     snore() { const t = now(); tone('sawtooth', 85, 95, t, 1.1, 0.08, { filter: 'lowpass', ff: 420, a: 0.5 }); tone('sine', 900, 1400, t + 1.2, 0.5, 0.05, { a: 0.1 }); },
     rustle() { const t = now(); noise(t, 0.7, 'bandpass', 3200, 2400, 1, 0.22, { a: 0.03 }); for (let i = 0; i < 6; i++) noise(t + nr.next() * 0.6, 0.04, 'highpass', 4000, 4000, 1, 0.1); },
     twang() { const t = now(); tone('triangle', 196, 160, t, 0.6, 0.25, { vib: [9, 8] }); tone('sine', 392, 330, t, 0.4, 0.08); },
+    notify() { const t = now(); tone('sine', 1318.5, 1318.5, t, 0.09, 0.12); tone('sine', 1760, 1760, t + 0.1, 0.16, 0.12); },
+    ramp() { const t = now(); noise(t, 0.07, 'lowpass', 900, 300, 1, 0.4); tone('triangle', 180, 120, t, 0.12, 0.2); noise(t + 0.06, 0.5, 'bandpass', 400, 2200, 1.6, 0.3, { a: 0.15 }); tone('square', 330, 990, t + 0.08, 0.35, 0.05, { filter: 'lowpass', ff: 1800 }); },
     slip() { S.slideUp(0.35); const t = now(); tone('sine', 2400, 1800, t + 0.3, 0.12, 0.08); },
     walkway() { const t = now(); tone('sine', 880, 880, t, 0.5, 0.12); tone('sine', 698, 698, t + 0.3, 0.7, 0.12); },
     pelican() { const t = now(); for (let i = 0; i < 4; i++) noise(t + i * 0.18, 0.12, 'bandpass', 600, 400, 1, 0.34); tone('sawtooth', 200, 160, t + 0.1, 0.25, 0.12, { filter: 'lowpass', ff: 600 }); },
@@ -3740,7 +3947,7 @@ const SFX = (() => {
   }
   // QA hook: an analyser on the master output so tests can measure levels
   function tap() { if (!ac) return null; const an = ac.createAnalyser(); an.fftSize = 2048; master.connect(an); return an; }
-  return { init, resume, play, stopLong, startDrum, stopDrum, retimeDrum, pause, get drumOn() { return !!drum; }, get state() { return ac ? ac.state : 'none'; }, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
+  return { init, resume, play, stopLong, startDrum, stopDrum, retimeDrum, pause, music, musicTick, setMusicOn, get musicName() { return musName; }, _CUES: CUES, get drumOn() { return !!drum; }, get state() { return ac ? ac.state : 'none'; }, setVolume, setMuted, soundCheck, tap, _S: S, get ready() { return !!ac; }, get muted() { return muted; } };
 })();
 
 /* ---------- announcer voice (Web Speech, off by default) ---------- */
@@ -4526,6 +4733,7 @@ function openSettings(fromPause) {
     '<div class="grid2">' +
     '<div class="field">Volume <input type="range" min="0" max="100" id="svol" value="' + Math.round(st.volume * 100) + '"> <span id="svolv">' + Math.round(st.volume * 100) + '%</span></div>' +
     '<label class="field"><input type="checkbox" id="smute"' + (st.muted ? ' checked' : '') + '> Mute (M)</label>' +
+    '<label class="field"><input type="checkbox" id="smusic"' + (st.music !== false ? ' checked' : '') + '> Music (N)</label>' +
     '<label class="field"><input type="checkbox" id="sshake"' + (st.shake ? ' checked' : '') + '> Screen shake</label>' +
     '<label class="field"><input type="checkbox" id="svoice"' + (st.voice ? ' checked' : '') + '> Announcer voice (reads Bill\'s lines aloud)</label>' +
     '<label class="field"><input type="checkbox" id="sturbo"' + (st.turboDefault ? ' checked' : '') + '> Start every show in turbo</label>' +
@@ -4538,7 +4746,7 @@ function openSettings(fromPause) {
     '<h3>Data</h3><div class="row"><button class="btn small blue" id="dexport">Export everything (JSON)</button><button class="btn small blue" id="dimport">Import…</button><input type="file" id="dfile" accept=".json,application/json" class="hidden"><button class="btn small ghost" id="dpaste">Paste import text…</button>' +
     (S.race ? '<button class="btn small danger" id="dabandon">' + (S.race.saved ? 'Close these results' : 'Abandon current show') + '</button>' : '') + '<button class="btn small danger" id="dwipe">Reset all data…</button></div>' +
     '<div class="note">Saved in this browser only (' + (Store.full ? '<b>browser storage is full, so new changes are not being saved: Export now, then clear some site data</b>' : Store.persistent ? 'localStorage, keys start with ddb.v1.' : 'storage is blocked here, so nothing persists after you close the tab: use Export') + '). ' + S.history.length + ' race' + (S.history.length === 1 ? '' : 's') + ' in the Waddle of Fame.</div>' +
-    '<div class="note">Keys: Space = big red button · R replay · T turbo · S skip · M mute · F fullscreen · P pause</div>' +
+    '<div class="note">Keys: Space = big red button · R replay · T turbo · S skip · M mute · N music · F fullscreen · P pause</div>' +
     '<div class="row" style="justify-content:flex-end"><button class="btn" id="sclose">' + (fromPause ? 'Resume show' : 'Done') + '</button></div>',
     el => {
       el.querySelectorAll('input[data-team]').forEach(inp => inp.oninput = () => { st.teams[+inp.dataset.team].name = cleanName(inp.value).slice(0, 24) || ('Team ' + (+inp.dataset.team + 1)); saveSettings(); });
@@ -4549,6 +4757,7 @@ function openSettings(fromPause) {
     el.querySelector('#svol').onchange = () => { if (S.paused && S.pauseHush) S.previewVol = true; else SFX.play('quack', 1.2); };
       el.querySelector('#smute').onchange = e => { st.muted = e.target.checked; SFX.setMuted(st.muted); if (st.muted) Voice.stop(); saveSettings(); };
       el.querySelector('#sshake').onchange = e => { st.shake = e.target.checked; saveSettings(); };
+      el.querySelector('#smusic').onchange = e => { st.music = e.target.checked; SFX.setMusicOn(st.music); saveSettings(); };
       el.querySelector('#svoice').onchange = e => { st.voice = e.target.checked; saveSettings(); if (st.voice) { Voice.pause(false); Voice.speak('Bill Featherstone here. Testing, testing.'); } else Voice.stop(); };
       el.querySelector('#sturbo').onchange = e => { st.turboDefault = e.target.checked; saveSettings(); };
       el.querySelector('#ssalvo').onchange = e => { st.salvo = e.target.checked; saveSettings(); };
@@ -5142,7 +5351,7 @@ function computeHighlights(R, max, awards) {
   const N = max || 5;
   const st = standings();
   const cands = [];
-  const score = { space: 100, backfire: 95, cannonception: 90, ufo: 70, wormhole: 60, hatWin: 75, tornado: 55, hammock: 50, bread: 50, onhold: 48, gatekeeper: 46, pelican: 45, skip: 44, migration: 42, bell: 40, mud: 40, tree: 38, geese: 36, crate: 35, ooo: 34, replyall: 33, pinball: 33, billboard: 32, clothesline: 30, glider: 30, pepper: 28, drone: 26, trampoline: 25, castle: 25, banana: 24, lilypad: 31, walkway: 22, jetstream: 22, plop: 26, misfire: 60 };
+  const score = { space: 100, backfire: 95, cannonception: 90, ufo: 70, wormhole: 60, hatWin: 75, tornado: 55, hammock: 50, bread: 50, onhold: 48, gatekeeper: 46, pelican: 45, skip: 44, migration: 42, bell: 40, mud: 40, tree: 38, geese: 36, crate: 35, ooo: 34, replyall: 33, pinball: 33, billboard: 32, clothesline: 30, glider: 30, pepper: 28, drone: 26, trampoline: 25, castle: 25, banana: 24, lilypad: 31, walkway: 22, jetstream: 22, plop: 26, ramp: 38, misfire: 60 };
   for (const e of st) {
     const duck = e.pl.duck.name;
     if (e.r.sp === 'backfire') cands.push({ s: 95, t: duck + ' launched backward and landed at ' + fmtFt(e.dist) + '.', who: duck, id: 'backfire' });
@@ -5214,6 +5423,7 @@ function resultsText(R) {
   if (aw.length) lines.push('Awards: ' + aw.join(' · '));
   const tod = teamOfDay(R);
   if (tod) lines.push('Team of the day: ' + tod.name + ' (avg ' + fmtFt(tod.avg) + ')');
+  if (R.ou != null && st.length) lines.push('Over/under ' + fmtFt(R.ou) + ': ' + (st[0].dist > R.ou ? 'OVER' : 'UNDER'));
   if (hl.length) lines.push('Highlight: ' + hl[0]);
   const so = C.LINES.signoff;   // Bill signs off (the same line every time this show is copied)
   lines.push('Bill says: ' + so[hash(R.seed >>> 0, 'signoff') % so.length]);
@@ -5300,6 +5510,7 @@ function setPhase(p) {
     else if (firstShot && R.champ === pl.key && R.players.length > 1) say('champIntro', vars, { prio: 1 });
     else if (firstShot && !R.practice && R.career && R.career.shows >= 3 && !R.career.who[pl.key]) say('debutIntro', vars, { prio: 1 });   // someone new to an established show
     else say('intro', vars, { prio: 1 });
+    if (R.idx === 0 && R.ou != null) say('ouCall', { line: fmtFt(R.ou) }, { prio: 1, delay: 1.6 });
     SFX.play('quack', d.pitch, 2);
     if (d.rarity === 'legendary' || d.rarity === 'epic') SFX.play('sting', d.rarity);
   }
@@ -5686,6 +5897,8 @@ function updateFlight(dt) {
   L.prevY = s.y; L.prevVy = s.vy;
   // pass the leader's flag
   if (L.leaderX != null && !L.shownLeader && s.x > L.leaderX && s.vis && t > tl.launchT + 0.5) { L.shownLeader = true; say('passLeader', { duck: L.pl.duck.name }, { prio: 1 }); SFX.play('ooh'); }
+  // the over/under: called as soon as a duck that will finish past the line crosses it
+  if (s.vis && t > tl.launchT + 0.5 && ouCross(L.pl, s.x, tl.final, L.replay)) { SFX.play('ooh'); Caps.big('THE OVER!', { px: 90, color: '#8fd3ff', dur: 2 }); say('ouOver', { duck: L.pl.duck.name, player: L.pl.name, line: fmtFt(S.race.ou) }, { prio: 1, delay: 0.3 }); }
   // the live leaderboard follows the duck; a soft blip marks every rival it passes
   if (pb.rivals && t >= tl.launchT && s.vis) {
     L.liveX = s.x;
@@ -5802,6 +6015,7 @@ function impactSfx(e, d) {
 }
 function impactFX(e, s, d) {
   if (['geese', 'billboard', 'tree', 'ooo', 'replyall', 'clothesline'].includes(e.id)) { burst('feather', 8, { x: s.x, y: s.y, sp0: 10, sp1: 40, l0: 1, l1: 1.8, r0: 7, r1: 12, colors: [C.COLORS[d.color].c, '#fff'], extra: { ws: true, g: -10, drag: 1 } }); burst('star', 5, { x: s.x, y: s.y + 4, sp0: 8, sp1: 20, l0: 1.2, l1: 1.6, r0: 9, r1: 13, color: '#ffd23f', extra: { ws: true } }); }
+  if (e.id === 'ramp') burst('dust', 10, { x: s.x, y: 1, a0: -Math.PI * 0.85, spread: 0.6, sp0: 10, sp1: 35, l0: 0.5, l1: 0.9, r0: 8, r1: 14, color: '#d9c9a8', extra: { ws: true, g: -20 } });
   if (e.id === 'mud') burst('blob', 14, { x: s.x, y: 1, a0: -Math.PI / 2, spread: 1.1, sp0: 20, sp1: 60, l0: 0.6, l1: 1, r0: 5, r1: 9, color: '#6b4423', extra: { ws: true, g: -60 } });
   if (e.id === 'plop' || e.id === 'skip' || e.id === 'lilypad') burst('blob', 14, { x: s.x, y: 1, a0: -Math.PI / 2, spread: 0.8, sp0: 20, sp1: 50, l0: 0.5, l1: 0.9, r0: 5, r1: 8, color: '#9fd8ff', extra: { ws: true, g: -60 } });
   if (e.id === 'bell') burst('note', 4, { x: s.x, y: s.y + 10, sp0: 5, sp1: 15, l0: 1.2, l1: 1.6, extra: { ws: true } });
@@ -5876,6 +6090,7 @@ function onResult() {
   else if (wrongWay) say('wrongWay', { duck: d.name }, { delay: 0.3 });
   else if (!newRecord && !newLeader) say(D < 450 ? 'landShort' : D < 1700 ? 'landMid' : 'landLong', { duck: d.name, distance: fmtFt(D) }, { delay: 0.2 });
   if (personalBest && !newRecord) say('personalBest', { player: pl.name, duck: d.name }, { delay: 2.2 });
+  if (R.idx >= R.queue.length && R.ou != null && !R.ouHit && lead && lead.dist <= R.ou) say('ouUnder', { line: fmtFt(R.ou) }, { prio: 1, delay: 3.0 });
   // the duck pipes up once a NEW LEADER / RECORD banner has had its moment
   const qd = newRecord ? 3.1 : newLeader ? 2.5 : 0.6;
   if (tl.hat && tl.hat.wins) { say('hatWins', {}, { prio: 2, delay: 1.2 }); quip('hatwin', { delay: Math.max(1.4, qd) }); }
@@ -6127,6 +6342,7 @@ function drawFieldMarks(ctx, V, noLabels, extra) {
   if (lead && !(L.pl && lead.pl.key === L.pl.key && (L.phase === 'result' || L.phase === 'idle'))) ghosts.push({ x: lead.dist, label: 'LEADER', color: teamOf(lead.pl).color });
   if (R.lastWin != null) ghosts.push({ x: R.lastWin, label: 'LAST RACE', color: '#ffffff' });
   if (R.record != null) ghosts.push({ x: R.record, label: 'RECORD', color: '#ffd23f' });
+  if (R.ou != null) ghosts.push({ x: R.ou, label: 'OVER/UNDER', color: '#8fd3ff' });
   ghosts.sort((a, b) => a.x - b.x);
   let lastSx = -1e9, stack = 0;
   for (const g of ghosts) {
@@ -6345,11 +6561,30 @@ function drawEventActors(ctx, V, t, s, px, behind, tlArg, plArg, hideGag) {
       case 'balloon': if (behind) { const k = (rt + def.antic) / (g.tEnd - g.t + def.antic); ART.actor.balloon(ctx, lerp(1800, 500, k), sy - 120 - k * 60, 90, 0, S.time); } break;
       case 'seagull': if (!behind) { const k = rt; let x, y; if (k < 1.0) { x = sx + 400 * (1 - k); y = sy - 140 * (1 - k) - px * 0.5; } else { x = sx + (k - 1) * 500; y = sy - px * 0.6 - (k - 1) * 260; } ART.actor.seagull(ctx, x, y, 100 * ds, 0, S.time); if (k >= 1.0) { const hatId = S.cond.friday ? 'party' : PL.duck.hat; if (hatId) drawHat(ctx, hatId, x, y + 26, px / 95 * 1.1, 5, S.time); } } break;
       case 'selfie': if (!behind) { ART.actor.phone(ctx, sx + px * 0.55, sy - px * 0.75, 70 * ds, 0, S.time); if (rt > 0.8 && rt < 1.1) { starPath(ctx, sx + px * 0.6, sy - px * 0.95, 22, 0); ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill(); } } break;
+      case 'notify': if (!behind && rt >= 0) { const msg = C.NOTIFY[g.data.msg] || C.NOTIFY[0]; if (plArg) (SV.notes || (SV.notes = [])).push([sx, sy, px, rt, g.tEnd - g.t, msg]); else drawNotify(ctx, sx, sy, px, rt, g.tEnd - g.t, msg); } break;   // (in the salvo: drawn over the name tags)
       case 'sneeze': if (!behind && rt > 0.4 && rt < 1.6) ART.actor.sneeze(ctx, sx + px * 0.5, sy - px * 0.4, px, (rt - 0.4) / 1.2); break;
       case 'shades': if (!behind && rt > 0.4 && rt < 1.2) { starPath(ctx, sx + px * 0.45, sy - px * 0.62, 16 * (1 - Math.abs(rt - 0.8) * 2.5), S.time); ctx.fillStyle = '#ffffff'; ctx.fill(); } break;
       case 'scream': if (!behind) { const a = Math.max(0, s.y); const n = clamp(3 + Math.floor(a / 30), 3, 16); Caps.bubble = null; drawScream(ctx, sx, sy - px * 0.4, 'A'.repeat(n) + '!', rt); } break;
     }
   }
+}
+// a phone notification card beside the duck: drops in, sits, fades
+function drawNotify(ctx, x, y, px, rt, dur, msg) {
+  ctx.save();
+  ctx.font = font(22, 800);
+  const w = Math.min(470, Math.max(300, ctx.measureText(msg).width + 96)), h = 72;
+  // above the duck, clear of its name tag and the leader's crown; a duck flying high gets it beside it instead
+  let bx = clamp(x + 36, 20, 1480 - w), by = y - px * 0.62 - 152;
+  if (by < 185) { by = Math.min(740, y + px * 0.45 + 14); bx = clamp(x - w / 2, 20, 1480 - w); }
+  const k = easeBack(clamp(rt / 0.25, 0, 1)), a = clamp((dur - rt) / 0.3, 0, 1);
+  ctx.globalAlpha = a; ctx.translate(bx + w / 2, by + h / 2); ctx.scale(k, k); ctx.translate(-(bx + w / 2), -(by + h / 2));
+  rr(ctx, bx, by, w, h, 18); fillStrokeLifted(ctx, 'rgba(255,255,255,0.97)', 4, 4);
+  rr(ctx, bx + 12, by + 14, 44, 44, 11); fillStroke(ctx, '#ffd23f', 3);
+  circ(ctx, bx + 34, by + 34, 11); ctx.fillStyle = '#fff8e6'; ctx.fill(); circ(ctx, bx + 37, by + 31, 2.6); ctx.fillStyle = OUT; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(bx + 43, by + 33); ctx.lineTo(bx + 51, by + 35); ctx.lineTo(bx + 43, by + 38); ctx.closePath(); ctx.fillStyle = '#ff9d2e'; ctx.fill();
+  txt(ctx, 'POND PHONE \u00b7 now', bx + 68, by + 22, { px: 16, color: '#8a8396', sw: 0, align: 'left', weight: 800 });
+  txt(ctx, msg, bx + 68, by + 48, { px: 22, minPx: 16, color: OUT, sw: 0, align: 'left', weight: 800, maxW: w - 84 });
+  ctx.restore();
 }
 function drawScream(ctx, x, y, text, rt) {
   ctx.save();
@@ -6448,7 +6683,7 @@ function drawLaunchHUD(ctx, V, t) {
   if (L.q && L.q.bonus) badge('BONUS SHOT', '#ffd23f');
   drawSidebar(ctx);
   // a quiet reminder of the host keys
-  if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
+  if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · N music · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
   Caps.drawBigs(ctx, L.duckScreen && (ph === 'flight' || ph === 'result') ? L.duckScreen.y : null, 1040);
   // after landing the bubble goes up-left of the duck, unless NEW LEADER / RECORD is up there: then it sits low as before
   const bannerLive = Caps.bigs.some(b => b.fixedY && S.rt >= b.t0 && S.rt < b.t0 + b.dur);
@@ -6666,7 +6901,7 @@ const SALVO_PACE = {
   turbo: { ev: 1.7, air2: 1.8, air1: 2.3, roll: 3.2, last: 4.2, tEv: 2.2, tAir: 3.2, tRoll: 5.0, cap: 20, up: 3.5, down: 7, uMax: 6, dMax: 26, photoLen: 1.0, photoRate: 0.5, spotRate: 0.7 },
 };
 // how much a moment is worth: Bill talks about the big ones first (same scale as the highlights)
-const SALVO_SCORE = { space: 100, backfire: 95, cannonception: 90, ufo: 70, wormhole: 60, tornado: 55, hammock: 50, bread: 50, onhold: 48, gatekeeper: 46, pelican: 45, skip: 44, migration: 42, bell: 40, mud: 40, tree: 38, geese: 36, crate: 35, ooo: 34, replyall: 33, pinball: 33, billboard: 32, lilypad: 31, clothesline: 30, glider: 30, pepper: 28, plop: 26, drone: 26, trampoline: 25, castle: 25, banana: 24, walkway: 22, jetstream: 22, misfire: 60 };
+const SALVO_SCORE = { space: 100, backfire: 95, cannonception: 90, ufo: 70, wormhole: 60, tornado: 55, hammock: 50, bread: 50, onhold: 48, gatekeeper: 46, pelican: 45, skip: 44, migration: 42, bell: 40, mud: 40, tree: 38, geese: 36, crate: 35, ooo: 34, replyall: 33, pinball: 33, billboard: 32, lilypad: 31, clothesline: 30, glider: 30, pepper: 28, plop: 26, drone: 26, trampoline: 25, castle: 25, banana: 24, walkway: 22, jetstream: 22, ramp: 38, misfire: 60 };
 
 function salvoVolley() {
   const R = S.race, out = [], seen = new Set();
@@ -6702,6 +6937,7 @@ function salvoLoad(first) {
     else if (R.idx > 0) Caps.say(n === 1 ? 'One more for the cannon: ' + SV.fl[0].pl.name + "'s duck, " + SV.fl[0].pl.duck.name + '!' : 'Another volley! ' + n + ' ducks for the cannon.', { prio: 1 });
     else if (n === 1) say('solo', { duck: SV.fl[0].pl.duck.name }, { delay: 0.2 });
     else say('salvoLoad', { n }, { prio: 1 });
+    if (R.idx === 0 && R.ou != null) say('ouCall', { line: fmtFt(R.ou) }, { prio: 1, delay: 1.8 });   // everybody makes their call while the ducks hop in
   };
   SFX.stopLong(0.1);
   if (first) start(); else { L.phase = 'salvo'; SV.phase = 'loading'; SV.pt = 0; setBig('LOADING…', false); Iris.start(start, 960, 540); }
@@ -7115,7 +7351,7 @@ function updateSalvoFlight(dt) {
         f.fired.add('g' + i);
         // the screen-filling gags (a plane, a balloon, a scream) take turns: one of them at a time across the whole flock
         // (a plane's banner over someone else's scream was two jokes shouting over each other)
-        const BIG = ['plane', 'balloon', 'scream'];
+        const BIG = ['plane', 'balloon', 'scream', 'notify'];
         if (BIG.includes(g.id)) { const busy = SV.fl.some(o => o !== f && o.gagOn && BIG.some(id => o.gagOn[id] > t)); if (busy) { f.hideGag.add(i); return; } f.gagOn[g.id] = g.tEnd + 0.3; }
         if (g.id === 'scream') salvoSnd('scream', 0.5, (g.tEnd - g.t) / Math.max(1, pb.rate));
         else if (g.id === 'wave') salvoSnd('quack', 0.15, d.pitch, 1);
@@ -7125,6 +7361,8 @@ function updateSalvoFlight(dt) {
       if (g.id === 'shades' && !f.fired.has('gc' + i) && t >= g.t + 0.6) { f.fired.add('gc' + i); salvoSnd('cool', 0.4); }
     });
     if (tl.hat && !f.fired.has('hat') && t >= tl.hat.t0) { f.fired.add('hat'); salvoSnd('whoosh', 0.4, 0.4); }
+    // the over/under: called as soon as a duck that will finish past the line crosses it
+    if (s.vis && ouCross(f.pl, s.x, tl.final, SV.replay)) { salvoTag(f, 'THE OVER!', { color: '#8fd3ff', px: 34, dur: 2 }); salvoSnd('ooh', 1); say('ouOver', { duck: d.name, player: f.pl.name, line: fmtFt(R.ou) }, { prio: 1, delay: 0.2 }); SV.lineAt = S.rt; }
     // bounces: dust, a thud, a squash
     const gy = SIM.groundY(s.x);
     if (f.prevY > gy + 1.5 && s.y <= gy + 1.5 && s.vis) {
@@ -7344,6 +7582,7 @@ function salvoEnd(quiet) {
   }
   else { SFX.play('aww'); say('salvoNoCatch', { duck: lead.pl.duck.name, player: lead.pl.name, distance: fmtFt(lead.dist) }, { prio: 2, delay: 0.3 }); }
   if (pbs.length && !newRecord) Caps.say(pbs.length === 1 ? 'And a personal best for ' + pbs[0].pl.name + '!' : pbs.length + ' personal bests in that volley!', { delay: 3.0 });
+  if (R.idx >= R.queue.length && R.ou != null && !R.ouHit && lead && lead.dist <= R.ou) say('ouUnder', { line: fmtFt(R.ou) }, { prio: 1, delay: 3.4 });
   const ls = SV.lateStack;
   if (ls && ls.stackOn) say(ls.stackLvl >= 2 ? 'salvoTower' : 'salvoStack', { n: ls.stackLvl + 1, duck: ls.pl.duck.name, other: ls.stackOn.pl.duck.name, player: ls.pl.name }, { delay: 3.2 });
   burst('confetti', 60, { x: 760, y: 240, sp0: 200, sp1: 560, l0: 1.4, l1: 2.4, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
@@ -7627,6 +7866,7 @@ function drawSalvoTags(ctx, V) {
     ctx.restore();
   }
   SV.drawnTags = cps.filter(o => !hud.includes(o) && !bigRects.includes(o));   // what went on screen this frame (name tags first, then call-outs): for the tests
+  if (SV.notes) { for (const nt of SV.notes) drawNotify(ctx, ...nt); SV.notes = null; }   // notifications go over the name tags
   // ducks that are out of the picture: an arrow on the edge says who and where. A long name stays inside the
   // chip, and a tall stack stops above Bill and the big button; the last chip says how many did not fit.
   const off = [];
@@ -7720,7 +7960,7 @@ function drawSalvoHUD(ctx, V, t) {
   if (R.practice) badge('PRACTICE', '#8fd3ff');
   if (SV.replay) badge('REPLAY', '#ffffff');
   drawSalvoBoard(ctx);
-  if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
+  if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · N music · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
   // impact captions go on the far side of the flock (up in the sky while it rolls along the ground, low while it is up
   // in the air), and a caption with a long player name stays clear of the leaderboard
   let flockY = null;
@@ -8056,6 +8296,23 @@ function drawScoutCard(ctx, rc, pl) {
   });
   ctx.restore();
 }
+// The over/under: the winning distance a show this size beats half the time on today's course (from the course's own
+// test flights, so it is the same for every show of the day and costs nothing), to the nearest 50 ft.
+function ouLine(R) {
+  const course = generateCourse(S.day, S.cond), d = course.dists;
+  const n = Math.max(1, R.queue.length);
+  if (!d || d.length < 20) return null;
+  const q = clamp(Math.pow(0.5, 1 / n) * (d.length + 1) - 1, 0, d.length - 1), i = Math.floor(q), f = q - i;   // (Weibull positions: the top of a short sample is not read too low)
+  const v = d[i] + (d[Math.min(d.length - 1, i + 1)] - d[i]) * f;
+  return v > 150 ? Math.round(v / 50) * 50 : null;
+}
+// a duck that will finish past the line has just crossed it: the OVER is called (once a show, never in a replay)
+function ouCross(pl, x, final, replay) {
+  const R = S.race;
+  if (!R || R.ou == null || R.ouHit || replay || x <= R.ou || final <= R.ou) return false;
+  R.ouHit = true;
+  return true;
+}
 function updateReveal(dt) {
   const R = S.race;
   RV.t += dt;
@@ -8076,10 +8333,11 @@ function updateReveal(dt) {
     RV.shuf += dt;
     if (RV.shuf > 1.6 && RV.fc < 0) {
       RV.fc = 0; SFX.play('ding');
-      Caps.say('Pond Forecast: ' + conditionsSummary(S.cond) + '. Same for every duck today!', { prio: 1 });
+      Caps.say('Pond Forecast: ' + conditionsSummary(S.cond).replace(/[.!]$/, m => m === '!' ? '!' : '') + (/!$/.test(conditionsSummary(S.cond)) ? ' ' : '. ') + 'Same for every duck today!', { prio: 1 });
       const pk = billPickKey(R), pp = pk && R.players.find(p => p.key === pk);
       R.pick = pk || null; saveRace();
       if (pp) say('billPick', { player: pp.name, duck: pp.duck.name }, { prio: 1, delay: 2.2 });
+      if (R.ou === undefined) { R.ou = ouLine(R); R.ouHit = false; saveRace(); }   // (on the card now; Bill calls it while the cannon loads)
     }
   }
   if (RV.fc >= 0 && RV.fc < 50) { RV.fc += dt; if (RV.fc > 0.6 && !Big.enabled) setBig("LET'S LAUNCH!", true); }
@@ -8188,7 +8446,8 @@ function forecastOutlook(cond) {
 function drawForecast(ctx, k) {
   const cond = S.cond;
   ctx.save(); ctx.translate(960, 470); ctx.scale(k, k); ctx.translate(-960, -470);
-  const x = 410, y = 150, w = 1100, h = 640;
+  const ouOn = !!(S.race && S.race.ou != null);   // (the card grows upward to make room for the over/under)
+  const x = 410, y = ouOn ? 104 : 150, w = 1100, h = ouOn ? 700 : 640;
   rr(ctx, x, y, w, h, 36); fillStrokeLifted(ctx, '#fff8e6', 6);
   rr(ctx, x, y, w, 96, 36); ctx.fillStyle = '#3f8fd9'; ctx.fill(); ctx.fillRect(x, y + 60, w, 36); rr(ctx, x, y, w, h, 36); ctx.lineWidth = 6; ctx.strokeStyle = OUT; ctx.stroke();
   txt(ctx, 'POND FORECAST', 960, y + 50, { px: 54, color: '#fff', sw: 8 });
@@ -8212,6 +8471,12 @@ function drawForecast(ctx, k) {
   line('MODIFIER OF THE DAY', M.name, M.blurb, cond.mod === 'standard' ? OUT : '#c22f1f');
   const SE = C.SEASONS[cond.season];
   line('SEASON', SE.name + (cond.friday ? ' + ' + C.FRIYAY.name : ''), cond.friday ? C.FRIYAY.blurb : SE.blurb);
+  if (S.race && S.race.ou != null) {
+    const lab = 'OVER/UNDER on the winning flight: ' + fmtFt(S.race.ou);
+    ctx.font = font(30); const pw = ctx.measureText(lab).width + 48;
+    rr(ctx, 960 - pw / 2, y + h - 112, pw, 48, 16); fillStroke(ctx, '#8fd3ff', 4);
+    txt(ctx, lab, 960, y + h - 87, { px: 30, color: OUT, sw: 0 });
+  }
   const pk = S.race && S.race.pick && S.race.players.find(p => p.key === S.race.pick);
   if (pk) txt(ctx, "Bill's pick: " + pk.duck.name + ' (' + pk.name + ')', 960, y + h - 34, { px: 30, color: '#c22f1f', sw: 0, maxW: w - 60 });
   else txt(ctx, 'Same conditions for every duck today.', 960, y + h - 34, { px: 28, color: '#6b6577', sw: 0 });
@@ -8681,11 +8946,11 @@ function resize() {
   VIEW = { scale, ox, oy, k: bw / 1920 };
 }
 function toLogical(e) { return { x: (e.clientX - VIEW.ox) / VIEW.scale, y: (e.clientY - VIEW.oy) / VIEW.scale }; }
-let audioPrimed = false;
+let audioPrimed = false, primedAt = -9;
 function primeAudio() {
   if (audioPrimed) { SFX.resume(); return; }
-  audioPrimed = true;
-  SFX.init(); SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted); SFX.resume();
+  audioPrimed = true; primedAt = S.rt;
+  SFX.init(); SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted); SFX.setMusicOn(S.settings.music !== false); SFX.resume();
   if (S.screen === 'title') setTimeout(() => SFX.play('jingle'), 60);
 }
 CV.addEventListener('pointermove', e => { const p = toLogical(e); S.mouse = p; const b = hitButton(p.x, p.y); S.hover = b ? b.id : null; CV.style.cursor = b ? 'pointer' : 'default'; });
@@ -8714,6 +8979,7 @@ window.addEventListener('keydown', e => {
   if ((k === ' ' || e.code === 'Space') && e.target && e.target.closest && e.target.closest('#roster, #modal') && /^(input|button|select)$/i.test(e.target.tagName) && e.target.matches(':focus-visible')) return;
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); primeAudio(); if (!e.repeat) primary(); return; }
   if (k === 'f') { toggleFullscreen(); return; }
+  if (k === 'n') { primeAudio(); S.settings.music = !S.settings.music; SFX.setMusicOn(S.settings.music); saveSettings(); Toast.show(S.settings.music ? 'Music on' : 'Music off'); if (S.screen === 'roster') Roster.render(); return; }
   if (k === 'm') { primeAudio(); S.settings.muted = !S.settings.muted; SFX.setMuted(S.settings.muted); if (S.settings.muted) Voice.stop(); saveSettings(); Toast.show(S.settings.muted ? 'Muted' : 'Sound on'); return; }
   if (k === 'p') { openSettings(S.screen === 'launch' && !!S.race); return; }
   // with no show running, T sets how the next show starts (the roster's Turbo tick box)
@@ -8757,6 +9023,23 @@ function draw(dt) {
   Iris.draw(ctx);
   if (S.paused) { ctx.fillStyle = 'rgba(31,26,46,0.3)'; ctx.fillRect(0, 0, 1920, 1080); }
 }
+// The music for this moment: the lobby tune while people gather and between the big moments, the race tune while
+// ducks fly. Silence for the fuse, the countdown and the boom, for the result card's cheer, under the final drumroll,
+// and through the crowning until the fanfare is done.
+function musicWanted() {
+  if (!S.settings.music) return null;
+  switch (S.screen) {
+    case 'title': return S.rt - primedAt > 2.6 ? 'lobby' : null;   // (the title jingle plays first)
+    case 'roster': case 'reveal': case 'fame': return 'lobby';
+    case 'launch': {
+      if (SFX.drumOn) return null;
+      if (L.phase === 'salvo') return SV.phase === 'flight' && SV.pb && !SV.pb.done && SV.pb.T > 0.9 ? 'race' : null;
+      return L.phase === 'flight' && L.pb && L.tl && L.pb.simT > L.tl.launchT + 0.9 ? 'race' : null;
+    }
+    case 'results': return RS.page === 0 ? (RS.crowned && RS.t - (RS.crownAt || 0) > 4.5 ? 'lobby' : null) : 'lobby';
+    default: return null;
+  }
+}
 let lastNow = 0;
 function frame(now) {
   requestAnimationFrame(frame);
@@ -8780,6 +9063,7 @@ function frame(now) {
   // pause freezes everything the audience sees: the show, captions (their clock, S.rt, stops too) and screen wipes
   if (!S.paused) S.rt += dt;
   if (!S.paused) { S.time += dt; try { update(dt); } catch (err) { console.error(err); } Particles.update(dt); Shake.update(dt); Caps.update(); Iris.update(dt); }
+  if (audioPrimed) { try { SFX.music(S.paused ? SFX.musicName : musicWanted()); SFX.musicTick(); } catch (e) { console.error(e); } }
   S.fdt = S.paused ? 0 : dt;   // draw-time animations (rows gliding, captions settling) run on real time, not per frame
   try { draw(dt); } catch (err) { console.error(err); }
   if (S.debugOn && (Math.floor(S.rt * 4) !== Math.floor((S.rt - dt) * 4))) DebugPanel.tick();
