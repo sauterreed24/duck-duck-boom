@@ -2396,7 +2396,7 @@ function runSelfTest() {
     const shortLay = layoutHighlights(mctx, ['Ada flew 40 ft.', 'Bo flew 50 ft.', 'Cy flew 60 ft.', 'Di flew 70 ft.', 'Ed flew 80 ft.']);
     check('five short highlights keep their rows', shortLay.px === 28 && shortLay.rows.every(r => r.lines.length === 1) && shortLay.ys.length === 5 && Math.round(shortLay.ys[4] - shortLay.ys[0]) === 192 && shortLay.y0 + shortLay.boxH <= 900, 'pitch ' + (shortLay.ys[4] - shortLay.ys[0]));
     // results: a press during the podium reveal finishes it; the next press moves on
-    const rsKeep = { page: RS.page, t: RS.t, aw: RS.aw, hl: RS.hl, feather: RS.feather, tod: RS.tod }, sfxPlay = SFX.play;
+    const rsKeep = { page: RS.page, t: RS.t, aw: RS.aw, hl: RS.hl, feather: RS.feather, tod: RS.tod, pin: RS.pin, crowned: RS.crowned, crownAt: RS.crownAt }, sfxPlay = SFX.play;
     const sfxDrum = SFX.startDrum; SFX.play = () => {}; SFX.startDrum = () => {};   // (quiet: the self test can run during a call)
     RS.aw = [{}, {}, {}]; RS.hl = ['a', 'b', 'c']; RS.feather = null; RS.tod = null;
     RS.page = 1; RS.t = 0.2;
@@ -8752,10 +8752,11 @@ function crownMoment() {
   burst('confetti', 70, { x: 960, y: 330, sp0: 260, sp1: 640, l0: 1.6, l1: 2.6, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
   // a Golden Loaf that takes its winner up a rosette tier: the new one is pinned on a moment after the crown
   if (!R.practice && st.length > 1) {
-    const before = playerWins(st[0].pl), from = rosetteTier(before), to = rosetteTier(before + 1);
+    // (counted now, from the saved history without this show: a show resumed days later, or races another tab saved,
+    // can have moved the count since the show began)
+    const cw0 = careerOf(st[0].pl.key, S.history.filter(r => r.id !== R.id)), before = cw0 ? cw0.wins : 0, from = rosetteTier(before), to = rosetteTier(before + 1);
     if (to > from) {
-      RS.pin = { key: st[0].pl.key, from, to, at: RS.t + 1.4, landed: false };
-      if (to >= 2) say('rosetteUp', { player: st[0].pl.name, n: before + 1, ribbon: ROSETTES[to].name }, { prio: 1, delay: 2.0 });
+      RS.pin = { key: st[0].pl.key, from, to, at: RS.t + 1.4, landed: false, n: before + 1, player: st[0].pl.name };
     }
   }
   const cw = R.career && R.career.who[st[0].pl.key];   // a first Golden Loaf is for someone who has played before and never won
@@ -8800,6 +8801,9 @@ function updateResults(dt) {
   const pin = RS.pin;
   if (pin && !pin.landed && RS.page === 0 && RS.t >= pin.at + 0.55) {
     pin.landed = true; SFX.play('ding'); Shake.add(2);
+    // Bill marks the red, gold and sparkling gold ones (said now, not with the crown: the winner's line is already up,
+    // and a line queued then would be cleared by it; delayed past 0.5 s so it clears nothing waiting either)
+    if (pin.to >= 2) say('rosetteUp', { player: pin.player, n: pin.n, ribbon: ROSETTES[pin.to].name }, { prio: 1, delay: 0.6 });
     if (pin.tx != null) burst('confetti', 22, { x: pin.tx, y: pin.ty, sp0: 80, sp1: 260, l0: 0.6, l1: 1.1, r0: 4, r1: 7, colors: ['#ffd23f', '#ffffff', ROSETTES[pin.to].col], extra: { layer: 'screen', g: 300, drag: 1.5 } });
   }
   if (RS.page === 0 && RS.crowned && RS.t - (RS.crownAt || 0) < 6 && (RS.conf += dt * 22 * party * Math.min(1, Particles.max / 260)) > 1) {
@@ -8853,7 +8857,7 @@ function drawPodium(ctx, st) {
       const X = rs.x * k0, Y = rs.y * k0, dy = top - sz * 0.48 - bob;
       pin.tx = sp.x + Math.cos(dance) * X - Math.sin(dance) * Y; pin.ty = dy + Math.sin(dance) * X + Math.cos(dance) * Y;
       // it flies in from the open sky right of the podium (below the winner's name, left of the side boxes); drawn last
-      if (RS.t >= pin.at && !landed) { const u = easeIn(clamp((RS.t - pin.at) / 0.55, 0, 1)); pin.fly = { x: lerp(sp.x + 330, pin.tx, u), y: lerp(300, pin.ty, u), r: lerp(46, 13 * k0, u), rot: (1 - u) * 2.4 }; }
+      if (RS.t >= pin.at && !landed) { const u = easeIn(clamp((RS.t - pin.at) / 0.55, 0, 1)), rEnd = e.pl.duck.legendary === 'pixel' ? sz * 0.11 : 13 * k0; pin.fly = { x: lerp(sp.x + 330, pin.tx, u), y: lerp(300, pin.ty, u), r: lerp(46, rEnd, u), rot: (1 - u) * 2.4 }; }
       else pin.fly = null;
     }
     if (!win) {
