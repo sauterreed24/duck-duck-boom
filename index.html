@@ -2736,7 +2736,7 @@ function drawDuck(ctx, duck, x, y, size, o) {
   if (o.flags && o.flags.sock) { drawSock(ctx, hax, hay + 4, hs, lw, t); hatTop = hay - 18 * hs; }
   else if (hat) { drawHat(ctx, hat, hax, hay, hs, lw, t, hx, hy, hr); hatTop = hay - (HAT_TOP[hat] || 20) * hs; }
   if (o.flags && o.flags.tinyHat) { drawHat(ctx, 'tophat', hax + 4, hatTop + 2, hs * 0.45, lw * 0.7, t); hatTop -= 15 * hs; }
-  if (o.crown) { drawHat(ctx, 'crown', hax - 2, hatTop + 3, hs * 0.55, lw * 0.75, t); hatTop -= 11 * hs; }
+  if (o.crown) { const ck = o.crownK || 0.55; drawHat(ctx, 'crown', hax - 2, hatTop + 3, hs * ck, lw * 0.75, t); hatTop -= 20 * hs * ck; }
   if (o.flags && o.flags.antennae) { for (const k of [-1, 1]) { ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.beginPath(); ctx.moveTo(hax + k * 6, hay + 6); ctx.quadraticCurveTo(hax + k * 16, hay - 14 + Math.sin(t * 6 + k) * 3, hax + k * 10, hay - 26); ctx.stroke(); circ(ctx, hax + k * 10, hay - 26, 5); fillStroke(ctx, '#7ef06a', lw * 0.6); } }
   if (duck.legendary === 'golden' || duck.legendary === 'disco') { for (let i = 0; i < 3; i++) { const a = t * 0.8 + i * 2.1; const r = 0.5 + 0.5 * Math.sin(t * 1.5 + i * 2); starPath(ctx, Math.cos(a) * 62, Math.sin(a) * 48 - 6, 5 + r * 4, a); ctx.fillStyle = duck.legendary === 'disco' ? hsl(t * 40 + i * 120, 90, 70) : '#fff3b0'; ctx.fill(); } }
   ctx.restore();
@@ -7433,6 +7433,8 @@ function salvoCamRest(dt) {
   const w = SV.result && SV.result.best;
   if (w) { const cam = L.cam; cam.z = approach(cam.z, 2.2, 1.2, dt); cam.cx = approach(cam.cx, w.x + 60 + 210 / cam.z, 1.8, dt); cam.gy = approach(cam.gy, GROUND_Y, 3, dt); }
 }
+// a line about a duck still moving ("...and it is still moving!", "182 ft to go") is done once the flight is
+const flightOver = () => SV.phase !== 'flight';
 // Bill's running call goes stale when what it says stops being true: the count of ducks still moving, or who is in front
 function callStale(front, moving) {
   const nRe = new RegExp('(^|[^\\d,])' + moving + ' (ducks|of them|still|in motion|left)'), name = front.pl.duck.name, player = front.pl.name;
@@ -7590,7 +7592,7 @@ function updateSalvoFlight(dt) {
     if (SV.pend && S.rt - SV.lineAt >= 2.0) { const pd = SV.pend; SV.pend = null; salvoSay(pd.pool, pd.vars, { prio: 0 }, 0); }
     else if (front && n > 1 && moving > 1 && t > 4 && S.rt - SV.lineAt > 4.4 && pb.dur - pb.T > 3 && Caps.free()) {
       const ch = SV.chase && SV.chase.f, lead = SV.lead;
-      if (ch && lead && ch.x < lead.x) salvoSay('salvoSoloChase', { duck: ch.pl.duck.name, player: ch.pl.name, distance: fmtFt(Math.max(0, ch.x)), gap: fmtFt(Math.max(1, lead.x - ch.x)), leader: lead.pl.name }, { prio: 0 }, 0);
+      if (ch && lead && ch.x < lead.x) salvoSay('salvoSoloChase', { duck: ch.pl.duck.name, player: ch.pl.name, distance: fmtFt(Math.max(0, ch.x)), gap: fmtFt(Math.max(1, lead.x - ch.x)), leader: lead.pl.name }, { prio: 0, stale: flightOver }, 0);
       else salvoSay('salvoCall', { duck: front.pl.duck.name, player: front.pl.name, distance: fmtFt(Math.max(0, front.x)), n: moving }, { prio: 0, stale: callStale(front, moving) }, 0);
     }
   }
@@ -7600,7 +7602,7 @@ function updateSalvoFlight(dt) {
     if (!R.practice && SV.recordAt != null && SV.recordAt > 300 && !pb.fired.has('rec') && front.x > SV.recordAt) { pb.fired.add('rec'); salvoTag(front, 'PAST THE POND RECORD!', { color: '#ffd23f', px: 34, dur: 2.4 }); salvoSnd('ooh', 1); SFX.play('cheer', 1.2); if (!Caps.freshBig(1.2)) Caps.big('PAST THE RECORD LINE!\n' + front.pl.name, { px: 76, color: '#ffd23f', dur: 2.2 }); salvoSay('salvoRecord', { duck: front.pl.duck.name, player: front.pl.name }, { prio: 1 }, 0.8); }
   }
   // only one duck still going: everybody watches that one
-  if (!SV.replay && n > 2 && moving === 1 && !SV.lastMover && pb.dur - pb.T > 2.2) { SV.lastMover = true; salvoTag(lastMover, 'STILL GOING!', { color: '#ffffff', px: 32, dur: 2 }); salvoSay('salvoLast', { duck: lastMover.pl.duck.name, player: lastMover.pl.name }, { prio: 1 }, 1.2); }
+  if (!SV.replay && n > 2 && moving === 1 && !SV.lastMover && pb.dur - pb.T > 2.2) { SV.lastMover = true; salvoTag(lastMover, 'STILL GOING!', { color: '#ffffff', px: 32, dur: 2 }); salvoSay('salvoLast', { duck: lastMover.pl.duck.name, player: lastMover.pl.name }, { prio: 1, stale: flightOver }, 1.2); }
   // ...and Bill stays with it: each milestone it passes, how far it still has to go to catch the leader, and the moment
   // it takes over (a long solo finish used to play out in silence)
   if (!SV.replay && SV.lastMover && moving === 1 && lastMover && n > 2) {
@@ -7610,14 +7612,14 @@ function updateSalvoFlight(dt) {
     for (const k in R.results) if (k !== f.pl.key && R.results[k].dist > best) { best = R.results[k].dist; bestF = { pl: R.players.find(p => p.key === k) }; }
     const ahead = f.x > best;
     if (SV.soloAhead == null) SV.soloAhead = ahead;
-    if (ahead && !SV.soloAhead && bestF && bestF.pl) { SV.soloAhead = true; salvoSay('salvoSoloLead', Object.assign({ leader: bestF.pl.name }, vars), { prio: 1 }, 0.8); }
+    if (ahead && !SV.soloAhead && bestF && bestF.pl) { SV.soloAhead = true; salvoSay('salvoSoloLead', Object.assign({ leader: bestF.pl.name }, vars), { prio: 1, stale: flightOver }, 0.8); }
     const step = f.x > 1500 ? 500 : 250, mark = Math.floor(Math.max(0, f.x) / step);
     if (SV.soloMark == null) SV.soloMark = mark;
     else if (mark > SV.soloMark && pb.dur - pb.T > 2) {
       SV.soloMark = mark;
       if (S.rt - SV.lineAt > 3 && Caps.free()) {
-        if (ahead || !bestF || !bestF.pl) salvoSay('salvoSolo', Object.assign({ distance: fmtFt(mark * step) }, vars), { prio: 0 }, 0);
-        else salvoSay('salvoSoloChase', Object.assign({ distance: fmtFt(mark * step), gap: fmtFt(Math.max(1, best - f.x)), leader: bestF.pl.name }, vars), { prio: 0 }, 0);
+        if (ahead || !bestF || !bestF.pl) salvoSay('salvoSolo', Object.assign({ distance: fmtFt(mark * step) }, vars), { prio: 0, stale: flightOver }, 0);
+        else salvoSay('salvoSoloChase', Object.assign({ distance: fmtFt(mark * step), gap: fmtFt(Math.max(1, best - f.x)), leader: bestF.pl.name }, vars), { prio: 0, stale: flightOver }, 0);
       }
     }
   }
@@ -8264,7 +8266,7 @@ function go(screen) {
   Big.changedAt = S.rt;
   if (screen !== 'roster') Roster.hide();
   // leaving for the title cancels any screen wipe still waiting (e.g. one frozen by a pause)
-  if (screen === 'title') { Iris.t = -1; Iris.mid = null; RS.back = false; S.race = null; L.phase = 'idle'; checkDayRollover(); refreshWorld(true); const c = savedShow(); setBig(c && c.day === todayKey() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); stopShowAudio(); }
+  if (screen === 'title') { titleDuck = null; Iris.t = -1; Iris.mid = null; RS.back = false; S.race = null; L.phase = 'idle'; checkDayRollover(); refreshWorld(true); const c = savedShow(); setBig(c && c.day === todayKey() ? 'RESUME SHOW' : 'START', true); Caps.reset(); Particles.clear(); stopShowAudio(); }
   if (screen === 'roster') { checkDayRollover(); refreshWorld(true); Roster.show(); }
   if (screen === 'reveal') startReveal();
   if (screen === 'launch') { /* loadDuck handles the big button */ }
@@ -8315,7 +8317,15 @@ function resumeRace(c) {
 }
 
 /* ---------- title ---------- */
-let titleDuck = null;
+let titleDuck = null;   // { duck, crown }
+// last real show's winner, from the saved Last results (only while that show is still the latest in the history)
+function champWalker() {
+  const L = Store.get('last', null), last = lastRealRace(S.history);
+  if (!L || !last || L.id !== last.id || !Array.isArray(L.players) || !L.results || typeof L.results !== 'object') return null;
+  let best = null, n = 0;
+  for (const p of L.players) { const r = p && L.results[p.key]; if (r && Number.isFinite(r.dist)) { n++; if (!best || r.dist > best.r.dist) best = { p, r }; } }
+  return n >= 2 && best && best.p.duck && typeof best.p.duck === 'object' ? { duck: best.p.duck, crown: true } : null;
+}
 const DEMO = { cyc: -1, duck: null };
 // The running story for people joining the call: champion, record, the month's race, Bill's record. Rebuilt only
 // when the history or the day changes.
@@ -8357,9 +8367,11 @@ function drawTitle(ctx, dt) {
   const recoil = u < 0.5 ? Math.sin(u / 0.5 * Math.PI) : 0;
   ART.cannon(ctx, V, { angle: ang, burn: 0, smolder: true, t, stick: true, reach: 0, recoil });
 
-  if (!titleDuck) titleDuck = generateDuck(hash('title', S.day), {});
+  // the duck strutting by the cannon is last show's champion, crown and all (a random duck of the day before any show)
+  if (!titleDuck) titleDuck = champWalker() || { duck: generateDuck(hash('title', S.day), {}), crown: false };
   const wx = 26 + Math.sin(t * 0.35) * 22, dir = Math.cos(t * 0.35) > 0;
-  drawDuck(ctx, titleDuck, V.sx(wx), V.sy(SIM.groundY(wx)) - 58, 120, { pose: 'walk', flip: !dir, t, party: S.cond.friday, blink: (t % 3.1) < 0.12 });
+  try { drawDuck(ctx, titleDuck.duck, V.sx(wx), V.sy(SIM.groundY(wx)) - 58, 120, { pose: 'walk', flip: !dir, t, crown: titleDuck.crown, crownK: 0.9, party: S.cond.friday, blink: (t % 3.1) < 0.12 }); }
+  catch (e) { titleDuck = { duck: generateDuck(hash('title', S.day), {}), crown: false }; }   // (a saved duck that won't draw: today's random one)
   Weather.draw(ctx, dt, t, 0);
   drawLogo(ctx, 1160, 230, 1.0, S.rt);
   // date + conditions teaser
