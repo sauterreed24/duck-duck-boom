@@ -42,7 +42,7 @@ measured, train seeds (held-out in brackets where it was run).
 | 5 | Commentary: longest silence p90; repeated lines; captions cut off | experience | ≤ 6 s; 0; 0 | 5.5 s; 0; 0 | unchanged |
 | 6 | Fairness: win share by roster slot (chi² p), max share | fairness | p > 0.01, ≤ 1.3× | p 0.75, 1.1× | unchanged |
 | 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 16.3 / 17.2 ms (noise ≈ ±3%) |
-| 8 | Robustness: page errors; `eval/play.js` (17 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 17/17; pass; 2/2 |
+| 8 | Robustness: page errors; `eval/play.js` (19 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 19/19; pass; 2/2 |
 | 9 | Contrast: worst text-on-team-colour pair drawn in a flight (WCAG ratio) | accessibility | ≥ 3.0 | 2.25 (white on orange) | **4.36** |
 | 10 | Events told: distance-changing events whose duck got a call-out drawn while it was in the picture, a big impact caption naming it, or a Bill line naming it, within ~2 s (6 rendered shows) | readability (guard) | no worse | 0.982 (0.966) | 0.982 (0.966) |
 | 11 | Results readability: highlight rows (and the copied results' highlight) that say whose duck each mentioned duck is; rows cut off (2-line limit) | experience | ≥ 0.95; 0 cut | 0.00, 0.00; 0 cut | **1.00, 1.00** (1.00); 0 cut (also with 40-character names) |
@@ -73,7 +73,7 @@ change feels better on a real screen share.
 | Kind of change | Tried | Kept | Notes |
 |---|---|---|---|
 | Readability (who is who on screen) | 4 (A, A′, B3′, H1) | 3 | Cheap, large measured gains; found by reading screenshots of every screen. Session 2's gain was smaller (one screen left) |
-| Onboarding (first-time host) | 1 | 1 | Small; found by playing from an empty browser |
+| Onboarding (first-time host) | 1 | 1 | Small; found by playing from an empty browser; the review found two gaps in it |
 | Measurement fixes | 2 | 2 | Both found by screenshotting a "miss" before treating it as a game problem |
 | Accessibility (contrast) | 1 | 1 | Found by measuring every text-on-colour pair drawn |
 | Commentary routing (Bill) | 1 | 0 | Bill's channel is saturated; route new information visually instead |
@@ -89,6 +89,7 @@ change feels better on a real screen share.
   rendered twin of every experience check ("drawn").
 - Before routing anything new through Bill, count his blocked lines: he is already saturated during a salvo.
 - Screenshot every new on-screen element at the busiest moment it can appear (a pile-up near the end of a flight).
+- Every new hint or control gets both a keyboard and a pointer playthrough check. (provisional)
 - Before treating a measured miss as a game problem, screenshot the moment: in session 2 the "untold" trip to space
   was told by a big caption the check didn't count. (provisional)
 - A new invariant test must fail on a deliberately broken copy: session 2's first version of the highlight test passed
@@ -124,6 +125,28 @@ looked at the biggest moment (a forced trip to space).
 - Considered, not built: sample ducks for a first look (Backlog 2): bigger UI addition, worth a measured round.
 - **Round gain:** smaller than round 1 (one more screen made readable, one onboarding fix, two measurement fixes).
   Readability is close to done; next session should change focus (Backlog 2, or a decision below).
+
+Independent review (separate agent, commits only): nothing throws, no data or winner affected; 75 real highlight rows
+with tricky names (emoji, Zoë, O'Brien, "Sam"/"Sam (2)", "Dee"/"Deer") all attributed once. Defects found, all fixed
+in one commit, each now a check that fails on the previous version:
+- a click on the greyed-out REVEAL DUCKS button gave no hint (my claim "or the big button" was false: the disabled
+  button returns before the roster code). Now it gives the hint;
+- with names typed but not applied, the hint told the host to type names. Now it says "press Tick only these" and
+  focuses that button, so the next Space applies them;
+- a duck named inside a longer duck's name ("Dumpling" / "Judge Dumpling") lost its player; a player's name already
+  in the story ("Golden", "Golden Loaf") suppressed the bracket. Both fixed; idempotent by checking the bracket;
+- whole-name matching treated "ë" as a boundary ("Zo" matched in "Zoëy"), in the highlights and in session 1's
+  caption-bar chip. Fixed with an accent-aware letter test (no newer regex syntax).
+Accepted, not fixed: a photo-finish row can still be cut with two 40-character ALL-CAPS names (none in 105 real
+long-name rows); the copied text brackets "player (duck)" for the feather and "duck (player)" for highlights. Also
+corrected: saved highlights (`rec.hl`) are not shown anywhere in the game, so "in saved history" has no visible effect.
+
+Process notes (why things failed this round):
+- The empty-roster hint was tested from the keyboard only; the mouse path (the likely first-time host's) was missed.
+  Next time: every new hint or control gets a keyboard and a pointer check in `eval/play.js`.
+- The first highlight invariant passed a broken copy: it checked presence, not exact count and reversibility.
+- I edited `index.html` while two evaluator runs were going (Playbook rule). They had already loaded the page, so the
+  numbers stood, but the final numbers come from a fresh run of the final commit.
 
 ## Decisions for me
 1. **Closer finishes?** (tension) The distance spread is long-tailed (p90 ≈ 2,700 ft, p99 ≈ 4,400 ft), so the winner
