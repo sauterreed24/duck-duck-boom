@@ -119,6 +119,7 @@ In one-by-one mode, flights play close to real time. The launch always plays at 
 
 - Everything is saved in `localStorage` under keys starting with `ddb.v1.`, wrapped as `{schema, data}`. `localStorage.clear()` is never called, because all of a github.io account's sites share one storage origin. Reset only removes `ddb.v1.*` keys.
 - If storage is blocked, the game still runs and keeps everything in memory for the session. If storage is full, the saved roster and history still load, and the title screen and Settings warn that new changes aren't being saved. If only the newest races still fit, a warning says how many are saved, and this session keeps all of them so an Export right away has everything.
+- **Two tabs at once** are safe: a show saved in one tab is never overwritten by the other (each picks up the other's races and roster, and a finished show is added to the latest saved history). The storage-full warning goes away once saving works again. A show saved by an older version of the game, or edited by hand, is tidied up when it resumes.
 - **Settings → Export everything** downloads a JSON backup, and **Import…** or **Paste import text…** restores it. It's a full restore: it checks the backup first, refuses a damaged one (a single broken race in the history is just left out, and Export never writes one), and asks before it would erase saved races, the roster or a show in progress. When a hosted frame blocks downloads or the clipboard, the game shows a text box you can copy from.
 
 ## QA tools
