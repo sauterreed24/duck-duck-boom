@@ -2228,6 +2228,47 @@ function runSelfTest() {
   check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
+  // whose duck: a line about a duck of the salvo carries that player's name tag on Bill's bar (whole names only, the
+  // longest name wins, none when the line already names the player)
+  {
+    const k0 = { fl: SV.fl, seen: SV.seen, screen: S.screen, phase: L.phase };
+    try {
+      const mk = (name, duck) => ({ pl: { name, key: personKey(name), team: 0, duck: { name: duck } }, done: false, vis: 1, x: 0, tl: { special: null } });
+      SV.fl = [mk('Ada', 'Judge Dumpling'), mk('Bo', 'Sir Quackalot'), mk('Cy', 'Dumpling'), mk('Player 1', 'Waddles'), mk('Player 12', 'Beaky')];
+      S.screen = 'launch'; L.phase = 'salvo';
+      const who = t => (salvoWho(t) || []).map(p => p.name).join(',');
+      const cases = [['Judge Dumpling got HONKED!', 'Ada'], ["Ada's duck Judge Dumpling leads!", ''], ['Sir Quackalot passes Judge Dumpling!', 'Bo,Ada'], ['Dumplings everywhere.', ''], ['Dumpling is airborne!', 'Cy'], ['Player 12 is cheering for Waddles', 'Player 1'], ['Nobody here.', '']];
+      const bad = cases.filter(([t, w]) => who(t) !== w);
+      SV.seen = new Set(); salvoSeen('Judge Dumpling and Player 12');
+      check("Bill's lines about a salvo duck say whose duck it is (whole names, longest match)", !bad.length && SV.seen.size === 2 && SV.seen.has('ada') && SV.seen.has('player 12'), bad.map(b => b[0] + ' -> ' + who(b[0])).join(' | '));
+    } finally { SV.fl = k0.fl; SV.seen = k0.seen; S.screen = k0.screen; L.phase = k0.phase; }
+  }
+  // text on every team colour reads at 3:1 or better
+  {
+    const lum = h => [1, 3, 5].map(i => parseInt((h === '#fff' ? '#ffffff' : h).slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const cr = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const low = C.TEAM_SWATCHES.concat(C.TEAM_DEFAULTS.map(t => t.color)).filter(c => cr(c, inkOn(c)) < 3);
+    check('names printed on every team colour read at 3:1 contrast or better', !low.length, low.join(', '));
+  }
+  // the results' stories name each duck's player once, wherever the duck comes up in the line (generated cases)
+  {
+    const rng = new Rng(hash('withPlayers')), parts = ['Sir', 'Quack', 'Dumpling', 'Waddles', 'Beaky', 'Pond', 'the Brave', 'Fluff', 'III'];
+    let bad = '';
+    for (let k = 0; k < 300 && !bad; k++) {
+      const ps = [], used = new Set();
+      for (let i = 0; i < 4; i++) { let d; do { d = parts[rng.int(0, 4)] + ' ' + parts[rng.int(4, 8)] + ' ' + i; } while (used.has(d)); used.add(d); ps.push({ name: 'P' + i + (rng.int(0, 1) ? ' Lee' : ''), duck: { name: d } }); }
+      const a = ps[rng.int(0, 3)], b = ps[rng.int(0, 3)];
+      const t = a.duck.name + ' came down right on top of ' + b.duck.name + ' at 400 ft.', once = withPlayers(t, ps), twice = withPlayers(once, ps);
+      let back = once; for (const p of ps) back = back.split(' (' + p.name + ')').join('');
+      const ok = ps.every(p => (once.split('(' + p.name + ')').length - 1) === (t.indexOf(p.duck.name) >= 0 ? 1 : 0) && (t.indexOf(p.duck.name) < 0 || once.indexOf(p.duck.name + ' (' + p.name + ')') >= 0)) && back === t && twice === once && withPlayers('Nobody flew 3 ft.', ps) === 'Nobody flew 3 ft.';
+      if (!ok) bad = t + ' -> ' + once;
+    }
+    const cp = [{ name: 'Kit', duck: { name: 'Judge Dumpling' } }, { name: 'Golden', duck: { name: 'Dumpling' } }];
+    const cs = withPlayers('Judge Dumpling came down right on top of Dumpling at the Golden Loaf.', cp);
+    if (!bad && withPlayers('Zoëy flew 3 ft.', [{ name: 'Kit', duck: { name: 'Zo' } }]) !== 'Zoëy flew 3 ft.') bad = 'Zo matched inside Zoëy';
+    if (!bad && cs !== 'Judge Dumpling (Kit) came down right on top of Dumpling (Golden) at the Golden Loaf.') bad = cs;
+    check("every results story says whose duck it names, once", !bad, bad);
+  }
   // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
   const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), last: Store.get('last', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
   try {
@@ -2301,14 +2342,15 @@ function runSelfTest() {
     const geese = [story('Ana', 900, 'geese'), story('Ben', 800, 'geese'), story('Cal', 700, 'ufo'), story('Dee', 600, 'ufo')];
     S.race = { id: 'self-hl2', seed: 4, day, players: geese, queue: [], idx: 0, results: Object.fromEntries(geese.map(p => [p.key, p.r])), shots: {}, legend: [] };
     const hl2 = computeHighlights(S.race);
-    check('a second story of the same kind says "also"', hl2.some(h => /^Duck \w+ also got HONKED/.test(h)) && hl2.some(h => /^Duck \w+ was also abducted/.test(h)) && hl2.filter(h => / also /.test(h)).length === 2, hl2.join(' | '));
+    const plain = h => h.replace(/ \([^()]*\)/g, '');   // (each story names the duck's player in brackets)
+    check('a second story of the same kind says "also"', hl2.map(plain).some(h => /^Duck \w+ also got HONKED/.test(h)) && hl2.map(plain).some(h => /^Duck \w+ was also abducted/.test(h)) && hl2.filter(h => / also /.test(h)).length === 2, hl2.join(' | '));
     S.race = { id: 'self-hl', seed: 3, day, players: cast, queue: [], idx: 0, results: Object.fromEntries(cast.map(p => [p.key, p.r])), shots: {}, legend: [] };
     check('highlights tell each kind of moment once and include the winner', hls.length === 5 && hls.filter(h => /ANOTHER CANNON/.test(h)).length === 1 && hls.some(h => h.startsWith('Duck Win ')), hls.length + ' lines, ' + hls.filter(h => /ANOTHER CANNON/.test(h)).length + ' cannon');
     // a Golden Loaf decided by a few feet is the story of the race, told about the winner
     const tight = [story('Fst', 900.4, 'geese'), story('Snd', 893, 'ufo'), story('Thd', 500, 'bread')];
     S.race = { id: 'self-hl3', seed: 5, day, players: tight, queue: [], idx: 0, results: Object.fromEntries(tight.map(p => [p.key, p.r])), shots: {}, legend: [] };
     const hl3 = computeHighlights(S.race, 3);
-    check('a Golden Loaf won by a few feet is a highlight of its own', hl3[0] === 'Duck Fst beat Duck Snd to the Golden Loaf by 7 ft.' && hl3.length === 3 && !hl3.some(h => /^Duck Fst got HONKED/.test(h)), hl3.join(' | '));
+    check('a Golden Loaf won by a few feet is a highlight of its own', hl3[0] === 'Duck Fst (Fst) beat Duck Snd (Snd) to the Golden Loaf by 7 ft.' && hl3.length === 3 && !hl3.some(h => /^Duck Fst (\(Fst\) )?got HONKED/.test(h)), hl3.join(' | '));
     // duck stacks: only for show, never more than four high, one duck per back, each on a duck that stopped first
     // within reach, and never in the pond, a hammock or the bread queue
     const sfl = players.map((p, i) => ({ i, pl: { key: p.key }, tl: SIM.simulate(flightSeed(raceSeed, p.key, 0), cond, course, null, {}) }));
@@ -2323,7 +2365,7 @@ function runSelfTest() {
     check('duck stacks: one duck per back, at most four high, never in the pond, and no distance changes', stacked.length > 0 && stackOk && sfl.map(f => f.stackOn ? f.stackOn.i : -1).join(',') === sAssign && sfl.every((f, i) => f.tl.final === sBefore[i]), stacked.length + ' stacked of 40');
     // the chase: once the duck in front has stopped, the closest duck still moving is the one to watch; stopping just
     // short of the lead is a near miss
-    const svKeep = { fl: SV.fl, lead: SV.lead, chase: SV.chase, tags: SV.tags, nearN: SV.nearN, replay: SV.replay }, sfxP = SFX.play;
+    const svKeep = { fl: SV.fl, lead: SV.lead, chase: SV.chase, tags: SV.tags, seen: SV.seen, nearN: SV.nearN, replay: SV.replay }, sfxP = SFX.play;
     SFX.play = () => {};
     const ch = (key, x, done) => ({ pl: { key, name: key, team: 0, duck: duck('D' + key) }, tl: { final: x, launchT: 0 }, x, done, vis: 1 });
     const cLead = ch('lead', 1000, true), cNear = ch('near', 950, false), cFar = ch('far', 600, false);
@@ -2469,6 +2511,16 @@ function heartPath(ctx, x, y, s) {
 function fillStrokeLifted(ctx, fill, lw, lift) {
   ctx.save(); ctx.shadowColor = 'rgba(31,26,46,0.26)'; ctx.shadowOffsetY = (lift || 7) * (ctx.getTransform().d || 1); ctx.fillStyle = fill; ctx.fill(); ctx.restore();
   if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = OUT; ctx.stroke(); }
+}
+// the ink for text printed on a team colour: whichever of the dark outline ink and white reads better on it (WCAG
+// contrast). White on the orange or sky-blue team pill was barely 2.3:1; the dark ink is over 6:1 there.
+const INK_CACHE = {};
+function inkOn(bg) {
+  const k = String(bg);
+  if (INK_CACHE[k]) return INK_CACHE[k];
+  const lum = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h); if (!m) return 0.5; return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0); };
+  const L = lum(k), lo = lum(OUT);
+  return (INK_CACHE[k] = (L + 0.05) / (lo + 0.05) >= 1.05 / (L + 0.05) ? OUT : '#fff');
 }
 function fillStroke(ctx, fill, lw, stroke) { if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = stroke || OUT; ctx.stroke(); } }
 
@@ -4727,7 +4779,7 @@ const Caps = {
     this.queue = this.queue.filter(q => !q.stale || !q.stale(q.text));
     if (!this.cur) {
       const i = this.queue.findIndex(q => q.at <= now);
-      if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; Voice.speak(this.cur.text); }
+      if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; this.cur.who = salvoWho(this.cur.text); salvoSeen(this.cur.text); Voice.speak(this.cur.text); }
     }
     this.bigs = this.bigs.filter(b => now < b.t0 + b.dur);
     if (this.bubble && now > this.bubble.t0 + this.bubble.dur) this.bubble = null;
@@ -4748,6 +4800,20 @@ const Caps = {
     ctx.font = font(34, 800);
     const lines = wrapText(ctx, c.text, w - 190, 2);
     lines.forEach((ln, i) => txt(ctx, ln, x + 150 + (1 - k) * 30, y + h / 2 + (i - (lines.length - 1) / 2) * 38 + 6, { px: 34, weight: 800, color: OUT, sw: 0, align: 'left' }));
+    // whose duck Bill is talking about: the same name tag that duck wears in the sky, pinned to the bar's top edge
+    if (c.who) {
+      let r = x + w - 26;
+      for (const pl of c.who.slice().reverse()) {
+        const tm = teamOf(pl), dark = inkOn(tm.color) === OUT;
+        ctx.font = font(24);
+        const label = fitTail(ctx, pl.name, '', 280), tw = Math.min(280, ctx.measureText(label).width) + 74;
+        rr(ctx, r - tw, y - 20, tw, 42, 12); fillStroke(ctx, tm.color, 4);
+        const pc = duckPortrait(pl.duck, 34, S.cond && S.cond.friday ? 'party' : '');
+        ctx.drawImage(pc, r - tw + 26 - pc.width / 2, y + 1 - pc.height * 0.62);
+        txt(ctx, label, r - tw + 50 + (tw - 62) / 2, y + 2, { px: 24, color: dark ? OUT : '#fff', sw: 0, maxW: tw - 62 });
+        r -= tw + 12;
+      }
+    }
     ctx.restore();
   },
   side: null,
@@ -5158,7 +5224,7 @@ const Roster = {
       const people = S.roster.filter(p => p.team === i).sort(byName);
       const shown = people;
       const tl = Array.from(T[i].name).length, tfs = tl > 16 ? 19 : tl > 12 ? 22 : tl > 8 ? 26 : 30;   // a long team name gets smaller type before an ellipsis
-      return '<div class="team"><div class="team-head" style="background:' + T[i].color + '"><span class="tname" style="font-size:' + tfs + 'px" title="' + esc(T[i].name) + '">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
+      return '<div class="team"><div class="team-head" style="background:' + T[i].color + (inkOn(T[i].color) === OUT ? ';color:' + OUT + ';text-shadow:none' : '') + '"><span class="tname" style="font-size:' + tfs + 'px" title="' + esc(T[i].name) + '">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
         '<button class="btn small ghost" data-all="' + i + '">All</button><button class="btn small ghost" data-none="' + i + '">None</button></div><div class="list">' +
         (shown.length ? '<div class="row nomatch" style="opacity:.6;display:' + (f && !shown.some(p => personKey(p.name).includes(f)) ? 'flex' : 'none') + '">No match</div>' + shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '" data-key="' + esc(personKey(p.name)) + '"' + (f && !personKey(p.name).includes(f) ? ' style="display:none"' : '') + '><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
           (S.settings.bonusAmmo ? '<select class="ammo" data-ammo="' + p.id + '" title="Bonus Ammo: extra shots, best counts">' + [0, 1, 2, 3].map(n => '<option value="' + n + '"' + (p.ammo === n ? ' selected' : '') + '>' + '+' + n + '</option>').join('') + '</select>' : '') +
@@ -5285,7 +5351,7 @@ function createRace() {
     seenKeys.add(personKey(nm));
     people.push({ name: nm, team: clamp(p.team | 0, 0, 2), ammo: p.ammo | 0 });
   }
-  if (!people.length) { Toast.show('Tick at least one person first.'); return false; }
+  if (!people.length) { rosterHint(); return false; }
   if (left.length) Toast.show('Only 40 ducks fit in Thunderbill. Sitting out: ' + left.slice(0, 4).join(', ') + (left.length > 4 ? ' +' + (left.length - 4) + ' more' : ''), 6500);
   const day = S.dbg.day || localDayKey();
   S.day = day;
@@ -5330,6 +5396,14 @@ function createRace() {
   Lines.reset(seed);
   saveRace();
   return true;
+}
+// nobody is ticked: say what's missing. Names typed into Today's list but not applied yet: the button that applies them
+// (focused, so the next Space from the keyboard presses it). Nobody on the roster at all: where today's names go.
+function rosterHint() {
+  const box = document.getElementById('paste'), btn = document.getElementById('onlybtn');
+  if (box && box.value.trim() && btn) { Toast.show("Press Tick only these (or Add to ticked) to add the names in Today's list.", 3600); btn.focus(); }
+  else if (!S.roster.length) { Toast.show("Nobody on the roster yet: type or paste today's names in Today's list.", 3600); if (box) box.focus(); }
+  else Toast.show('Tick at least one person first.');
 }
 function rerollDuck(pi) {
   const R = S.race;
@@ -5650,7 +5724,27 @@ function computeHighlights(R, max, awards) {
     return t;
   });
   if (!out.length && st.length) out.push(st[0].pl.duck.name + ' flew ' + fmtFt(st[0].dist) + ' with no help from anyone.');
-  return out.map(tidyDots);
+  return out.map(t => withPlayers(t, R.players)).map(tidyDots);
+}
+// a story names ducks; the people on the call know each other. The first time a story names a duck, its player
+// follows in brackets ("Nibbles (Kit) was abducted..."), on the results page and in the copied results text.
+function withPlayers(t, players) {
+  const all = [];   // every whole-name mention of every duck
+  for (const p of players || []) {
+    const nm = p.duck && p.duck.name;
+    if (!nm) continue;
+    for (let i = t.indexOf(nm); i >= 0; i = t.indexOf(nm, i + 1)) if (!wordChar(t[i - 1]) && !wordChar(t[i + nm.length])) all.push({ i, j: i + nm.length, p });
+  }
+  // a mention inside a longer duck's name is that duck's ("Dumpling" in "Judge Dumpling"); each duck's first mention
+  // gets its player, unless the bracket is already there
+  const real = all.filter(h => !all.some(o => o !== h && o.i <= h.i && o.j >= h.j && o.j - o.i > h.j - h.i));
+  const first = [];
+  for (const h of real.sort((a, b) => a.i - b.i)) if (!first.some(f => f.p === h.p)) first.push(h);
+  for (const h of first.sort((a, b) => b.i - a.i)) {   // from the end, so earlier positions stay put
+    const br = ' (' + h.p.name + ')';
+    if (t.slice(h.j, h.j + br.length) !== br) t = t.slice(0, h.j) + br + t.slice(h.j);
+  }
+  return t;
 }
 function resultsText(R) {
   const st = standings();
@@ -7403,7 +7497,7 @@ function salvoFire(replay) {
   SV.spot = null; SV.spotK = 0;
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
-  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null; SV.reignN = 0; SV.leadSim = 0;
+  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.seen = new Set(); SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null; SV.reignN = 0; SV.leadSim = 0;
   if (!replay) SV.result = null;   // after a replay the winner card comes back
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
@@ -7530,10 +7624,40 @@ function salvoSay(pool, vars, o, gap) {
   if (l) SV.lineAt = S.rt + ((o && o.delay) || 0);
   return l;
 }
+// where a whole name sits in a line (-1 if nowhere): "Dee" is not in "Deer", "Player 1" is not in "Player 12"
+function nameAt(text, name) {
+  if (!name) return -1;
+  let i = text.indexOf(name);
+  while (i >= 0) { if (!wordChar(text[i - 1]) && !wordChar(text[i + name.length])) return i; i = text.indexOf(name, i + 1); }
+  return -1;
+}
+// a letter or digit, accented ones too ("Zo" is not a whole name in "Zoëy")
+function wordChar(c) { return !!c && (/\w/.test(c) || (c > '\u007f' && c.toLowerCase() !== c.toUpperCase())); }
+// the volley's ducks a line names (by duck name or player name), in the order they come up. A name inside a longer
+// one that also matched ("Dumpling" in "Judge Dumpling") is the longer one's.
+function salvoNamed(text) {
+  if (!text || S.screen !== 'launch' || L.phase !== 'salvo') return [];
+  const hits = [];
+  for (const f of SV.fl) for (const [nm, byPlayer] of [[f.pl.duck.name, false], [f.pl.name, true]]) { const i = nameAt(text, nm); if (i >= 0) hits.push({ i, j: i + nm.length, f, byPlayer }); }
+  const kept = hits.filter(h => !hits.some(o => o !== h && o.i <= h.i && o.j >= h.j && o.j - o.i > h.j - h.i));
+  return kept.sort((a, b) => a.i - b.i);
+}
+// Bill calls the ducks by their names; the name tags in the sky and the board name the people. A line about one or two
+// ducks of the volley carries their people's name tags on the caption bar, so "Judge Dumpling got HONKED!" says whose
+// duck that was. (Not for a duck whose player the line already names.)
+function salvoWho(text) {
+  if (SV.fl.length < 2) return null;
+  const hits = salvoNamed(text), out = [];
+  for (const h of hits) if (!h.byPlayer && !hits.some(o => o.byPlayer && o.f === h.f) && !out.includes(h.f.pl)) out.push(h.f.pl);
+  return out.length ? out.slice(0, 2) : null;
+}
+// who the show has pointed at this volley (a call-out over the duck, or Bill naming it or its player)
+function salvoSeen(text) { if (SV.seen) for (const h of salvoNamed(text)) SV.seen.add(h.f.pl.key); }
 function salvoSnd(name, gap, ...args) { if (S.rt - (SV.sndAt[name] || -9) < gap) return; SV.sndAt[name] = S.rt; SFX.play(name, ...args); }
 function salvoTag(f, text, o) {
   o = o || {};
-  SV.tags.push({ f, text, t0: S.rt, dur: o.dur || 1.5, color: o.color || '#ffd23f', px: o.px || 30 });
+  SV.tags.push({ f, text, t0: S.rt, dur: o.dur || 1.5, color: o.color || '#ffd23f', px: o.px || 30, land: o.land || null });
+  if (SV.seen) SV.seen.add(f.pl.key);
   if (SV.tags.length > 40) SV.tags.shift();
 }
 function updateSalvoFlight(dt) {
@@ -7640,6 +7764,9 @@ function updateSalvoFlight(dt) {
           else if (SV.stackN <= 2) salvoSay('salvoStack', { duck: d.name, other: b.pl.duck.name, player: f.pl.name }, { prio: 0 }, 1.6);
         }
       }
+      // a quiet flight (no call-out yet, Bill never got to it) still gets its moment as it comes to rest (what it
+      // says depends on whether its name tag is showing: see drawSalvoTags)
+      else if (!SV.replay && n > 2 && SV.seen && !SV.seen.has(f.pl.key) && s.vis && tl.final > 0) salvoTag(f, f.pl.name + ' · ' + fmtFt(tl.final), { color: '#ffffff', dur: 1.8, land: { name: f.pl.name, ft: fmtFt(tl.final) } });
     } else { moving++; lastMover = f; }
   }
   SV.moving = moving;
@@ -7738,7 +7865,7 @@ function salvoChase(t, pb) {
 function drawChaseChip(ctx) {
   const c = SV.chase, lead = SV.lead;
   if (!c || !lead || SV.phase !== 'flight') return null;
-  const f = c.f, gap = lead.x - f.x, past = gap < 0, tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff';
+  const f = c.f, gap = lead.x - f.x, past = gap < 0, tm = teamOf(f.pl), dark = inkOn(tm.color) === OUT;
   ctx.font = font(26);
   const tail = past ? ' · ' + fmtFt(Math.max(1, -gap)) + ' ahead!' : ' · ' + fmtFt(Math.max(1, gap)) + ' to go';
   const label = fitTail(ctx, (past ? 'PASSING: ' : 'CHASING: ') + f.pl.name, tail, 660);
@@ -7894,6 +8021,7 @@ function drawSalvo(ctx, dt) {
   drawSalvoHUD(ctx, V, t);
 }
 function drawSalvoActors(ctx, V, t) {
+  SV.drawN = (SV.drawN || 0) + 1;   // this frame: which ducks are in the picture (f.sxN) and wear their name tag (f.tagN)
   const n = SV.fl.length, ph = SV.phase, pace = PACE();
   const px = salvoPx(V.z, n);
   const cd = SV.cdT || 3 * pace;
@@ -7922,7 +8050,7 @@ function drawSalvoActors(ctx, V, t) {
         const hx = lerp(x0, m.x, u), hy = lerp(y0, m.y + 3, u) + Math.sin(u * Math.PI) * (46 + (m.x - x0) * 0.16);
         const k = 1 - 0.45 * clamp((u - 0.7) / 0.3, 0, 1);
         drawDuck(ctx, d, V.sx(hx), V.sy(hy) - sz * 0.45 * k, sz * k, duckDrawOpts(f.pl, { pose: 'scared', rot: -u * 3.2, flap: S.time * 4 + i }));
-        if (u < 0.8) { const tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff', lab = f.pl.name; ctx.font = font(26); const w = Math.min(280, ctx.measureText(lab).width + 22), tx = V.sx(hx), ty = V.sy(hy) - sz * 1.15; if (loadTags.some(o => Math.abs(o.x - tx) < (o.w + w) / 2 + 4 && Math.abs(o.y - ty) < 40)) continue; loadTags.push({ x: tx, y: ty, w }); SV.loadTags = loadTags; ctx.save(); ctx.globalAlpha = clamp(Math.min(u * 6, (0.8 - u) * 6), 0, 1); rr(ctx, tx - w / 2, ty - 18, w, 36, 10); fillStroke(ctx, tm.color, 3); txt(ctx, lab, tx, ty + 1, { px: 26, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 }); ctx.restore(); }   // whose duck is this one?
+        if (u < 0.8) { const tm = teamOf(f.pl), dark = inkOn(tm.color) === OUT, lab = f.pl.name; ctx.font = font(26); const w = Math.min(280, ctx.measureText(lab).width + 22), tx = V.sx(hx), ty = V.sy(hy) - sz * 1.15; if (loadTags.some(o => Math.abs(o.x - tx) < (o.w + w) / 2 + 4 && Math.abs(o.y - ty) < 40)) continue; loadTags.push({ x: tx, y: ty, w }); SV.loadTags = loadTags; ctx.save(); ctx.globalAlpha = clamp(Math.min(u * 6, (0.8 - u) * 6), 0, 1); rr(ctx, tx - w / 2, ty - 18, w, 36, 10); fillStroke(ctx, tm.color, 3); txt(ctx, lab, tx, ty + 1, { px: 26, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 }); ctx.restore(); }   // whose duck is this one?
       }
     }
     // the last few in poke their heads out; the barrel shudders with every new arrival
@@ -7992,7 +8120,7 @@ function drawSalvoActors(ctx, V, t) {
       drawDuck(ctx, d, sx, sy, px, duckDrawOpts(f.pl, { pose, rot, flap, flags, squash, squashW: squashNow(f.squash, f.squashDepth), hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
       if (pose === 'swim') ctx.restore();
       if (pose === 'dizzy' && (done || !inAir)) for (let i = 0; i < 3; i++) { const aa = S.time * 3 + i * 2.1; starPath(ctx, sx + Math.cos(aa) * px * 0.4, sy - px * 0.55 + Math.sin(aa) * px * 0.12, 9, aa); fillStroke(ctx, '#ffd23f', 3); }
-      f.sx = sx; f.sy = sy;
+      f.sx = sx; f.sy = sy; f.sxN = SV.drawN;
       tags.push({ f, s, sx, sy, done });
     }
     if (!done) drawEventActors(ctx, V, ft, s, px, false, tl, f.pl, f.hideGag);
@@ -8065,14 +8193,14 @@ function drawSalvoTags(ctx, V) {
     // a big flock packed together: a tag that would have to stack is shown only for the leaders (the rest are on the
     // board, and their own tags come back as soon as the pack spreads out)
     if (n > 14 && lvl > 0 && !keep && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) { drop(); continue; }
-    placed.push({ x, y, w, h, label, tm, lvl, g, isLead, below });
+    placed.push({ x, y, w, h, label, tm, lvl, g, isLead, below }); f.tagN = SV.drawN;
     f.tagY = below ? null : y - h / 2;   // (a call-out rises from the tag, or from the duck when its tag hangs below)
   }
   // two passes: every stacked tag's line down to its duck first, then all the tags on top (a line drawn after a
   // neighbouring tag used to cut straight through its name)
   for (const p of placed) if (p.lvl > 0) { ctx.beginPath(); ctx.moveTo(p.x, p.below ? p.y - p.h / 2 : p.y + p.h / 2); ctx.lineTo(p.g.sx, p.below ? p.g.sy + px * 0.35 : p.g.sy - px * 0.5); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke(); }
   for (const p of placed) {
-    const { x, y, w, h, tm } = p, dark = tm.color === '#F0E442' || tm.color === '#ffffff';
+    const { x, y, w, h, tm } = p, dark = inkOn(tm.color) === OUT;
     rr(ctx, x - w / 2, y - h / 2, w, h, 9); fillStroke(ctx, tm.color, 3);
     txt(ctx, p.label, x, y + 1, { px: fpx, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 });
     if (p.isLead) { const cy = p.below ? y : y - h / 2 - 16; ctx.save(); ctx.translate(p.below ? x - w / 2 - 24 : x, cy + Math.sin(S.time * 5) * 2); ctx.beginPath(); ctx.moveTo(-17, 9); ctx.lineTo(-19, -9); ctx.lineTo(-8, 0); ctx.lineTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(19, -9); ctx.lineTo(17, 9); ctx.closePath(); fillStroke(ctx, '#ffd23f', 3.5); ctx.restore(); }   // (beside a tag that hangs below the duck)
@@ -8096,22 +8224,26 @@ function drawSalvoTags(ctx, V) {
   let calls = 0;
   for (const g of SV.tags) {
     const f = g.f;
-    if (f.sx == null || f.sy > 900) continue;
+    if (f.sx == null || f.sxN !== SV.drawN || f.sy > 900) continue;   // (a duck out of the picture: no call-out left at its old spot)
     if (calls >= maxCalls) break;
     if (bigNow.includes(String(g.text).trim().toUpperCase())) continue;
     const k = (S.rt - g.t0) / g.dur;
     if (k < 0 || k > 1) continue;
     const a = k < 0.12 ? k / 0.12 : k > 0.75 ? (1 - k) / 0.25 : 1;
     ctx.font = font(g.px);
-    const cw = Math.min(420, ctx.measureText(g.text).width) + 16, chh = g.px * 1.1, cx = clamp(f.sx, 120, 1380);
+    // a quiet duck's landing: its name tag is right there, so just the moment; with the tag crowded out, whose duck
+    // and how far (a long name gives way, never the distance). Decided once, so it never flips.
+    if (g.land && g.shown == null) g.shown = f.tagN === SV.drawN ? 'TOUCHDOWN!' : fitTail(ctx, g.land.name, ' · ' + g.land.ft, 404);
+    const shown = g.shown || g.text;
+    const cw = Math.min(420, ctx.measureText(shown).width) + 16, chh = g.px * 1.1, cx = clamp(f.sx, cw / 2 + 8, 1480 - cw / 2);   // all of it on screen, clear of the board
     let y = Math.min((f.tagY != null ? f.tagY : f.sy - px) - 26 - k * 46, 806 - chh / 2 - 8 - k * 46);   // never down behind Bill's caption bar (its top edge is at 806)
     const hit = () => cps.some(o => Math.abs(o.x - cx) < (o.w + cw) / 2 && Math.abs(o.y - y) < (o.h + chh) / 2);
     for (let tries = 0; tries < 6 && hit(); tries++) y -= chh * 0.55;
     if (y < 120 || hit()) continue;   // no clear spot: the board and the name tags carry the story
-    cps.push({ x: cx, y, w: cw, h: chh, text: g.text });
+    cps.push({ x: cx, y, w: cw, h: chh, text: shown, src: g.text });
     calls++;
     ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(cx, y); ctx.scale(0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1)), 0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1))); ctx.rotate(-0.05);
-    txt(ctx, g.text, 0, 0, { px: g.px, color: g.color, sw: g.px * 0.22, maxW: 420 });
+    txt(ctx, shown, 0, 0, { px: g.px, color: g.color, sw: g.px * 0.22, maxW: 420 });
     ctx.restore();
   }
   SV.drawnTags = cps.filter(o => !hud.includes(o) && !bigRects.includes(o));   // what went on screen this frame (name tags first, then call-outs): for the tests
@@ -8130,7 +8262,7 @@ function drawSalvoTags(ctx, V) {
     ctx.font = font(24);   // (edgeChipWidth's font) the altitude and the arrow stay whole; a long name gives way
     // (a chip up top already sits at the right-hand end when its duck is off to the right: no ▶ needed there)
     const label = fitTail(ctx, (up ? '▲ ' : left ? '◀ ' : '') + f.pl.name, up ? ' · ' + fmtInt(Math.max(0, s.y)) + ' ft up' : right ? ' ▶' : '', 320 - 24);
-    off.push({ up, left, sx, sy, label, tm, dark: tm.color === '#F0E442' || tm.color === '#ffffff' });
+    off.push({ up, left, sx, sy, label, tm, dark: inkOn(tm.color) === OUT });
   }
   const drawChip = (label, x, y, fill, dark) => {
     const w = edgeChipWidth(ctx, label);
@@ -8374,7 +8506,7 @@ function primary(fromPointer) {
   if (Iris.t >= 0) return;
   // a double-click (or Space mashed) shouldn't skip a whole screen: a second press right after one that counted is ignored
   if (S.rt - Big.lastPress < 0.35) return;
-  if (fromPointer && !Big.enabled) return;
+  if (fromPointer && !Big.enabled) { if (S.screen === 'roster' && !Modal.isOpen && !S.roster.some(p => p.checked)) { Big.lastPress = S.rt; rosterHint(); } return; }   // (a click on the greyed-out button: what's missing)
   Big.lastPress = S.rt;
   Big.press = 0.15;
   switch (S.screen) {
