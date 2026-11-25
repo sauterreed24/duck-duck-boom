@@ -36,16 +36,18 @@ measured, train seeds (held-out in brackets where it was run).
 | # | Check | Kind | Target | Session 1 start | Now |
 |---|---|---|---|---|---|
 | 1 | Readability: Bill's lines about a duck that also say whose duck it is (player's name in the line or on the caption bar), n12 / n30 | experience | ≥ 0.90 | 0.01 / 0.01 | **1.00 / 1.00** (1.00) |
-| 2 | Everyone's moment: share of ducks pointed at during the flight (call-out or Bill naming it). Fast pass counts call-outs issued; **"drawn" counts only call-outs that reached the screen** (the honest one) | experience | drawn mean ≥ 0.95, worst show ≥ 0.85 | issued 0.87, drawn 0.78 / worst 0.58 (drawn 0.89 / 0.75) | issued 1.00, **drawn 1.00 / 1.00** (0.99 / 0.92) |
+| 2 | Everyone's moment: share of ducks pointed at during the flight (call-out or Bill naming it). Fast pass counts call-outs issued; **"drawn" counts only call-outs that reached the screen** (the honest one) | experience | drawn mean ≥ 0.95, worst show ≥ 0.85 | issued 0.87, drawn 0.78 / worst 0.58 (drawn 0.87 / 0.75) | issued 1.00, **drawn 1.00 / 1.00** (0.96 / 0.83) |
 | 3 | Tension: winner takes the lead for good at (fraction of flight, p50); lead changes; close finishes (< 10% margin); winning margin p50 | measurement only (balance is a decision for the owner) | no worse | 0.59; 3.3; 0.30; 523 ft | unchanged |
 | 4 | Pacing: flight length p10 / p50 / p90, 12 ducks; reveal → fire with a prompt host | experience | p90 ≤ 38 s | 23.6 / 31.2 / 37.2 s; 15 s | unchanged |
 | 5 | Commentary: longest silence p90; repeated lines; captions cut off | experience | ≤ 6 s; 0; 0 | 5.5 s; 0; 0 | unchanged |
 | 6 | Fairness: win share by roster slot (chi² p), max share | fairness | p > 0.01, ≤ 1.3× | p 0.75, 1.1× | unchanged |
-| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 17.8 / 17.7 ms | 18.2 / 17.5 ms |
-| 8 | Robustness: page errors; `eval/play.js` (16 checks); `DDB.selfTest()` | robustness | 0; all; pass | 0; 16/16; pass | 0; 16/16; pass |
+| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 17.2 / 17.2 ms (+2%, noise ≈ ±3%) |
+| 8 | Robustness: page errors; `eval/play.js` (16 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 16/16; pass; 2/2 |
 | 9 | Contrast: worst text-on-team-colour pair drawn in a flight (WCAG ratio) | accessibility | ≥ 3.0 | 2.25 (white on orange) | **4.36** |
+| 10 | Events told: distance-changing events whose duck got a call-out drawn while it was in the picture, or a Bill line, within ~2 s (6 rendered shows) | readability (guard) | no worse | 0.973 (0.952) | 0.973 (0.952) |
 
-Noise: two train runs are identical (timings aside). Between seed sets (train vs holdout): ≈ 0.03 on "everyone",
+"Drawn" counts (checks 2 and 10) count a call-out only while its duck is in the picture that frame (corrected this
+session; see Log). Noise: two train runs are identical (timings aside). Between seed sets (train vs holdout): ≈ 0.03 on "everyone",
 ≈ 0.10 on close finishes, ≈ 3 s on flight p90. Frame time: ≈ ±3% run to run when run alone; under parallel runs it
 reads up to 10% high, so only compare frame times measured one process at a time.
 
@@ -53,9 +55,8 @@ Not measurable by bots (checks for a human): how the show looks and sounds, whet
 change feels better on a real screen share.
 
 ## Backlog
-1. **Harder readability check:** share of distance-changing events the audience is told about (call-out drawn or
-   Bill line within ~2 s). Bill blocks about half of event lines because he is already talking, so this is where the
-   next readability gain is. Prove it on a broken version first.
+1. **Events told (check 10) is at 0.97 / 0.95:** the misses are scattered (a pepper, a tree, a trip to space whose duck
+   leaves the picture). Little headroom; look at the trip to space first (the biggest moment, missed twice).
 2. **Results screen:** check the awards/highlights also say whose duck (they mostly name players; not measured).
 3. One-by-one mode (`?classic`) has no evaluator coverage yet: add a bot run.
 4. Tension (check 3) cannot move without touching the flight sim; see Decisions.
@@ -115,6 +116,24 @@ Round 1 (predictions written before building):
 - **Round gain:** readability 0.01 → 1.00; everyone (drawn) 0.78 → 1.00; contrast 2.25 → 4.36. Large gains, all from
   readability: the cheapest wins were information the game had but didn't put on screen.
 
+Independent review (a separate agent, given only the three commits, no reasoning): chip assignment held up (793
+chip lines over 12 shows, no wrong player), contrast correct, no distance or storage changes, no new syntax. Defects,
+all in B3′, all fixed in their own commit:
+- the pop was drawn for ducks out of the picture (clipped at the edge, over nothing). Cause, pre-existing for every
+  call-out: `f.sx` is stale once a duck is culled, and the clamp assumed short words. Now a call-out is drawn only for a
+  duck drawn this frame, and its full width stays on screen, clear of the board;
+- it repeated the duck's own name tag word for word (6 of 7). Now it says "TOUCHDOWN!" when the tag is showing, and
+  "name · distance" only when the tag was crowded out (decided once, so it never flips);
+- a 40-character name pushed the distance off; now the name gives way (`fitTail`), as on the tags;
+- minor: chip nudged 4 px up (clear of a two-line caption); roster team headers use the same ink rule (yellow was
+  1.2:1); the self test's salvo block now restores the live `SV.seen`.
+- The reviewer also noted my "100% pointed at" counted the off-screen and duplicate pops. **Check corrected** (own
+  commit): a drawn call-out counts only while its duck is in the picture. Re-measured with the corrected check:
+  session start drawn "everyone" 0.78 (holdout 0.87) → now 1.00 (holdout 0.96, worst show 0.83); events told
+  0.973 (0.952) at session start, at the pre-fix commit and now: identical, so the fixes cost nothing real (the
+  uncorrected check had dipped only because the stale off-screen draws stopped).
+- Added check 10 (events told) as the harder check: it was already 0.97, so no round was spent on it.
+
 Process notes (why things failed this round):
 - B was a misdiagnosis of where airtime was: I assumed Bill had idle moments. Next round, the `salvoSay` call counter
   in this log's method (wrap `salvoSay`, count blocked vs spoken per pool) should catch this before building.
@@ -122,6 +141,9 @@ Process notes (why things failed this round):
   a check that failed or passed suspiciously. Lesson kept in the Playbook.
 - The bare-number pop passed every bot check but was misleading on screen: a screenshot of the new thing at its
   busiest moment caught it.
+- The off-screen and duplicate pops passed my rendered check because "drawn" didn't ask *where* or *what else was
+  already saying it*. The independent reviewer found both. Next time: for a new on-screen element, also log whether its
+  duck was in the picture and whether the same words were already on screen.
 
 ## Decisions for me
 1. **Closer finishes?** (tension) The distance spread is long-tailed (p90 ≈ 2,700 ft, p99 ≈ 4,400 ft), so the winner
