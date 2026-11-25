@@ -2231,7 +2231,7 @@ function runSelfTest() {
   // whose duck: a line about a duck of the salvo carries that player's name tag on Bill's bar (whole names only, the
   // longest name wins, none when the line already names the player)
   {
-    const k0 = { fl: SV.fl, screen: S.screen, phase: L.phase };
+    const k0 = { fl: SV.fl, seen: SV.seen, screen: S.screen, phase: L.phase };
     try {
       const mk = (name, duck) => ({ pl: { name, key: personKey(name), team: 0, duck: { name: duck } }, done: false, vis: 1, x: 0, tl: { special: null } });
       SV.fl = [mk('Ada', 'Judge Dumpling'), mk('Bo', 'Sir Quackalot'), mk('Cy', 'Dumpling'), mk('Player 1', 'Waddles'), mk('Player 12', 'Beaky')];
@@ -2239,8 +2239,9 @@ function runSelfTest() {
       const who = t => (salvoWho(t) || []).map(p => p.name).join(',');
       const cases = [['Judge Dumpling got HONKED!', 'Ada'], ["Ada's duck Judge Dumpling leads!", ''], ['Sir Quackalot passes Judge Dumpling!', 'Bo,Ada'], ['Dumplings everywhere.', ''], ['Dumpling is airborne!', 'Cy'], ['Player 12 is cheering for Waddles', 'Player 1'], ['Nobody here.', '']];
       const bad = cases.filter(([t, w]) => who(t) !== w);
-      check("Bill's lines about a salvo duck say whose duck it is (whole names, longest match)", !bad.length, bad.map(b => b[0] + ' -> ' + who(b[0])).join(' | '));
-    } finally { SV.fl = k0.fl; S.screen = k0.screen; L.phase = k0.phase; }
+      SV.seen = new Set(); salvoSeen('Judge Dumpling and Player 12');
+      check("Bill's lines about a salvo duck say whose duck it is (whole names, longest match)", !bad.length && SV.seen.size === 2 && SV.seen.has('ada') && SV.seen.has('player 12'), bad.map(b => b[0] + ' -> ' + who(b[0])).join(' | '));
+    } finally { SV.fl = k0.fl; SV.seen = k0.seen; S.screen = k0.screen; L.phase = k0.phase; }
   }
   // text on every team colour reads at 3:1 or better
   {
@@ -4758,7 +4759,7 @@ const Caps = {
     this.queue = this.queue.filter(q => !q.stale || !q.stale(q.text));
     if (!this.cur) {
       const i = this.queue.findIndex(q => q.at <= now);
-      if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; this.cur.who = salvoWho(this.cur.text); Voice.speak(this.cur.text); }
+      if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; this.cur.who = salvoWho(this.cur.text); salvoSeen(this.cur.text); Voice.speak(this.cur.text); }
     }
     this.bigs = this.bigs.filter(b => now < b.t0 + b.dur);
     if (this.bubble && now > this.bubble.t0 + this.bubble.dur) this.bubble = null;
@@ -7448,7 +7449,7 @@ function salvoFire(replay) {
   SV.spot = null; SV.spotK = 0;
   SV.recordAt = R.record;   // the pond record as it stood when the cannon went off
   SV.pend = null;
-  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null; SV.reignN = 0; SV.leadSim = 0;
+  SV.phase = 'flight'; SV.pt = 0; SV.tags = []; SV.seen = new Set(); SV.lead = null; SV.front = null; SV.leadSince = 0; SV.soloMark = null; SV.soloAhead = null; SV.lineAt = S.rt; SV.drumOn = false; SV.lastMover = false; SV.chase = null; SV.nearN = 0; SV.stackN = 0; SV.lateStack = null; SV.reignN = 0; SV.leadSim = 0;
   if (!replay) SV.result = null;   // after a replay the winner card comes back
   setBig(replay ? 'REPLAY' : 'IN FLIGHT', false);
   // BOOM: the biggest one Thunderbill has
@@ -7600,10 +7601,13 @@ function salvoWho(text) {
   for (const h of hits) if (!h.byPlayer && !hits.some(o => o.byPlayer && o.f === h.f) && !out.includes(h.f.pl)) out.push(h.f.pl);
   return out.length ? out.slice(0, 2) : null;
 }
+// who the show has pointed at this volley (a call-out over the duck, or Bill naming it or its player)
+function salvoSeen(text) { if (SV.seen) for (const h of salvoNamed(text)) SV.seen.add(h.f.pl.key); }
 function salvoSnd(name, gap, ...args) { if (S.rt - (SV.sndAt[name] || -9) < gap) return; SV.sndAt[name] = S.rt; SFX.play(name, ...args); }
 function salvoTag(f, text, o) {
   o = o || {};
   SV.tags.push({ f, text, t0: S.rt, dur: o.dur || 1.5, color: o.color || '#ffd23f', px: o.px || 30 });
+  if (SV.seen) SV.seen.add(f.pl.key);
   if (SV.tags.length > 40) SV.tags.shift();
 }
 function updateSalvoFlight(dt) {
@@ -7710,6 +7714,9 @@ function updateSalvoFlight(dt) {
           else if (SV.stackN <= 2) salvoSay('salvoStack', { duck: d.name, other: b.pl.duck.name, player: f.pl.name }, { prio: 0 }, 1.6);
         }
       }
+      // a quiet flight (no call-out yet, Bill never got to it) still gets its moment as it comes to rest: whose duck
+      // and how far (with the name: in a crowd the duck's own name tag may be the one left out)
+      else if (!SV.replay && n > 2 && SV.seen && !SV.seen.has(f.pl.key) && s.vis && tl.final > 0) salvoTag(f, f.pl.name + ' · ' + fmtFt(tl.final), { color: '#ffffff', dur: 1.8 });
     } else { moving++; lastMover = f; }
   }
   SV.moving = moving;
