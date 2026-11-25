@@ -2196,6 +2196,13 @@ function runSelfTest() {
   // the music: every tune is whole (a known chord and eight melody slots in every bar, every note a real pitch, every
   // drum pattern sixteen steps)
   const songsOk = ['lobby', 'race', 'arm'].every(k => { const sg = MUSIC_SONGS[k]; return sg && sg.sections.every(sec => sec.ch.every(c => MUSIC_CHORDS[c]) && sec.melN.length === sec.ch.length && sec.melN.every(r => r.length === 8 && r.every(f => f === 0 || f === -1 || (f > 100 && f < 2000))) && [sec.kick, sec.snare, sec.hat].concat(sec.fill ? [sec.fill] : []).every(p => p.length === 16)); });
+  // the whole game is one script, so one piece of syntax an older browser can't parse (Safari before 16.4 has no regex
+  // lookbehind; older ones have no optional chaining or nullish coalescing) blanks the page: keep to what they all read
+  {
+    const src = Array.from(document.scripts).map(sc => sc.textContent).join('\n');
+    const bad = ['(?' + '<!', '(?' + '<=', '?' + '.', '?' + '?'].filter(tok => tok === '?' + '.' ? /\?\.[A-Za-z_$(\[]/.test(src) : src.includes(tok));
+    check('the code uses no syntax older browsers cannot parse (regex lookbehind, optional chaining, nullish coalescing)', !bad.length, bad.join(' '));
+  }
   check('the music: every tune is complete and every note parses', songsOk && Object.values(MUSIC_CHORDS).every(c => c.keys.split(' ').every(n => MUSIC_NOTE(n) > 0) && MUSIC_NOTE(c.root) > 0));
   // content lint: nothing Bill or a duck says trips the blocklist
   const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.NOTIFY, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]), ...Object.values(C.OUTLOOK_SKY), C.OUTLOOK);
@@ -4656,7 +4663,7 @@ const Caps = {
   freshBig(min) { let w = 0; for (const b of this.bigs) { const age = S.rt - b.t0; if (age < min && age < b.dur) w = Math.max(w, min - age); } return w; },
   shift(d) { if (!(d > 0)) return; this.lastAt += d; this.queue.forEach(q => { q.at += d; }); this.curStart += d; this.bigs.forEach(b => { b.t0 += d; }); if (this.bubble) this.bubble.t0 += d; },
   // a line that only makes sense until something happens ("count it down!" once the cannon has fired) leaves the bar then
-  retire(tag) { if (this.cur && this.cur.tag === tag) this.cur = null; this.queue = this.queue.filter(q => q.tag !== tag); },
+  retire(tag) { if (this.cur && this.cur.tag === tag) { this.cur = null; Voice.stop(); } this.queue = this.queue.filter(q => q.tag !== tag); },
   bubbleSay(text, o) { if (!text) return; this.lastAt = Math.max(this.lastAt, S.rt + ((o && o.delay) || 0)); this.bubble = { text, t0: S.rt + ((o && o.delay) || 0), dur: Math.max(2, (o && o.dur) || 2.4) }; },
   update() {
     const now = S.rt;
@@ -4664,7 +4671,7 @@ const Caps = {
     if (this.cur && now - this.curStart >= (this.cur.filler ? 0.9 : this.cur.min) && this.queue.some(q => q.at <= now)) this.cur = null;
     if (this.cur && now - this.curStart > (this.cur.max || this.cur.min + 3.5)) this.cur = null;
     // a line about the moment ("still 3 ducks moving!") leaves once it is no longer true, after a moment to read it
-    if (this.cur && this.cur.stale && now - this.curStart >= 1.2 && this.cur.stale(this.cur.text)) this.cur = null;
+    if (this.cur && this.cur.stale && now - this.curStart >= 1.2 && this.cur.stale(this.cur.text)) { this.cur = null; Voice.stop(); }
     this.queue = this.queue.filter(q => !q.stale || !q.stale(q.text));
     if (!this.cur) {
       const i = this.queue.findIndex(q => q.at <= now);
@@ -4759,7 +4766,8 @@ const Lines = {
     return tidyDots(String(text).replace(/\{(\w+)\}/g, (m, k, off, str) => {
       if (!vars || vars[k] == null) return m;
       const v = String(vars[k]);
-      return /(^|(?<!\.)[.!?]\s+)$/.test(str.slice(0, off)) ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+      return /(^|(^|[^.])[.!?]\s+)$/.test(str.slice(0, off))   // (no lookbehind: older Safari can't parse one)
+         ? v.charAt(0).toUpperCase() + v.slice(1) : v;
     }));
   },
   next(pool, vars, isDuck) {
@@ -7437,8 +7445,10 @@ function salvoCamRest(dt) {
 const flightOver = () => SV.phase !== 'flight';
 // Bill's running call goes stale when what it says stops being true: the count of ducks still moving, or who is in front
 function callStale(front, moving) {
-  const nRe = new RegExp('(^|[^\\d,])' + moving + ' (ducks|of them|still|in motion|left)'), name = front.pl.duck.name, player = front.pl.name;
-  return text => SV.phase !== 'flight' || (SV.moving !== moving && nRe.test(text)) || (SV.front !== front && (text.includes(name) || text.includes(player)));
+  const nRe = new RegExp('(^|[^\\d,])' + moving + ' (ducks|of them|still|in motion|left)'), name = String(front.pl.duck.name).toLowerCase(), player = String(front.pl.name).toLowerCase();
+  // (a name can be capitalised at the start of a sentence; a one-frame swap at the front is not a new leader: SV.lead
+  // holds a new front for a moment before it counts)
+  return text => { const t = text.toLowerCase(); return SV.phase !== 'flight' || (SV.moving !== moving && nRe.test(text)) || (SV.front !== front && SV.lead !== front && (t.includes(name) || t.includes(player))); };
 }
 function salvoSay(pool, vars, o, gap) {
   // one voice at a time: Bill only starts a new salvo line when the last one has had its moment
@@ -8370,8 +8380,10 @@ function drawTitle(ctx, dt) {
   // the duck strutting by the cannon is last show's champion, crown and all (a random duck of the day before any show)
   if (!titleDuck) titleDuck = champWalker() || { duck: generateDuck(hash('title', S.day), {}), crown: false };
   const wx = 26 + Math.sin(t * 0.35) * 22, dir = Math.cos(t * 0.35) > 0;
+  ctx.save();
   try { drawDuck(ctx, titleDuck.duck, V.sx(wx), V.sy(SIM.groundY(wx)) - 58, 120, { pose: 'walk', flip: !dir, t, crown: titleDuck.crown, crownK: 0.9, party: S.cond.friday, blink: (t % 3.1) < 0.12 }); }
   catch (e) { titleDuck = { duck: generateDuck(hash('title', S.day), {}), crown: false }; }   // (a saved duck that won't draw: today's random one)
+  finally { ctx.restore(); }
   Weather.draw(ctx, dt, t, 0);
   drawLogo(ctx, 1160, 230, 1.0, S.rt);
   // date + conditions teaser
@@ -8406,7 +8418,7 @@ function drawTitle(ctx, dt) {
   if (c && !today) button(ctx, 'oldshow', 1460, 948, 420, 76, 'Resume ' + shortDate(c.day) + ' show', { px: 26, bg: '#fff8e6', fn: () => resumeRace(c) });
   if (fin) button(ctx, 'lastres', 1460, 948, 420, 76, 'Last results (' + shortDate(fin.day) + ')', { px: 26, bg: '#fff8e6', fn: () => viewLastResults(fin) });
   if (!SFX.ready) {
-    const hy = py + 186 + sh + (c ? 40 : 0) + (Store.full ? 40 : 0);
+    const hy = Store.full ? py + 278 + sh : py + 186 + sh + (c ? 40 : 0);   // (below the storage-full warning when there is one)
     // on a plate: it lands among the field's signs and set pieces, which would show through plain outlined text
     rr(ctx, px - 250, hy - 27, 500, 50, 14); ctx.fillStyle = '#2a2438'; ctx.fill();   // tucked up against the card, and solid
     txt(ctx, 'Click anywhere to turn on sound', px, hy, { px: 26, color: '#fff', sw: 0 });
@@ -9088,8 +9100,9 @@ function primeAudio() {
   if (S.screen === 'title') setTimeout(() => SFX.play('jingle'), 60);
 }
 CV.addEventListener('pointermove', e => { const p = toLogical(e); S.mouse = p; const b = hitButton(p.x, p.y); S.hover = b ? b.id : null; CV.style.cursor = b ? 'pointer' : 'default'; });
+CV.addEventListener('pointerleave', () => { S.hover = null; });
 CV.addEventListener('pointerdown', e => { primeAudio(); const p = toLogical(e); const b = hitButton(p.x, p.y); S.pressed = b ? b.id : null; });
-CV.addEventListener('pointerup', e => { const p = toLogical(e); const b = hitButton(p.x, p.y); if (b && b.id === S.pressed && b.fn) b.fn(); S.pressed = null; });
+CV.addEventListener('pointerup', e => { const p = toLogical(e); const b = hitButton(p.x, p.y); if (b && b.id === S.pressed && b.fn) b.fn(); S.pressed = null; if (e.pointerType === 'touch') S.hover = null; });   // (a finger lifted is not hovering)
 document.addEventListener('pointerdown', () => primeAudio(), { capture: true });
 function typingTarget(e) {
   const t = e.target; if (!t) return false;
