@@ -2228,6 +2228,13 @@ function runSelfTest() {
   check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
+  // text on every team colour reads at 3:1 or better
+  {
+    const lum = h => [1, 3, 5].map(i => parseInt((h === '#fff' ? '#ffffff' : h).slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const cr = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+    const low = C.TEAM_SWATCHES.concat(C.TEAM_DEFAULTS.map(t => t.color)).filter(c => cr(c, inkOn(c)) < 3);
+    check('names printed on every team colour read at 3:1 contrast or better', !low.length, low.join(', '));
+  }
   // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
   const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), last: Store.get('last', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
   try {
@@ -2469,6 +2476,16 @@ function heartPath(ctx, x, y, s) {
 function fillStrokeLifted(ctx, fill, lw, lift) {
   ctx.save(); ctx.shadowColor = 'rgba(31,26,46,0.26)'; ctx.shadowOffsetY = (lift || 7) * (ctx.getTransform().d || 1); ctx.fillStyle = fill; ctx.fill(); ctx.restore();
   if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = OUT; ctx.stroke(); }
+}
+// the ink for text printed on a team colour: whichever of the dark outline ink and white reads better on it (WCAG
+// contrast). White on the orange or sky-blue team pill was barely 2.3:1; the dark ink is over 6:1 there.
+const INK_CACHE = {};
+function inkOn(bg) {
+  const k = String(bg);
+  if (INK_CACHE[k]) return INK_CACHE[k];
+  const lum = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h); if (!m) return 0.5; return [0, 2, 4].map(i => parseInt(m[1].slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0); };
+  const L = lum(k), lo = lum(OUT);
+  return (INK_CACHE[k] = (L + 0.05) / (lo + 0.05) >= 1.05 / (L + 0.05) ? OUT : '#fff');
 }
 function fillStroke(ctx, fill, lw, stroke) { if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (lw) { ctx.lineWidth = lw; ctx.strokeStyle = stroke || OUT; ctx.stroke(); } }
 
@@ -7738,7 +7755,7 @@ function salvoChase(t, pb) {
 function drawChaseChip(ctx) {
   const c = SV.chase, lead = SV.lead;
   if (!c || !lead || SV.phase !== 'flight') return null;
-  const f = c.f, gap = lead.x - f.x, past = gap < 0, tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff';
+  const f = c.f, gap = lead.x - f.x, past = gap < 0, tm = teamOf(f.pl), dark = inkOn(tm.color) === OUT;
   ctx.font = font(26);
   const tail = past ? ' · ' + fmtFt(Math.max(1, -gap)) + ' ahead!' : ' · ' + fmtFt(Math.max(1, gap)) + ' to go';
   const label = fitTail(ctx, (past ? 'PASSING: ' : 'CHASING: ') + f.pl.name, tail, 660);
@@ -7922,7 +7939,7 @@ function drawSalvoActors(ctx, V, t) {
         const hx = lerp(x0, m.x, u), hy = lerp(y0, m.y + 3, u) + Math.sin(u * Math.PI) * (46 + (m.x - x0) * 0.16);
         const k = 1 - 0.45 * clamp((u - 0.7) / 0.3, 0, 1);
         drawDuck(ctx, d, V.sx(hx), V.sy(hy) - sz * 0.45 * k, sz * k, duckDrawOpts(f.pl, { pose: 'scared', rot: -u * 3.2, flap: S.time * 4 + i }));
-        if (u < 0.8) { const tm = teamOf(f.pl), dark = tm.color === '#F0E442' || tm.color === '#ffffff', lab = f.pl.name; ctx.font = font(26); const w = Math.min(280, ctx.measureText(lab).width + 22), tx = V.sx(hx), ty = V.sy(hy) - sz * 1.15; if (loadTags.some(o => Math.abs(o.x - tx) < (o.w + w) / 2 + 4 && Math.abs(o.y - ty) < 40)) continue; loadTags.push({ x: tx, y: ty, w }); SV.loadTags = loadTags; ctx.save(); ctx.globalAlpha = clamp(Math.min(u * 6, (0.8 - u) * 6), 0, 1); rr(ctx, tx - w / 2, ty - 18, w, 36, 10); fillStroke(ctx, tm.color, 3); txt(ctx, lab, tx, ty + 1, { px: 26, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 }); ctx.restore(); }   // whose duck is this one?
+        if (u < 0.8) { const tm = teamOf(f.pl), dark = inkOn(tm.color) === OUT, lab = f.pl.name; ctx.font = font(26); const w = Math.min(280, ctx.measureText(lab).width + 22), tx = V.sx(hx), ty = V.sy(hy) - sz * 1.15; if (loadTags.some(o => Math.abs(o.x - tx) < (o.w + w) / 2 + 4 && Math.abs(o.y - ty) < 40)) continue; loadTags.push({ x: tx, y: ty, w }); SV.loadTags = loadTags; ctx.save(); ctx.globalAlpha = clamp(Math.min(u * 6, (0.8 - u) * 6), 0, 1); rr(ctx, tx - w / 2, ty - 18, w, 36, 10); fillStroke(ctx, tm.color, 3); txt(ctx, lab, tx, ty + 1, { px: 26, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 }); ctx.restore(); }   // whose duck is this one?
       }
     }
     // the last few in poke their heads out; the barrel shudders with every new arrival
@@ -8072,7 +8089,7 @@ function drawSalvoTags(ctx, V) {
   // neighbouring tag used to cut straight through its name)
   for (const p of placed) if (p.lvl > 0) { ctx.beginPath(); ctx.moveTo(p.x, p.below ? p.y - p.h / 2 : p.y + p.h / 2); ctx.lineTo(p.g.sx, p.below ? p.g.sy + px * 0.35 : p.g.sy - px * 0.5); ctx.lineWidth = 2.5; ctx.strokeStyle = OUT; ctx.stroke(); }
   for (const p of placed) {
-    const { x, y, w, h, tm } = p, dark = tm.color === '#F0E442' || tm.color === '#ffffff';
+    const { x, y, w, h, tm } = p, dark = inkOn(tm.color) === OUT;
     rr(ctx, x - w / 2, y - h / 2, w, h, 9); fillStroke(ctx, tm.color, 3);
     txt(ctx, p.label, x, y + 1, { px: fpx, color: dark ? OUT : '#fff', sw: 0, maxW: w - 12 });
     if (p.isLead) { const cy = p.below ? y : y - h / 2 - 16; ctx.save(); ctx.translate(p.below ? x - w / 2 - 24 : x, cy + Math.sin(S.time * 5) * 2); ctx.beginPath(); ctx.moveTo(-17, 9); ctx.lineTo(-19, -9); ctx.lineTo(-8, 0); ctx.lineTo(0, -12); ctx.lineTo(8, 0); ctx.lineTo(19, -9); ctx.lineTo(17, 9); ctx.closePath(); fillStroke(ctx, '#ffd23f', 3.5); ctx.restore(); }   // (beside a tag that hangs below the duck)
@@ -8130,7 +8147,7 @@ function drawSalvoTags(ctx, V) {
     ctx.font = font(24);   // (edgeChipWidth's font) the altitude and the arrow stay whole; a long name gives way
     // (a chip up top already sits at the right-hand end when its duck is off to the right: no ▶ needed there)
     const label = fitTail(ctx, (up ? '▲ ' : left ? '◀ ' : '') + f.pl.name, up ? ' · ' + fmtInt(Math.max(0, s.y)) + ' ft up' : right ? ' ▶' : '', 320 - 24);
-    off.push({ up, left, sx, sy, label, tm, dark: tm.color === '#F0E442' || tm.color === '#ffffff' });
+    off.push({ up, left, sx, sy, label, tm, dark: inkOn(tm.color) === OUT });
   }
   const drawChip = (label, x, y, fill, dark) => {
     const w = edgeChipWidth(ctx, label);
