@@ -33,7 +33,7 @@ Measured by `node eval/run.js` (80 twelve-duck salvo shows on train seeds; 12 th
 rendered frames with all 8 team swatches). Held-out: `--set holdout` (60 shows, 2027 dates). All numbers below are
 measured, train seeds (held-out in brackets where it was run).
 
-| # | Check | Kind | Target | Session 1 start | Now |
+| # | Check | Kind | Target | Session 1 start | Now (session 2 end) |
 |---|---|---|---|---|---|
 | 1 | Readability: Bill's lines about a duck that also say whose duck it is (player's name in the line or on the caption bar), n12 / n30 | experience | ≥ 0.90 | 0.01 / 0.01 | **1.00 / 1.00** (1.00) |
 | 2 | Everyone's moment: share of ducks pointed at during the flight (call-out or Bill naming it). Fast pass counts call-outs issued; **"drawn" counts only call-outs that reached the screen** (the honest one) | experience | drawn mean ≥ 0.95, worst show ≥ 0.85 | issued 0.87, drawn 0.78 / worst 0.58 (drawn 0.87 / 0.75) | issued 1.00, **drawn 1.00 / 1.00** (0.96 / 0.83) |
@@ -41,10 +41,11 @@ measured, train seeds (held-out in brackets where it was run).
 | 4 | Pacing: flight length p10 / p50 / p90, 12 ducks; reveal → fire with a prompt host | experience | p90 ≤ 38 s | 23.6 / 31.2 / 37.2 s; 15 s | unchanged |
 | 5 | Commentary: longest silence p90; repeated lines; captions cut off | experience | ≤ 6 s; 0; 0 | 5.5 s; 0; 0 | unchanged |
 | 6 | Fairness: win share by roster slot (chi² p), max share | fairness | p > 0.01, ≤ 1.3× | p 0.75, 1.1× | unchanged |
-| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 17.2 / 17.2 ms (+2%, noise ≈ ±3%) |
-| 8 | Robustness: page errors; `eval/play.js` (16 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 16/16; pass; 2/2 |
+| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 16.3 / 17.2 ms (noise ≈ ±3%) |
+| 8 | Robustness: page errors; `eval/play.js` (17 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 17/17; pass; 2/2 |
 | 9 | Contrast: worst text-on-team-colour pair drawn in a flight (WCAG ratio) | accessibility | ≥ 3.0 | 2.25 (white on orange) | **4.36** |
-| 10 | Events told: distance-changing events whose duck got a call-out drawn while it was in the picture, or a Bill line, within ~2 s (6 rendered shows) | readability (guard) | no worse | 0.973 (0.952) | 0.973 (0.952) |
+| 10 | Events told: distance-changing events whose duck got a call-out drawn while it was in the picture, a big impact caption naming it, or a Bill line naming it, within ~2 s (6 rendered shows) | readability (guard) | no worse | 0.982 (0.966) | 0.982 (0.966) |
+| 11 | Results readability: highlight rows (and the copied results' highlight) that say whose duck each mentioned duck is; rows cut off (2-line limit) | experience | ≥ 0.95; 0 cut | 0.00, 0.00; 0 cut | **1.00, 1.00** (1.00); 0 cut (also with 40-character names) |
 
 "Drawn" counts (checks 2 and 10) count a call-out only while its duck is in the picture that frame (corrected this
 session; see Log). Noise: two train runs are identical (timings aside). Between seed sets (train vs holdout): ≈ 0.03 on "everyone",
@@ -55,10 +56,11 @@ Not measurable by bots (checks for a human): how the show looks and sounds, whet
 change feels better on a real screen share.
 
 ## Backlog
-1. **Events told (check 10) is at 0.97 / 0.95:** the misses are scattered (a pepper, a tree, a trip to space whose duck
-   leaves the picture). Little headroom; look at the trip to space first (the biggest moment, missed twice).
-2. **Results screen:** check the awards/highlights also say whose duck (they mostly name players; not measured).
-3. One-by-one mode (`?classic`) has no evaluator coverage yet: add a bot run.
+1. **Award descriptions naming another duck** ("Closest Call: Just 21 ft from Ranger Sprinkles.") don't say whose duck
+   that is; the card has room for two lines only, so it needs a layout check first.
+2. **Sample ducks for a first look:** an empty roster could offer a practice show with sample names, so someone trying
+   the game reaches the cannon without typing names. Onboarding idea; measure inputs from page open to first launch.
+3. Bill's "WRONG WAY! WRONG WAY!" and "We've lost the duck" lines name no duck (the big caption and arrows do).
 4. Tension (check 3) cannot move without touching the flight sim; see Decisions.
 
 ## Alternatives
@@ -70,12 +72,14 @@ change feels better on a real screen share.
 ## Strategy
 | Kind of change | Tried | Kept | Notes |
 |---|---|---|---|
-| Readability (who is who on screen) | 3 (A, A′, B3′) | 2 | Cheap, large measured gains; found by reading what the bot saw on screen |
+| Readability (who is who on screen) | 4 (A, A′, B3′, H1) | 3 | Cheap, large measured gains; found by reading screenshots of every screen. Session 2's gain was smaller (one screen left) |
+| Onboarding (first-time host) | 1 | 1 | Small; found by playing from an empty browser |
+| Measurement fixes | 2 | 2 | Both found by screenshotting a "miss" before treating it as a game problem |
 | Accessibility (contrast) | 1 | 1 | Found by measuring every text-on-colour pair drawn |
 | Commentary routing (Bill) | 1 | 0 | Bill's channel is saturated; route new information visually instead |
 | Tuning / mechanics / balance | 0 | 0 | Balance changes would make old pond records incomparable: owner decision |
 
-## Playbook (provisional until confirmed by a second session)
+## Playbook (confirmed in session 2 unless marked provisional)
 - Never edit `index.html` while an evaluator run is going: each run reads it at start. Build candidates in copies and
   evaluate with `DDB_GAME=`.
 - Headless Chromium batches canvas work: single-frame draw times are meaningless (3 ms or 140 ms); use the mean.
@@ -85,65 +89,41 @@ change feels better on a real screen share.
   rendered twin of every experience check ("drawn").
 - Before routing anything new through Bill, count his blocked lines: he is already saturated during a salvo.
 - Screenshot every new on-screen element at the busiest moment it can appear (a pile-up near the end of a flight).
+- Before treating a measured miss as a game problem, screenshot the moment: in session 2 the "untold" trip to space
+  was told by a big caption the check didn't count. (provisional)
+- A new invariant test must fail on a deliberately broken copy: session 2's first version of the highlight test passed
+  a broken one. (provisional)
 
 ## Log
 
-### Session 1 (2026-11-25): evaluator built, round 1
-Built `eval/` (bot, scorecard, playthroughs). Baseline: train and holdout above; two train runs identical except
-timings; seed-set noise (train vs holdout) ≈ 0.03 on "everyone", ≈ 0.10 on close finishes, ≈ 3 s on flight p90.
-Evaluator bugs found and fixed before trusting it: the bot ran `update()` while paused (pause check failed falsely);
-the resume playthrough passed vacuously (fixed clock); "Player 1" matched inside "Player 12" (whole-name match).
+### Session 1 (2026-11-25): evaluator built, round 1 (summary)
+Built `eval/`; fixed three evaluator bugs before trusting it (bot ran while paused; vacuous resume check; "Player 1"
+matched in "Player 12"). Kept: **A** name chip on Bill's bar (readability 0.01 → 1.00), **D** contrast-picked ink
+(2.25 → 4.36), **B3′** landing call-out for quiet ducks (drawn "everyone" 0.78 → 1.00). Rejected: **B** Bill's roll
+call (0.87 → 0.88; Bill's airtime is saturated). A′ (name in the line) tied with A, lost on judgment (Alternatives).
+An independent review found three flaws in B3′ (drawn for off-screen ducks, duplicated the name tag, long names lost
+the distance) and an over-counting check; all fixed, the check corrected and re-measured.
 
-Round 1 (predictions written before building):
-- **A: name chip on Bill's caption bar** (the speaker's line names a duck → that player's team-coloured name tag, with
-  the duck's portrait, sits on the bar's top edge). Predicted readability 0.01 → ≥ 0.9. Measured 1.00 (n12 and n30),
-  every other check identical. 
-- **A′: player's name written into the line** ("Whiteboard (Cyrus) bounced right back!"). Also 1.00, no caption cut
-  off. Tie on the numbers; A chosen because it keeps the authored lines (and the optional spoken voice) unchanged and
-  matches the tag colour in the sky at a glance. A′ goes to Alternatives.
-- **B: Bill's spare-time filler alternates with a roll call for ducks nobody has mentioned.** Predicted everyone
-  0.87 → ≥ 0.92. Measured 0.88 (n30 unchanged). **Rejected.** Root cause: Bill's airtime is saturated: the filler
-  fired 6 times in 12 shows and about half of all event lines were blocked because Bill was already talking.
-- **D: ink on team colours picked by contrast** (dark ink on orange, sky blue, pink, green, yellow; white on blue and
-  purple). Predicted worst contrast 2.25 → ≥ 3.0. Measured 4.36 (rendered frames, all 8 swatches). **Kept.**
-- **B3: a quiet duck's distance pops up as it lands** (only ducks nobody pointed at). Predicted drawn "everyone"
-  0.78 → ≥ 0.95. Measured 1.00 (holdout 0.99). A screenshot showed a flaw the numbers didn't: a bare "1,254 ft!"
-  floated between two other players' tags because that duck's own tag was crowded out. **B3′** adds the name
-  ("Kit · 1,254 ft"): same numbers, unambiguous. In three 30-duck shows the same 189 event call-outs were drawn with
-  and without it (no crowd-out). **Kept (B3′).**
-- Kept A, D, B3′ (one commit each). Frame time unchanged (17.8/17.7 → 18.2/17.5 ms, run alone). Playthroughs 16/16,
-  self test passes (two new checks, each shown to fail on a deliberately broken copy).
-- **Round gain:** readability 0.01 → 1.00; everyone (drawn) 0.78 → 1.00; contrast 2.25 → 4.36. Large gains, all from
-  readability: the cheapest wins were information the game had but didn't put on screen.
-
-Independent review (a separate agent, given only the three commits, no reasoning): chip assignment held up (793
-chip lines over 12 shows, no wrong player), contrast correct, no distance or storage changes, no new syntax. Defects,
-all in B3′, all fixed in their own commit:
-- the pop was drawn for ducks out of the picture (clipped at the edge, over nothing). Cause, pre-existing for every
-  call-out: `f.sx` is stale once a duck is culled, and the clamp assumed short words. Now a call-out is drawn only for a
-  duck drawn this frame, and its full width stays on screen, clear of the board;
-- it repeated the duck's own name tag word for word (6 of 7). Now it says "TOUCHDOWN!" when the tag is showing, and
-  "name · distance" only when the tag was crowded out (decided once, so it never flips);
-- a 40-character name pushed the distance off; now the name gives way (`fitTail`), as on the tags;
-- minor: chip nudged 4 px up (clear of a two-line caption); roster team headers use the same ink rule (yellow was
-  1.2:1); the self test's salvo block now restores the live `SV.seen`.
-- The reviewer also noted my "100% pointed at" counted the off-screen and duplicate pops. **Check corrected** (own
-  commit): a drawn call-out counts only while its duck is in the picture. Re-measured with the corrected check:
-  session start drawn "everyone" 0.78 (holdout 0.87) → now 1.00 (holdout 0.96, worst show 0.83); events told
-  0.973 (0.952) at session start, at the pre-fix commit and now: identical, so the fixes cost nothing real (the
-  uncorrected check had dipped only because the stale off-screen draws stopped).
-- Added check 10 (events told) as the harder check: it was already 0.97, so no round was spent on it.
-
-Process notes (why things failed this round):
-- B was a misdiagnosis of where airtime was: I assumed Bill had idle moments. Next round, the `salvoSay` call counter
-  in this log's method (wrap `salvoSay`, count blocked vs spoken per pool) should catch this before building.
-- Three evaluator bugs (pause, vacuous resume, substring names) would have produced false results; each was caught by
-  a check that failed or passed suspiciously. Lesson kept in the Playbook.
-- The bare-number pop passed every bot check but was misleading on screen: a screenshot of the new thing at its
-  busiest moment caught it.
-- The off-screen and duplicate pops passed my rendered check because "drawn" didn't ask *where* or *what else was
-  already saying it*. The independent reviewer found both. Next time: for a new on-screen element, also log whether its
-  duck was in the picture and whether the same words were already on screen.
+### Session 2 (2026-11-25): round 2
+Baseline reproduced session 1's end exactly. Played every screen (reveal, awards, podium, first-run roster) and
+looked at the biggest moment (a forced trip to space).
+- **H1: highlights say whose duck** ("Nibbles Honkington the Brave (Kit) was abducted…"), on the awards page, in the
+  copied results text and in saved history (new shows only; old history untouched). Found by playing: the highlights
+  were the last place naming ducks only, and the copied text goes to the team chat, where no chip can reach. A chip
+  version was not built: it could only fix the screen. Predicted check 11: 0 → ≥ 0.95, 0 cut. Measured 1.00 / 1.00
+  train and held-out (n30 too), 3 of 240 rows wrap, 0 cut; with 40-character names 12 of 24 rows wrap, 0 cut. Every
+  other check identical. **Kept.** The first invariant test passed a deliberately broken copy (name inserted twice);
+  strengthened until it failed it.
+- **Backlog top, events told / trip to space:** forced five trips to space. Bill's line names no duck ("We've lost
+  the duck"), but the screen tells it: big caption "TO SPACE! Lu" and the edge arrow "▲ Lu · 1,558 ft up". **Not a
+  game problem; the check was wrong** (it ignored big captions). Corrected in its own commit; session start and now
+  re-measured: identical (0.982 / 0.966, was 0.973 / 0.952 under the old check).
+- **O: first-time host on an empty roster** pressing Space was told "Tick at least one person first" with nobody to
+  tick. Now: "Nobody on the roster yet: type or paste today's names in Today's list", with the cursor in that box. New
+  playthrough check (fails on the old version). **Kept.**
+- Considered, not built: sample ducks for a first look (Backlog 2): bigger UI addition, worth a measured round.
+- **Round gain:** smaller than round 1 (one more screen made readable, one onboarding fix, two measurement fixes).
+  Readability is close to done; next session should change focus (Backlog 2, or a decision below).
 
 ## Decisions for me
 1. **Closer finishes?** (tension) The distance spread is long-tailed (p90 ≈ 2,700 ft, p99 ≈ 4,400 ft), so the winner
