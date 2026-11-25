@@ -137,13 +137,23 @@ async function main() {
   card.render40 = { frames: fms.length, mean: r1(mean(fms)) };
   // everyone's moment as it reached the screen: call-outs that were actually drawn (a crowded flock drops some) or
   // Bill naming the duck
-  const seen = [];
+  const seen = [], told = { n: 0, k: 0 };
   for (const c of seedSet(SET === 'holdout' ? 'quickH' : 'quick', 12).slice(0, quick ? 2 : 6)) {
     const r = await g.page.evaluate(c => EVAL.runShow(c), Object.assign({}, c, { draw: true }));
     const named = new Set(r.drawnKeys); r.bill.filter(b => b.T >= 0 && b.T <= r.dur + 0.5).forEach(b => b.keys.forEach(k => named.add(k)));
     seen.push(named.size / r.res.length);
+    // events told: each distance-changing event whose duck got a drawn call-out or a Bill line within a moment
+    for (const e of r.evFired) {
+      if (e.kind === 'gag' || !e.kind) continue;
+      told.n++;
+      if (r.drawnTags.some(x => x.key === e.key && x.T >= e.T - 0.5 && x.T <= e.T + 2.5) || r.bill.some(x => x.keys.includes(e.key) && x.T >= e.T - 0.5 && x.T <= e.T + 3)) told.k++;
+    }
   }
   card.drawnPointed = { shows: seen.length, mean: r2(mean(seen)), min: r2(Math.min(...seen)) };
+  card.told = { events: told.n, share: Math.round(told.k / told.n * 1000) / 1000 };
+  // one-by-one mode: a whole show to the crowning
+  card.classic = [];
+  for (const c of seedSet('quick', 4).slice(0, quick ? 1 : 2)) card.classic.push(await g.page.evaluate(c => { EVAL.runShow(Object.assign({}, c, { mode: 'classic', toResults: true })); return S.screen === 'results' && RS.crowned && Object.keys(S.race.results).length === c.n; }, c));
   // text on team colours (all eight swatches, three at a time)
   const SW = ['#0072B2', '#E69F00', '#CC79A7', '#009E73', '#56B4E9', '#D55E00', '#F0E442', '#7a5cc2'];
   const ink = [];
@@ -171,7 +181,8 @@ function printCard(c) {
   if (c.fair) L.push('6 fairness     win share by roster slot: chi2 ' + c.fair.chi2 + ' p=' + c.fair.p + ' (max ' + c.fair.maxShare + 'x fair share) over ' + c.fair.races + ' races; teams ' + c.fair.team.join('/'));
   L.push('7 frame time   40-duck flight: mean draw ms per frame ' + c.render40.mean + ' (' + c.render40.frames + ' frames, headless software rendering)');
   if (c.ink) L.push('9 contrast     worst text on a team colour: ' + c.ink.min + ':1 over ' + c.ink.swatches + ' swatches (' + Object.entries(c.ink.worst).map(([k, w]) => k + ' ' + w.c).join(', ') + ')');
-  L.push('8 errors       ' + c.errors + ' page errors   (' + c.secs + ' s)');
+  if (c.told) L.push('10 events told distance-changing events the audience is told about (drawn call-out or Bill) ' + c.told.share + ' of ' + c.told.events);
+  L.push('8 errors       ' + c.errors + ' page errors; one-by-one shows reaching the crowning ' + (c.classic || []).filter(Boolean).length + '/' + (c.classic || []).length + '   (' + c.secs + ' s)');
   console.log(L.join('\n'));
 }
 

@@ -31,7 +31,7 @@
   EVAL.runShow = function (o) {
     freshState(o);
     const draw = !!o.draw;
-    const rec = { frameMs: [], leads: [], bill: [], tags: [], drawnCalls: 0, drawnKeys: {}, issuedCalls: 0, evFired: [], presses: 0 };
+    const rec = { frameMs: [], leads: [], bill: [], tags: [], drawnCalls: 0, drawnKeys: {}, drawnTags: [], issuedCalls: 0, evFired: [], presses: 0 };
     go('roster'); Roster.hide && Roster.hide();
     if (!createRace()) return { error: 'createRace failed' };
     go('reveal');
@@ -45,7 +45,8 @@
       // host: press the big button whenever it is lit (and the screen wipe is done)
       if (Big.enabled && Iris.t < 0 && S.rt - Big.lastPress > 0.4) {
         const before = S.screen + '|' + (L.phase === 'salvo' ? SV.phase : L.phase);
-        if (!(S.screen === 'launch' && SV.phase === 'idle' && SV.result && !o.toResults)) { primary(); rec.presses++; }
+        // (stop at the salvo's result card, or at the podium: never press DONE, which would start over)
+        if (!(S.screen === 'launch' && SV.phase === 'idle' && SV.result && !o.toResults) && !(S.screen === 'results' && Big.label === 'DONE')) { primary(); rec.presses++; }
         void before;
       }
       if (S.screen === 'launch' && SV.phase === 'flight' && SV.pb) {
@@ -60,7 +61,7 @@
         if (draw && SV.drawnTags) for (const c of SV.drawnTags) if (c.text) {
           rec.drawnCalls++;
           // whose call-out reached the screen (matched back to the call-out by its text)
-          const g = SV.tags.find(t => t.text === c.text); if (g) rec.drawnKeys[g.f.pl.key] = 1;
+          const g = SV.tags.find(t => t.text === c.text); if (g) { rec.drawnKeys[g.f.pl.key] = 1; if (!g._drawn) { g._drawn = 1; rec.drawnTags.push({ T: g.t0 - tFire, key: g.f.pl.key, text: g.text }); } }
         }
       }
       if (Caps.cur && Caps.cur.text !== lastCap) {
@@ -73,7 +74,7 @@
         rec.bill.push({ T: tFire >= 0 ? S.rt - tFire : -(S.rt - tStart), text: lastCap, keys, chip, trunc: wrapText(mc, lastCap, 1250, 0).length > 2, screen: S.screen, phase: SV.phase });
       }
       if (S.screen === 'launch' && SV.phase === 'idle' && SV.result && !o.toResults) break;
-      if (o.toResults && S.screen === 'results' && RS && RS.crowned && RS.t - (RS.crownAt || 0) > 5) break;
+      if (o.toResults && S.screen === 'results' && Big.label === 'DONE' && RS.crowned && RS.t - (RS.crownAt || 0) > 5) break;
     }
     const res = Object.entries(R.results).map(([k, r]) => ({ k, d: r.dist, ev: r.ev.map(e => e[0]), team: (R.players.find(p => p.key === k) || {}).team }));
     res.sort((a, b) => b.d - a.d);
@@ -82,7 +83,7 @@
       dur: SV.pb ? SV.pb.dur : null, toFire: tFlight, showT: S.rt - tStart, frames: guard,
       photo: !!(SV.pb && SV.pb.photo), spots: SV.pb ? SV.pb.spots.map(s => ({ key: s.f.pl.key, id: s.id })) : [],
       res, leads: rec.leads, bill: rec.bill, tags: rec.tags, evFired: rec.evFired, presses: rec.presses,
-      frameMs: rec.frameMs, drawnCalls: rec.drawnCalls, drawnKeys: Object.keys(rec.drawnKeys),
+      frameMs: rec.frameMs, drawnCalls: rec.drawnCalls, drawnKeys: Object.keys(rec.drawnKeys), drawnTags: rec.drawnTags,
       cond: { mod: S.cond.mod || null, wind: S.cond.wind, sky: S.cond.sky },
     };
   };
