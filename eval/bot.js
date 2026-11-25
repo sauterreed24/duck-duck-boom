@@ -61,7 +61,9 @@
         if (draw && SV.drawnTags) for (const c of SV.drawnTags) if (c.text) {
           rec.drawnCalls++;
           // whose call-out reached the screen (matched back to the call-out by its text)
-          const g = SV.tags.find(t => t.text === c.text); if (g) { rec.drawnKeys[g.f.pl.key] = 1; if (!g._drawn) { g._drawn = 1; rec.drawnTags.push({ T: g.t0 - tFire, key: g.f.pl.key, text: g.text }); } }
+          // (counted only while its duck is in the picture this frame: a call-out left at a culled duck's old spot
+          // tells nobody anything)
+          const g = SV.tags.find(t => t.text === (c.src || c.text)); if (g && g.f.sxN === SV.drawN) { rec.drawnKeys[g.f.pl.key] = 1; if (!g._drawn) { g._drawn = 1; rec.drawnTags.push({ T: g.t0 - tFire, key: g.f.pl.key, text: g.text }); } }
         }
       }
       if (Caps.cur && Caps.cur.text !== lastCap) {
