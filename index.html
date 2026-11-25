@@ -2263,6 +2263,10 @@ function runSelfTest() {
       const ok = ps.every(p => (once.split('(' + p.name + ')').length - 1) === (t.indexOf(p.duck.name) >= 0 ? 1 : 0) && (t.indexOf(p.duck.name) < 0 || once.indexOf(p.duck.name + ' (' + p.name + ')') >= 0)) && back === t && twice === once && withPlayers('Nobody flew 3 ft.', ps) === 'Nobody flew 3 ft.';
       if (!ok) bad = t + ' -> ' + once;
     }
+    const cp = [{ name: 'Kit', duck: { name: 'Judge Dumpling' } }, { name: 'Golden', duck: { name: 'Dumpling' } }];
+    const cs = withPlayers('Judge Dumpling came down right on top of Dumpling at the Golden Loaf.', cp);
+    if (!bad && withPlayers('Zoëy flew 3 ft.', [{ name: 'Kit', duck: { name: 'Zo' } }]) !== 'Zoëy flew 3 ft.') bad = 'Zo matched inside Zoëy';
+    if (!bad && cs !== 'Judge Dumpling (Kit) came down right on top of Dumpling (Golden) at the Golden Loaf.') bad = cs;
     check("every results story says whose duck it names, once", !bad, bad);
   }
   // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
@@ -2338,14 +2342,15 @@ function runSelfTest() {
     const geese = [story('Ana', 900, 'geese'), story('Ben', 800, 'geese'), story('Cal', 700, 'ufo'), story('Dee', 600, 'ufo')];
     S.race = { id: 'self-hl2', seed: 4, day, players: geese, queue: [], idx: 0, results: Object.fromEntries(geese.map(p => [p.key, p.r])), shots: {}, legend: [] };
     const hl2 = computeHighlights(S.race);
-    check('a second story of the same kind says "also"', hl2.some(h => /^Duck \w+ also got HONKED/.test(h)) && hl2.some(h => /^Duck \w+ was also abducted/.test(h)) && hl2.filter(h => / also /.test(h)).length === 2, hl2.join(' | '));
+    const plain = h => h.replace(/ \([^()]*\)/g, '');   // (each story names the duck's player in brackets)
+    check('a second story of the same kind says "also"', hl2.map(plain).some(h => /^Duck \w+ also got HONKED/.test(h)) && hl2.map(plain).some(h => /^Duck \w+ was also abducted/.test(h)) && hl2.filter(h => / also /.test(h)).length === 2, hl2.join(' | '));
     S.race = { id: 'self-hl', seed: 3, day, players: cast, queue: [], idx: 0, results: Object.fromEntries(cast.map(p => [p.key, p.r])), shots: {}, legend: [] };
     check('highlights tell each kind of moment once and include the winner', hls.length === 5 && hls.filter(h => /ANOTHER CANNON/.test(h)).length === 1 && hls.some(h => h.startsWith('Duck Win ')), hls.length + ' lines, ' + hls.filter(h => /ANOTHER CANNON/.test(h)).length + ' cannon');
     // a Golden Loaf decided by a few feet is the story of the race, told about the winner
     const tight = [story('Fst', 900.4, 'geese'), story('Snd', 893, 'ufo'), story('Thd', 500, 'bread')];
     S.race = { id: 'self-hl3', seed: 5, day, players: tight, queue: [], idx: 0, results: Object.fromEntries(tight.map(p => [p.key, p.r])), shots: {}, legend: [] };
     const hl3 = computeHighlights(S.race, 3);
-    check('a Golden Loaf won by a few feet is a highlight of its own', hl3[0] === 'Duck Fst beat Duck Snd to the Golden Loaf by 7 ft.' && hl3.length === 3 && !hl3.some(h => /^Duck Fst got HONKED/.test(h)), hl3.join(' | '));
+    check('a Golden Loaf won by a few feet is a highlight of its own', hl3[0] === 'Duck Fst (Fst) beat Duck Snd (Snd) to the Golden Loaf by 7 ft.' && hl3.length === 3 && !hl3.some(h => /^Duck Fst (\(Fst\) )?got HONKED/.test(h)), hl3.join(' | '));
     // duck stacks: only for show, never more than four high, one duck per back, each on a duck that stopped first
     // within reach, and never in the pond, a hammock or the bread queue
     const sfl = players.map((p, i) => ({ i, pl: { key: p.key }, tl: SIM.simulate(flightSeed(raceSeed, p.key, 0), cond, course, null, {}) }));
@@ -5346,12 +5351,7 @@ function createRace() {
     seenKeys.add(personKey(nm));
     people.push({ name: nm, team: clamp(p.team | 0, 0, 2), ammo: p.ammo | 0 });
   }
-  if (!people.length) {
-    // a first-time host has nobody to tick yet: say where today's names go, and put the cursor there
-    if (!S.roster.length) { Toast.show("Nobody on the roster yet: type or paste today's names in Today's list.", 3600); const box = document.getElementById('paste'); if (box) box.focus(); }
-    else Toast.show('Tick at least one person first.');
-    return false;
-  }
+  if (!people.length) { rosterHint(); return false; }
   if (left.length) Toast.show('Only 40 ducks fit in Thunderbill. Sitting out: ' + left.slice(0, 4).join(', ') + (left.length > 4 ? ' +' + (left.length - 4) + ' more' : ''), 6500);
   const day = S.dbg.day || localDayKey();
   S.day = day;
@@ -5396,6 +5396,14 @@ function createRace() {
   Lines.reset(seed);
   saveRace();
   return true;
+}
+// nobody is ticked: say what's missing. Names typed into Today's list but not applied yet: the button that applies them
+// (focused, so the next Space from the keyboard presses it). Nobody on the roster at all: where today's names go.
+function rosterHint() {
+  const box = document.getElementById('paste'), btn = document.getElementById('onlybtn');
+  if (box && box.value.trim() && btn) { Toast.show("Press Tick only these (or Add to ticked) to add the names in Today's list.", 3600); btn.focus(); }
+  else if (!S.roster.length) { Toast.show("Nobody on the roster yet: type or paste today's names in Today's list.", 3600); if (box) box.focus(); }
+  else Toast.show('Tick at least one person first.');
 }
 function rerollDuck(pi) {
   const R = S.race;
@@ -5721,10 +5729,21 @@ function computeHighlights(R, max, awards) {
 // a story names ducks; the people on the call know each other. The first time a story names a duck, its player
 // follows in brackets ("Nibbles (Kit) was abducted..."), on the results page and in the copied results text.
 function withPlayers(t, players) {
-  const hits = [];
-  for (const p of players || []) { const i = nameAt(t, p.duck && p.duck.name); if (i >= 0 && nameAt(t, p.name) < 0) hits.push({ i, j: i + p.duck.name.length, p }); }
-  hits.sort((a, b) => b.i - a.i);   // from the end, so earlier positions stay put
-  for (const h of hits) if (!hits.some(o => o !== h && o.i <= h.i && o.j >= h.j && o.j - o.i > h.j - h.i)) t = t.slice(0, h.j) + ' (' + h.p.name + ')' + t.slice(h.j);
+  const all = [];   // every whole-name mention of every duck
+  for (const p of players || []) {
+    const nm = p.duck && p.duck.name;
+    if (!nm) continue;
+    for (let i = t.indexOf(nm); i >= 0; i = t.indexOf(nm, i + 1)) if (!wordChar(t[i - 1]) && !wordChar(t[i + nm.length])) all.push({ i, j: i + nm.length, p });
+  }
+  // a mention inside a longer duck's name is that duck's ("Dumpling" in "Judge Dumpling"); each duck's first mention
+  // gets its player, unless the bracket is already there
+  const real = all.filter(h => !all.some(o => o !== h && o.i <= h.i && o.j >= h.j && o.j - o.i > h.j - h.i));
+  const first = [];
+  for (const h of real.sort((a, b) => a.i - b.i)) if (!first.some(f => f.p === h.p)) first.push(h);
+  for (const h of first.sort((a, b) => b.i - a.i)) {   // from the end, so earlier positions stay put
+    const br = ' (' + h.p.name + ')';
+    if (t.slice(h.j, h.j + br.length) !== br) t = t.slice(0, h.j) + br + t.slice(h.j);
+  }
   return t;
 }
 function resultsText(R) {
@@ -7609,9 +7628,11 @@ function salvoSay(pool, vars, o, gap) {
 function nameAt(text, name) {
   if (!name) return -1;
   let i = text.indexOf(name);
-  while (i >= 0) { const a = text[i - 1], b = text[i + name.length]; if (!(a && /\w/.test(a)) && !(b && /\w/.test(b))) return i; i = text.indexOf(name, i + 1); }
+  while (i >= 0) { if (!wordChar(text[i - 1]) && !wordChar(text[i + name.length])) return i; i = text.indexOf(name, i + 1); }
   return -1;
 }
+// a letter or digit, accented ones too ("Zo" is not a whole name in "Zoëy")
+function wordChar(c) { return !!c && (/\w/.test(c) || (c > '\u007f' && c.toLowerCase() !== c.toUpperCase())); }
 // the volley's ducks a line names (by duck name or player name), in the order they come up. A name inside a longer
 // one that also matched ("Dumpling" in "Judge Dumpling") is the longer one's.
 function salvoNamed(text) {
@@ -8485,7 +8506,7 @@ function primary(fromPointer) {
   if (Iris.t >= 0) return;
   // a double-click (or Space mashed) shouldn't skip a whole screen: a second press right after one that counted is ignored
   if (S.rt - Big.lastPress < 0.35) return;
-  if (fromPointer && !Big.enabled) return;
+  if (fromPointer && !Big.enabled) { if (S.screen === 'roster' && !Modal.isOpen && !S.roster.some(p => p.checked)) { Big.lastPress = S.rt; rosterHint(); } return; }   // (a click on the greyed-out button: what's missing)
   Big.lastPress = S.rt;
   Big.press = 0.15;
   switch (S.screen) {

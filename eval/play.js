@@ -52,6 +52,19 @@ async function main() {
   await g.page.keyboard.press('Space'); await steps(g.page, 10);
   const hint = await g.page.evaluate(() => ({ toast: document.getElementById('toast').textContent, focus: document.activeElement && document.activeElement.id }));
   check('Space on an empty roster points a first-time host at Today\'s list', /Today's list/.test(hint.toast) && hint.focus === 'paste', hint.toast + ' / focus ' + hint.focus);
+  // ...a click on the greyed-out big button says the same (a mouse or touch host)
+  await g.page.evaluate(() => { document.getElementById('toast').textContent = ''; document.activeElement.blur(); });
+  await steps(g.page, 30);
+  const bp = await g.page.evaluate(() => ({ x: Big.x * VIEW.scale + VIEW.ox, y: Big.y * VIEW.scale + VIEW.oy }));
+  await g.page.mouse.click(bp.x, bp.y); await steps(g.page, 5);
+  check('a click on the greyed-out button on an empty roster gives the same hint', /Today's list/.test(await g.page.evaluate(() => document.getElementById('toast').textContent)));
+  // ...names typed but not applied yet: the hint names the button, and the next Space presses it
+  await g.page.fill('#paste', 'Zed\nYara'); await g.page.mouse.click(5, 5); await steps(g.page, 30);
+  await g.page.keyboard.press('Space'); await steps(g.page, 5);
+  const h2 = await g.page.evaluate(() => ({ toast: document.getElementById('toast').textContent, focus: document.activeElement && document.activeElement.id }));
+  await g.page.keyboard.press('Space'); await steps(g.page, 10);
+  check('typed but unapplied names: the hint names Tick only these, and Space presses it', /Tick only these/.test(h2.toast) && h2.focus === 'onlybtn' && await g.page.evaluate(() => S.roster.filter(p => p.checked).length === 2), h2.toast + ' / focus ' + h2.focus);
+  await g.page.evaluate(() => { S.roster = []; Roster.render(); });   // (back to the empty roster the rest expects)
   await g.page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); go('title'); });
   await steps(g.page, 40);   // (past the big button's double-press guard)
   check('Space opens the roster; pasted names are ticked', await toRoster(g.page) && await g.page.evaluate(n => S.roster.filter(p => p.checked).length === n, NAMES.length));
