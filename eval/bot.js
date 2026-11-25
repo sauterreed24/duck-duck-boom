@@ -31,7 +31,7 @@
   EVAL.runShow = function (o) {
     freshState(o);
     const draw = !!o.draw;
-    const rec = { frameMs: [], leads: [], bill: [], tags: [], drawnCalls: 0, drawnKeys: {}, drawnTags: [], issuedCalls: 0, evFired: [], presses: 0 };
+    const rec = { frameMs: [], leads: [], bill: [], tags: [], drawnCalls: 0, drawnKeys: {}, drawnTags: [], bigs: [], issuedCalls: 0, evFired: [], presses: 0 };
     go('roster'); Roster.hide && Roster.hide();
     if (!createRace()) return { error: 'createRace failed' };
     go('reveal');
@@ -57,6 +57,8 @@
         // events firing this frame (sim time crossed e.t)
         for (const f of SV.fl) for (const e of f.tl.events) if (e.t > prevSim && e.t <= pb.simT) rec.evFired.push({ T, key: f.pl.key, id: e.id, kind: (C.EVENTS[e.id] || {}).kind });
         prevSim = pb.simT;
+        // the big impact captions ("TO SPACE! Lu"): who they name
+        for (const b of Caps.bigs) if (!b._seen && S.rt >= b.t0) { b._seen = 1; const keys = []; for (const [k, nm] of nameOf) if (nm.some(x => x && EVAL.mentions(String(b.text).replace(/\n/g, ' '), x))) keys.push(k); rec.bigs.push({ T: b.t0 - tFire, keys, text: b.text }); }
         for (const g of SV.tags) if (!g._seen) { g._seen = 1; rec.tags.push({ T: S.rt - tFire, key: g.f.pl.key, text: g.text }); }
         if (draw && SV.drawnTags) for (const c of SV.drawnTags) if (c.text) {
           rec.drawnCalls++;
@@ -91,7 +93,7 @@
       dur: SV.pb ? SV.pb.dur : null, toFire: tFlight, showT: S.rt - tStart, frames: guard,
       photo: !!(SV.pb && SV.pb.photo), spots: SV.pb ? SV.pb.spots.map(s => ({ key: s.f.pl.key, id: s.id })) : [],
       res, leads: rec.leads, bill: rec.bill, tags: rec.tags, evFired: rec.evFired, presses: rec.presses,
-      frameMs: rec.frameMs, drawnCalls: rec.drawnCalls, drawnKeys: Object.keys(rec.drawnKeys), drawnTags: rec.drawnTags,
+      frameMs: rec.frameMs, drawnCalls: rec.drawnCalls, drawnKeys: Object.keys(rec.drawnKeys), drawnTags: rec.drawnTags, bigs: rec.bigs,
       cond: { mod: S.cond.mod || null, wind: S.cond.wind, sky: S.cond.sky },
       hlRows, copyHl, people,
     };

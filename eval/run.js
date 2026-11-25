@@ -152,7 +152,7 @@ async function main() {
     for (const e of r.evFired) {
       if (e.kind === 'gag' || !e.kind) continue;
       told.n++;
-      if (r.drawnTags.some(x => x.key === e.key && x.T >= e.T - 0.5 && x.T <= e.T + 2.5) || r.bill.some(x => x.keys.includes(e.key) && x.T >= e.T - 0.5 && x.T <= e.T + 3)) told.k++;
+      if (r.drawnTags.some(x => x.key === e.key && x.T >= e.T - 0.5 && x.T <= e.T + 2.5) || r.bill.some(x => x.keys.includes(e.key) && x.T >= e.T - 0.5 && x.T <= e.T + 3) || (r.bigs || []).some(x => x.keys.includes(e.key) && x.T >= e.T - 0.5 && x.T <= e.T + 3)) told.k++;
     }
   }
   card.drawnPointed = { shows: seen.length, mean: r2(mean(seen)), min: r2(Math.min(...seen)) };
@@ -188,7 +188,7 @@ function printCard(c) {
   L.push('7 frame time   40-duck flight: mean draw ms per frame ' + c.render40.mean + ' (' + c.render40.frames + ' frames, headless software rendering)');
   if (c.ink) L.push('9 contrast     worst text on a team colour: ' + c.ink.min + ':1 over ' + c.ink.swatches + ' swatches (' + Object.entries(c.ink.worst).map(([k, w]) => k + ' ' + w.c).join(', ') + ')');
   L.push('11 results    highlights that say whose duck ' + s.hl.named + '; copied highlight ' + s.hl.copy + (c.n30 ? ' (n30 ' + c.n30.hl.named + ')' : '') + '; rows wrapped ' + s.hl.wrapped + ', cut off ' + s.hl.cut + (c.n30 ? ' (n30 cut ' + c.n30.hl.cut + ')' : ''));
-  if (c.told) L.push('10 events told distance-changing events the audience is told about (drawn call-out or Bill) ' + c.told.share + ' of ' + c.told.events);
+  if (c.told) L.push('10 events told distance-changing events the audience is told about (drawn call-out, big caption or Bill) ' + c.told.share + ' of ' + c.told.events);
   L.push('8 errors       ' + c.errors + ' page errors; one-by-one shows reaching the crowning ' + (c.classic || []).filter(Boolean).length + '/' + (c.classic || []).length + '   (' + c.secs + ' s)');
   console.log(L.join('\n'));
 }
