@@ -47,6 +47,13 @@ async function main() {
   let g = await openGame({ date: DAY });
   await setup(g.page);
   check('title screen comes up with START', (await state(g.page)).big === 'START');
+  // a first-time host: Space on an empty roster says where today's names go, and the cursor is there
+  await g.page.keyboard.press('Space'); await steps(g.page, 30);
+  await g.page.keyboard.press('Space'); await steps(g.page, 10);
+  const hint = await g.page.evaluate(() => ({ toast: document.getElementById('toast').textContent, focus: document.activeElement && document.activeElement.id }));
+  check('Space on an empty roster points a first-time host at Today\'s list', /Today's list/.test(hint.toast) && hint.focus === 'paste', hint.toast + ' / focus ' + hint.focus);
+  await g.page.evaluate(() => { if (document.activeElement) document.activeElement.blur(); go('title'); });
+  await steps(g.page, 40);   // (past the big button's double-press guard)
   check('Space opens the roster; pasted names are ticked', await toRoster(g.page) && await g.page.evaluate(n => S.roster.filter(p => p.checked).length === n, NAMES.length));
   await g.page.keyboard.press('Space'); await steps(g.page, 20);
   check('Space on the roster starts the reveal', (await state(g.page)).screen === 'reveal');

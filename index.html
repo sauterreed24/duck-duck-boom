@@ -5346,7 +5346,12 @@ function createRace() {
     seenKeys.add(personKey(nm));
     people.push({ name: nm, team: clamp(p.team | 0, 0, 2), ammo: p.ammo | 0 });
   }
-  if (!people.length) { Toast.show('Tick at least one person first.'); return false; }
+  if (!people.length) {
+    // a first-time host has nobody to tick yet: say where today's names go, and put the cursor there
+    if (!S.roster.length) { Toast.show("Nobody on the roster yet: type or paste today's names in Today's list.", 3600); const box = document.getElementById('paste'); if (box) box.focus(); }
+    else Toast.show('Tick at least one person first.');
+    return false;
+  }
   if (left.length) Toast.show('Only 40 ducks fit in Thunderbill. Sitting out: ' + left.slice(0, 4).join(', ') + (left.length > 4 ? ' +' + (left.length - 4) + ' more' : ''), 6500);
   const day = S.dbg.day || localDayKey();
   S.day = day;
