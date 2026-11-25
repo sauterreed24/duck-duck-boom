@@ -2228,6 +2228,20 @@ function runSelfTest() {
   check('every line pool is a list of real lines (no holes or blanks)', !holes.length, holes.join(', '));
   const flagged = texts.filter(t => Blocklist.hit(String(t).replace(/\{\w+\}/g, 'X')));
   check('every commentary line and name part passes the content blocklist', !flagged.length, flagged.slice(0, 3).join(' | '));
+  // whose duck: a line about a duck of the salvo carries that player's name tag on Bill's bar (whole names only, the
+  // longest name wins, none when the line already names the player)
+  {
+    const k0 = { fl: SV.fl, screen: S.screen, phase: L.phase };
+    try {
+      const mk = (name, duck) => ({ pl: { name, key: personKey(name), team: 0, duck: { name: duck } }, done: false, vis: 1, x: 0, tl: { special: null } });
+      SV.fl = [mk('Ada', 'Judge Dumpling'), mk('Bo', 'Sir Quackalot'), mk('Cy', 'Dumpling'), mk('Player 1', 'Waddles'), mk('Player 12', 'Beaky')];
+      S.screen = 'launch'; L.phase = 'salvo';
+      const who = t => (salvoWho(t) || []).map(p => p.name).join(',');
+      const cases = [['Judge Dumpling got HONKED!', 'Ada'], ["Ada's duck Judge Dumpling leads!", ''], ['Sir Quackalot passes Judge Dumpling!', 'Bo,Ada'], ['Dumplings everywhere.', ''], ['Dumpling is airborne!', 'Cy'], ['Player 12 is cheering for Waddles', 'Player 1'], ['Nobody here.', '']];
+      const bad = cases.filter(([t, w]) => who(t) !== w);
+      check("Bill's lines about a salvo duck say whose duck it is (whole names, longest match)", !bad.length, bad.map(b => b[0] + ' -> ' + who(b[0])).join(' | '));
+    } finally { SV.fl = k0.fl; S.screen = k0.screen; L.phase = k0.phase; }
+  }
   // text on every team colour reads at 3:1 or better
   {
     const lum = h => [1, 3, 5].map(i => parseInt((h === '#fff' ? '#ffffff' : h).slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -4744,7 +4758,7 @@ const Caps = {
     this.queue = this.queue.filter(q => !q.stale || !q.stale(q.text));
     if (!this.cur) {
       const i = this.queue.findIndex(q => q.at <= now);
-      if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; Voice.speak(this.cur.text); }
+      if (i >= 0) { this.cur = this.queue.splice(i, 1)[0]; this.curStart = now; this.cur.who = salvoWho(this.cur.text); Voice.speak(this.cur.text); }
     }
     this.bigs = this.bigs.filter(b => now < b.t0 + b.dur);
     if (this.bubble && now > this.bubble.t0 + this.bubble.dur) this.bubble = null;
@@ -4765,6 +4779,20 @@ const Caps = {
     ctx.font = font(34, 800);
     const lines = wrapText(ctx, c.text, w - 190, 2);
     lines.forEach((ln, i) => txt(ctx, ln, x + 150 + (1 - k) * 30, y + h / 2 + (i - (lines.length - 1) / 2) * 38 + 6, { px: 34, weight: 800, color: OUT, sw: 0, align: 'left' }));
+    // whose duck Bill is talking about: the same name tag that duck wears in the sky, pinned to the bar's top edge
+    if (c.who) {
+      let r = x + w - 26;
+      for (const pl of c.who.slice().reverse()) {
+        const tm = teamOf(pl), dark = inkOn(tm.color) === OUT;
+        ctx.font = font(24);
+        const label = fitTail(ctx, pl.name, '', 280), tw = Math.min(280, ctx.measureText(label).width) + 74;
+        rr(ctx, r - tw, y - 16, tw, 42, 12); fillStroke(ctx, tm.color, 4);
+        const pc = duckPortrait(pl.duck, 34, S.cond && S.cond.friday ? 'party' : '');
+        ctx.drawImage(pc, r - tw + 26 - pc.width / 2, y + 5 - pc.height * 0.62);
+        txt(ctx, label, r - tw + 50 + (tw - 62) / 2, y + 6, { px: 24, color: dark ? OUT : '#fff', sw: 0, maxW: tw - 62 });
+        r -= tw + 12;
+      }
+    }
     ctx.restore();
   },
   side: null,
@@ -7546,6 +7574,31 @@ function salvoSay(pool, vars, o, gap) {
   const l = say(pool, vars, o);
   if (l) SV.lineAt = S.rt + ((o && o.delay) || 0);
   return l;
+}
+// where a whole name sits in a line (-1 if nowhere): "Dee" is not in "Deer", "Player 1" is not in "Player 12"
+function nameAt(text, name) {
+  if (!name) return -1;
+  let i = text.indexOf(name);
+  while (i >= 0) { const a = text[i - 1], b = text[i + name.length]; if (!(a && /\w/.test(a)) && !(b && /\w/.test(b))) return i; i = text.indexOf(name, i + 1); }
+  return -1;
+}
+// the volley's ducks a line names (by duck name or player name), in the order they come up. A name inside a longer
+// one that also matched ("Dumpling" in "Judge Dumpling") is the longer one's.
+function salvoNamed(text) {
+  if (!text || S.screen !== 'launch' || L.phase !== 'salvo') return [];
+  const hits = [];
+  for (const f of SV.fl) for (const [nm, byPlayer] of [[f.pl.duck.name, false], [f.pl.name, true]]) { const i = nameAt(text, nm); if (i >= 0) hits.push({ i, j: i + nm.length, f, byPlayer }); }
+  const kept = hits.filter(h => !hits.some(o => o !== h && o.i <= h.i && o.j >= h.j && o.j - o.i > h.j - h.i));
+  return kept.sort((a, b) => a.i - b.i);
+}
+// Bill calls the ducks by their names; the name tags in the sky and the board name the people. A line about one or two
+// ducks of the volley carries their people's name tags on the caption bar, so "Judge Dumpling got HONKED!" says whose
+// duck that was. (Not for a duck whose player the line already names.)
+function salvoWho(text) {
+  if (SV.fl.length < 2) return null;
+  const hits = salvoNamed(text), out = [];
+  for (const h of hits) if (!h.byPlayer && !hits.some(o => o.byPlayer && o.f === h.f) && !out.includes(h.f.pl)) out.push(h.f.pl);
+  return out.length ? out.slice(0, 2) : null;
 }
 function salvoSnd(name, gap, ...args) { if (S.rt - (SV.sndAt[name] || -9) < gap) return; SV.sndAt[name] = S.rt; SFX.play(name, ...args); }
 function salvoTag(f, text, o) {
