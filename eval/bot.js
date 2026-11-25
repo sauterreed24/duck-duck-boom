@@ -78,6 +78,12 @@
       if (S.screen === 'launch' && SV.phase === 'idle' && SV.result && !o.toResults) break;
       if (o.toResults && S.screen === 'results' && Big.label === 'DONE' && RS.crowned && RS.t - (RS.crownAt || 0) > 5) break;
     }
+    // the results page's highlights and the copied results text, as they would be for this show
+    const aw = computeAwards(R).awards, hl = computeHighlights(R, 3, aw);
+    const mc = EVAL._mc || (EVAL._mc = document.createElement('canvas').getContext('2d')); mc.font = font(28, 800);
+    const hlRows = hl.map(h => ({ text: h, lines: wrapText(mc, '• ' + h, 1520, 0).length }));
+    const copyHl = (resultsText(R).split('\n').find(l => l.indexOf('Highlight: ') === 0) || '').slice(11);
+    const people = R.players.map(p => ({ duck: p.duck.name, name: p.name }));
     const res = Object.entries(R.results).map(([k, r]) => ({ k, d: r.dist, ev: r.ev.map(e => e[0]), team: (R.players.find(p => p.key === k) || {}).team }));
     res.sort((a, b) => b.d - a.d);
     return {
@@ -87,6 +93,7 @@
       res, leads: rec.leads, bill: rec.bill, tags: rec.tags, evFired: rec.evFired, presses: rec.presses,
       frameMs: rec.frameMs, drawnCalls: rec.drawnCalls, drawnKeys: Object.keys(rec.drawnKeys), drawnTags: rec.drawnTags,
       cond: { mod: S.cond.mod || null, wind: S.cond.wind, sky: S.cond.sky },
+      hlRows, copyHl, people,
     };
   };
 

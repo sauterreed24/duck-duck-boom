@@ -47,7 +47,12 @@ function measure(r) {
   const ts = fl.map(b => b.T).concat([0, r.dur]).sort((a, b) => a - b);
   let gap = 0; for (let i = 1; i < ts.length; i++) gap = Math.max(gap, ts[i] - ts[i - 1]);
   const texts = r.bill.map(b => b.text), rep = texts.length - new Set(texts).size, trunc = r.bill.filter(b => b.trunc).length;
+  // results page: a highlight row (and the copied text's highlight) says whose duck each duck it mentions is
+  const hlOk = t => { const ds = (r.people || []).filter(p => mentions(t, p.duck)); return ds.every(p => mentions(t, p.name)); };
+  const rows = r.hlRows || [];
   return {
+    hlNamed: rows.length ? rows.filter(x => hlOk(x.text)).length / rows.length : 1, hlCut: rows.filter(x => x.lines > 2).length,
+    hlWrapped: rows.filter(x => x.lines > 1).length, copyNamed: r.copyHl ? (hlOk(r.copyHl) ? 1 : 0) : 1,
     linkedStrict: about.length ? strict.length / about.length : 1, linkedLoose: about.length ? loose.length / about.length : 1, aboutN: about.length,
     pointed: pointed.size / keys.length, unseen: keys.length - pointed.size,
     lockFrac: Math.min(1, lockT / r.dur), leadChanges: Math.max(0, leads.length - 1),
@@ -72,6 +77,7 @@ function summarize(ms) {
     gap: { p50: r1(q(col('gap'), 0.5)), p90: r1(q(col('gap'), 0.9)) },
     repeats: { total: col('repeats').reduce((a, b) => a + b, 0) },
     trunc: { total: col('trunc').reduce((a, b) => a + b, 0) },
+    hl: { named: r2(mean(col('hlNamed'))), copy: r2(mean(col('copyNamed'))), cut: col('hlCut').reduce((a, b) => a + b, 0), wrapped: col('hlWrapped').reduce((a, b) => a + b, 0), rows: ms.length * 3 },
   };
 }
 
@@ -181,6 +187,7 @@ function printCard(c) {
   if (c.fair) L.push('6 fairness     win share by roster slot: chi2 ' + c.fair.chi2 + ' p=' + c.fair.p + ' (max ' + c.fair.maxShare + 'x fair share) over ' + c.fair.races + ' races; teams ' + c.fair.team.join('/'));
   L.push('7 frame time   40-duck flight: mean draw ms per frame ' + c.render40.mean + ' (' + c.render40.frames + ' frames, headless software rendering)');
   if (c.ink) L.push('9 contrast     worst text on a team colour: ' + c.ink.min + ':1 over ' + c.ink.swatches + ' swatches (' + Object.entries(c.ink.worst).map(([k, w]) => k + ' ' + w.c).join(', ') + ')');
+  L.push('11 results    highlights that say whose duck ' + s.hl.named + '; copied highlight ' + s.hl.copy + (c.n30 ? ' (n30 ' + c.n30.hl.named + ')' : '') + '; rows wrapped ' + s.hl.wrapped + ', cut off ' + s.hl.cut + (c.n30 ? ' (n30 cut ' + c.n30.hl.cut + ')' : ''));
   if (c.told) L.push('10 events told distance-changing events the audience is told about (drawn call-out or Bill) ' + c.told.share + ' of ' + c.told.events);
   L.push('8 errors       ' + c.errors + ' page errors; one-by-one shows reaching the crowning ' + (c.classic || []).filter(Boolean).length + '/' + (c.classic || []).length + '   (' + c.secs + ' s)');
   console.log(L.join('\n'));
