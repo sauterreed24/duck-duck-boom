@@ -2250,6 +2250,21 @@ function runSelfTest() {
     const low = C.TEAM_SWATCHES.concat(C.TEAM_DEFAULTS.map(t => t.color)).filter(c => cr(c, inkOn(c)) < 3);
     check('names printed on every team colour read at 3:1 contrast or better', !low.length, low.join(', '));
   }
+  // the results' stories name each duck's player once, wherever the duck comes up in the line (generated cases)
+  {
+    const rng = new Rng(hash('withPlayers')), parts = ['Sir', 'Quack', 'Dumpling', 'Waddles', 'Beaky', 'Pond', 'the Brave', 'Fluff', 'III'];
+    let bad = '';
+    for (let k = 0; k < 300 && !bad; k++) {
+      const ps = [], used = new Set();
+      for (let i = 0; i < 4; i++) { let d; do { d = parts[rng.int(0, 4)] + ' ' + parts[rng.int(4, 8)] + ' ' + i; } while (used.has(d)); used.add(d); ps.push({ name: 'P' + i + (rng.int(0, 1) ? ' Lee' : ''), duck: { name: d } }); }
+      const a = ps[rng.int(0, 3)], b = ps[rng.int(0, 3)];
+      const t = a.duck.name + ' came down right on top of ' + b.duck.name + ' at 400 ft.', once = withPlayers(t, ps), twice = withPlayers(once, ps);
+      let back = once; for (const p of ps) back = back.split(' (' + p.name + ')').join('');
+      const ok = ps.every(p => (once.split('(' + p.name + ')').length - 1) === (t.indexOf(p.duck.name) >= 0 ? 1 : 0) && (t.indexOf(p.duck.name) < 0 || once.indexOf(p.duck.name + ' (' + p.name + ')') >= 0)) && back === t && twice === once && withPlayers('Nobody flew 3 ft.', ps) === 'Nobody flew 3 ft.';
+      if (!ok) bad = t + ' -> ' + once;
+    }
+    check("every results story says whose duck it names, once", !bad, bad);
+  }
   // salvo playback and the host handoff. Anything this block writes to storage is put back afterwards.
   const keep = { race: S.race, turbo: S.turbo, current: Store.get('current', null), last: Store.get('last', null), phase: L.phase, pl: L.pl, q: L.q, tl: L.tl, pb: L.pb, result: L.result, replay: L.replay, drum: L.drum, photo: L.photo, quietLand: L.quietLand, screen: S.screen, bigLabel: Big.label, bigEnabled: Big.enabled, sv: { phase: SV.phase, fl: SV.fl, replay: SV.replay, pb: SV.pb, result: SV.result, drumOn: SV.drumOn, pt: SV.pt } };
   try {
@@ -5696,7 +5711,16 @@ function computeHighlights(R, max, awards) {
     return t;
   });
   if (!out.length && st.length) out.push(st[0].pl.duck.name + ' flew ' + fmtFt(st[0].dist) + ' with no help from anyone.');
-  return out.map(tidyDots);
+  return out.map(t => withPlayers(t, R.players)).map(tidyDots);
+}
+// a story names ducks; the people on the call know each other. The first time a story names a duck, its player
+// follows in brackets ("Nibbles (Kit) was abducted..."), on the results page and in the copied results text.
+function withPlayers(t, players) {
+  const hits = [];
+  for (const p of players || []) { const i = nameAt(t, p.duck && p.duck.name); if (i >= 0 && nameAt(t, p.name) < 0) hits.push({ i, j: i + p.duck.name.length, p }); }
+  hits.sort((a, b) => b.i - a.i);   // from the end, so earlier positions stay put
+  for (const h of hits) if (!hits.some(o => o !== h && o.i <= h.i && o.j >= h.j && o.j - o.i > h.j - h.i)) t = t.slice(0, h.j) + ' (' + h.p.name + ')' + t.slice(h.j);
+  return t;
 }
 function resultsText(R) {
   const st = standings();
