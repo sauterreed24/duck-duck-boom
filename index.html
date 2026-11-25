@@ -2345,7 +2345,7 @@ function runSelfTest() {
     check('duck stacks: one duck per back, at most four high, never in the pond, and no distance changes', stacked.length > 0 && stackOk && sfl.map(f => f.stackOn ? f.stackOn.i : -1).join(',') === sAssign && sfl.every((f, i) => f.tl.final === sBefore[i]), stacked.length + ' stacked of 40');
     // the chase: once the duck in front has stopped, the closest duck still moving is the one to watch; stopping just
     // short of the lead is a near miss
-    const svKeep = { fl: SV.fl, lead: SV.lead, chase: SV.chase, tags: SV.tags, nearN: SV.nearN, replay: SV.replay }, sfxP = SFX.play;
+    const svKeep = { fl: SV.fl, lead: SV.lead, chase: SV.chase, tags: SV.tags, seen: SV.seen, nearN: SV.nearN, replay: SV.replay }, sfxP = SFX.play;
     SFX.play = () => {};
     const ch = (key, x, done) => ({ pl: { key, name: key, team: 0, duck: duck('D' + key) }, tl: { final: x, launchT: 0 }, x, done, vis: 1 });
     const cLead = ch('lead', 1000, true), cNear = ch('near', 950, false), cFar = ch('far', 600, false);
@@ -4787,10 +4787,10 @@ const Caps = {
         const tm = teamOf(pl), dark = inkOn(tm.color) === OUT;
         ctx.font = font(24);
         const label = fitTail(ctx, pl.name, '', 280), tw = Math.min(280, ctx.measureText(label).width) + 74;
-        rr(ctx, r - tw, y - 16, tw, 42, 12); fillStroke(ctx, tm.color, 4);
+        rr(ctx, r - tw, y - 20, tw, 42, 12); fillStroke(ctx, tm.color, 4);
         const pc = duckPortrait(pl.duck, 34, S.cond && S.cond.friday ? 'party' : '');
-        ctx.drawImage(pc, r - tw + 26 - pc.width / 2, y + 5 - pc.height * 0.62);
-        txt(ctx, label, r - tw + 50 + (tw - 62) / 2, y + 6, { px: 24, color: dark ? OUT : '#fff', sw: 0, maxW: tw - 62 });
+        ctx.drawImage(pc, r - tw + 26 - pc.width / 2, y + 1 - pc.height * 0.62);
+        txt(ctx, label, r - tw + 50 + (tw - 62) / 2, y + 2, { px: 24, color: dark ? OUT : '#fff', sw: 0, maxW: tw - 62 });
         r -= tw + 12;
       }
     }
@@ -5204,7 +5204,7 @@ const Roster = {
       const people = S.roster.filter(p => p.team === i).sort(byName);
       const shown = people;
       const tl = Array.from(T[i].name).length, tfs = tl > 16 ? 19 : tl > 12 ? 22 : tl > 8 ? 26 : 30;   // a long team name gets smaller type before an ellipsis
-      return '<div class="team"><div class="team-head" style="background:' + T[i].color + '"><span class="tname" style="font-size:' + tfs + 'px" title="' + esc(T[i].name) + '">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
+      return '<div class="team"><div class="team-head" style="background:' + T[i].color + (inkOn(T[i].color) === OUT ? ';color:' + OUT + ';text-shadow:none' : '') + '"><span class="tname" style="font-size:' + tfs + 'px" title="' + esc(T[i].name) + '">' + esc(T[i].name) + '</span><span class="count">' + people.filter(p => p.checked).length + '/' + people.length + '</span>' +
         '<button class="btn small ghost" data-all="' + i + '">All</button><button class="btn small ghost" data-none="' + i + '">None</button></div><div class="list">' +
         (shown.length ? '<div class="row nomatch" style="opacity:.6;display:' + (f && !shown.some(p => personKey(p.name).includes(f)) ? 'flex' : 'none') + '">No match</div>' + shown.map(p => '<div class="row' + (p.checked ? ' on' : '') + '" data-key="' + esc(personKey(p.name)) + '"' + (f && !personKey(p.name).includes(f) ? ' style="display:none"' : '') + '><input type="checkbox" data-chk="' + p.id + '"' + (p.checked ? ' checked' : '') + ' title="Booked a meeting today"><input type="text" class="nm" data-name="' + p.id + '" value="' + esc(p.name) + '" maxlength="40" spellcheck="false" title="Click to edit the name">' +
           (S.settings.bonusAmmo ? '<select class="ammo" data-ammo="' + p.id + '" title="Bonus Ammo: extra shots, best counts">' + [0, 1, 2, 3].map(n => '<option value="' + n + '"' + (p.ammo === n ? ' selected' : '') + '>' + '+' + n + '</option>').join('') + '</select>' : '') +
@@ -7606,7 +7606,7 @@ function salvoSeen(text) { if (SV.seen) for (const h of salvoNamed(text)) SV.see
 function salvoSnd(name, gap, ...args) { if (S.rt - (SV.sndAt[name] || -9) < gap) return; SV.sndAt[name] = S.rt; SFX.play(name, ...args); }
 function salvoTag(f, text, o) {
   o = o || {};
-  SV.tags.push({ f, text, t0: S.rt, dur: o.dur || 1.5, color: o.color || '#ffd23f', px: o.px || 30 });
+  SV.tags.push({ f, text, t0: S.rt, dur: o.dur || 1.5, color: o.color || '#ffd23f', px: o.px || 30, land: o.land || null });
   if (SV.seen) SV.seen.add(f.pl.key);
   if (SV.tags.length > 40) SV.tags.shift();
 }
@@ -7714,9 +7714,9 @@ function updateSalvoFlight(dt) {
           else if (SV.stackN <= 2) salvoSay('salvoStack', { duck: d.name, other: b.pl.duck.name, player: f.pl.name }, { prio: 0 }, 1.6);
         }
       }
-      // a quiet flight (no call-out yet, Bill never got to it) still gets its moment as it comes to rest: whose duck
-      // and how far (with the name: in a crowd the duck's own name tag may be the one left out)
-      else if (!SV.replay && n > 2 && SV.seen && !SV.seen.has(f.pl.key) && s.vis && tl.final > 0) salvoTag(f, f.pl.name + ' · ' + fmtFt(tl.final), { color: '#ffffff', dur: 1.8 });
+      // a quiet flight (no call-out yet, Bill never got to it) still gets its moment as it comes to rest (what it
+      // says depends on whether its name tag is showing: see drawSalvoTags)
+      else if (!SV.replay && n > 2 && SV.seen && !SV.seen.has(f.pl.key) && s.vis && tl.final > 0) salvoTag(f, f.pl.name + ' · ' + fmtFt(tl.final), { color: '#ffffff', dur: 1.8, land: { name: f.pl.name, ft: fmtFt(tl.final) } });
     } else { moving++; lastMover = f; }
   }
   SV.moving = moving;
@@ -7971,6 +7971,7 @@ function drawSalvo(ctx, dt) {
   drawSalvoHUD(ctx, V, t);
 }
 function drawSalvoActors(ctx, V, t) {
+  SV.drawN = (SV.drawN || 0) + 1;   // this frame: which ducks are in the picture (f.sxN) and wear their name tag (f.tagN)
   const n = SV.fl.length, ph = SV.phase, pace = PACE();
   const px = salvoPx(V.z, n);
   const cd = SV.cdT || 3 * pace;
@@ -8069,7 +8070,7 @@ function drawSalvoActors(ctx, V, t) {
       drawDuck(ctx, d, sx, sy, px, duckDrawOpts(f.pl, { pose, rot, flap, flags, squash, squashW: squashNow(f.squash, f.squashDepth), hat: hatGone ? null : undefined, mouth: pose === 'scared' ? 0.8 : 0 }));
       if (pose === 'swim') ctx.restore();
       if (pose === 'dizzy' && (done || !inAir)) for (let i = 0; i < 3; i++) { const aa = S.time * 3 + i * 2.1; starPath(ctx, sx + Math.cos(aa) * px * 0.4, sy - px * 0.55 + Math.sin(aa) * px * 0.12, 9, aa); fillStroke(ctx, '#ffd23f', 3); }
-      f.sx = sx; f.sy = sy;
+      f.sx = sx; f.sy = sy; f.sxN = SV.drawN;
       tags.push({ f, s, sx, sy, done });
     }
     if (!done) drawEventActors(ctx, V, ft, s, px, false, tl, f.pl, f.hideGag);
@@ -8142,7 +8143,7 @@ function drawSalvoTags(ctx, V) {
     // a big flock packed together: a tag that would have to stack is shown only for the leaders (the rest are on the
     // board, and their own tags come back as soon as the pack spreads out)
     if (n > 14 && lvl > 0 && !keep && (g.done || lvl > 1 || !(f.rank > 0 && f.rank <= 6))) { drop(); continue; }
-    placed.push({ x, y, w, h, label, tm, lvl, g, isLead, below });
+    placed.push({ x, y, w, h, label, tm, lvl, g, isLead, below }); f.tagN = SV.drawN;
     f.tagY = below ? null : y - h / 2;   // (a call-out rises from the tag, or from the duck when its tag hangs below)
   }
   // two passes: every stacked tag's line down to its duck first, then all the tags on top (a line drawn after a
@@ -8173,22 +8174,26 @@ function drawSalvoTags(ctx, V) {
   let calls = 0;
   for (const g of SV.tags) {
     const f = g.f;
-    if (f.sx == null || f.sy > 900) continue;
+    if (f.sx == null || f.sxN !== SV.drawN || f.sy > 900) continue;   // (a duck out of the picture: no call-out left at its old spot)
     if (calls >= maxCalls) break;
     if (bigNow.includes(String(g.text).trim().toUpperCase())) continue;
     const k = (S.rt - g.t0) / g.dur;
     if (k < 0 || k > 1) continue;
     const a = k < 0.12 ? k / 0.12 : k > 0.75 ? (1 - k) / 0.25 : 1;
     ctx.font = font(g.px);
-    const cw = Math.min(420, ctx.measureText(g.text).width) + 16, chh = g.px * 1.1, cx = clamp(f.sx, 120, 1380);
+    // a quiet duck's landing: its name tag is right there, so just the moment; with the tag crowded out, whose duck
+    // and how far (a long name gives way, never the distance). Decided once, so it never flips.
+    if (g.land && g.shown == null) g.shown = f.tagN === SV.drawN ? 'TOUCHDOWN!' : fitTail(ctx, g.land.name, ' · ' + g.land.ft, 404);
+    const shown = g.shown || g.text;
+    const cw = Math.min(420, ctx.measureText(shown).width) + 16, chh = g.px * 1.1, cx = clamp(f.sx, cw / 2 + 8, 1480 - cw / 2);   // all of it on screen, clear of the board
     let y = Math.min((f.tagY != null ? f.tagY : f.sy - px) - 26 - k * 46, 806 - chh / 2 - 8 - k * 46);   // never down behind Bill's caption bar (its top edge is at 806)
     const hit = () => cps.some(o => Math.abs(o.x - cx) < (o.w + cw) / 2 && Math.abs(o.y - y) < (o.h + chh) / 2);
     for (let tries = 0; tries < 6 && hit(); tries++) y -= chh * 0.55;
     if (y < 120 || hit()) continue;   // no clear spot: the board and the name tags carry the story
-    cps.push({ x: cx, y, w: cw, h: chh, text: g.text });
+    cps.push({ x: cx, y, w: cw, h: chh, text: shown, src: g.text });
     calls++;
     ctx.save(); ctx.globalAlpha = clamp(a, 0, 1); ctx.translate(cx, y); ctx.scale(0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1)), 0.85 + 0.15 * easeBack(clamp(k / 0.15, 0, 1))); ctx.rotate(-0.05);
-    txt(ctx, g.text, 0, 0, { px: g.px, color: g.color, sw: g.px * 0.22, maxW: 420 });
+    txt(ctx, shown, 0, 0, { px: g.px, color: g.color, sw: g.px * 0.22, maxW: 420 });
     ctx.restore();
   }
   SV.drawnTags = cps.filter(o => !hud.includes(o) && !bigRects.includes(o));   // what went on screen this frame (name tags first, then call-outs): for the tests
