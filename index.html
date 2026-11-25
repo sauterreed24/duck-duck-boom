@@ -583,6 +583,8 @@ C.LINES = {
   billPickLost: ["Bill's pick, {duck}, finished {rank}. Bill would like to stop talking about it.", "And Bill's pick, {duck}, came in {rank}. Back to the drawing board.", "Bill's pick, {duck}, finished {rank}. Bill is fine. Totally fine."],
   countInFirst: ['First launch of the show! Count it down with me, folks!', 'First duck of the show! Everybody count it down!'],
   countIn: ['Everybody, count it down!', 'Here we go! Three, two, one...', 'Count it with me, folks!', 'Fingers on the countdown, everyone!', 'Say it with me!'],
+  // a Golden Loaf that moves a person up to a new trophy rosette (3, 5 or 10 of them)
+  rosetteUp: ["That's Golden Loaf number {n} for {player}. Pin on the {ribbon}!", '{player} now wears the {ribbon}. {n} Golden Loaves and counting!', "{n} Golden Loaves! {player}'s duck gets the {ribbon}."],
   teamDay: ['{team} takes Team of the Day!', 'Team of the Day goes to {team}. Synchronized flapping pays off.', "{team} is Team of the Day! Group photo, everybody!"],
   solo: ["Just one duck today, and it's {duck} versus the record!", "A solo flight! {duck} is up against history."],
   winner: ['And the Golden Loaf goes to {duck}!', '{duck} takes home the Golden Loaf! Unbelievable!', 'Your champion of the pond: {duck}!'],
@@ -2211,6 +2213,14 @@ function runSelfTest() {
     const bad = ['(?' + '<!', '(?' + '<=', '?' + '.', '?' + '?'].filter(tok => tok === '?' + '.' ? /\?\.[A-Za-z_$(\[]/.test(src) : src.includes(tok));
     check('the code uses no syntax older browsers cannot parse (regex lookbehind, optional chaining, nullish coalescing)', !bad.length, bad.join(' '));
   }
+  // trophy rosettes: 1, 3, 5 and 10 Golden Loaves; the spot sits inside every duck's body; every duck can wear one
+  {
+    const tiers = [0, 1, 2, 3, 4, 5, 9, 10, 40, 'x', -1].map(rosetteTier).join('');
+    const spotsOk = Object.keys(DUCK_GEO).every(k => { const B = DUCK_GEO[k].body, p = rosetteSpot({ base: k, legendary: k === 'goose' ? 'goose' : null }); return Math.pow((p.x - B[0]) / B[2], 2) + Math.pow((p.y - B[1]) / B[3], 2) < 0.6; });
+    let drawn = true;
+    try { const cv = document.createElement('canvas'), g = cv.getContext('2d'); for (const base of Object.keys(DUCK_GEO).concat('pixel')) for (let tier = 0; tier <= 4; tier++) { const d = generateDuck(hash('rosette', base), {}); if (base === 'pixel' || base === 'goose') d.legendary = base; else { d.base = base; d.legendary = null; } drawDuck(g, d, 100, 100, 80, { rosette: tier, t: 1 }); } } catch (e) { drawn = false; }
+    check('trophy rosettes: blue, red, gold and sparkling gold at 1, 3, 5 and 10 Golden Loaves, on every kind of duck', tiers === '01122334400' && spotsOk && drawn, tiers);
+  }
   check('the music: every tune is complete and every note parses', songsOk && Object.values(MUSIC_CHORDS).every(c => c.keys.split(' ').every(n => MUSIC_NOTE(n) > 0) && MUSIC_NOTE(c.root) > 0));
   // content lint: nothing Bill or a duck says trips the blocklist
   const texts = [].concat(...Object.values(C.LINES), ...Object.values(C.DUCK_LINES), C.BIOS, C.NOTIFY, C.BILLBOARDS, C.ONE_OFFS, C.FIRSTS, C.SURNAMES, C.SUFFIXES, C.TITLES, ...Object.values(C.AWARDS).map(a => [].concat(a.name, a.desc)), ...C.COMPARISONS.map(c => [c.one, c.many]), ...Object.values(C.OUTLOOK_SKY), C.OUTLOOK);
@@ -2554,6 +2564,36 @@ function legendaryPalette(id, t) {
   }
 }
 
+/* ---------- trophy rosettes: Golden Loaves stay with a person, and every duck they get wears the tally ----------
+   1 win: a blue ribbon; 3: red; 5: gold; 10: gold that sparkles. Cosmetic only: it never touches a flight. */
+const ROSETTES = [null,
+  { at: 1, col: '#3f8fd9', name: 'blue ribbon' }, { at: 3, col: '#e8412c', name: 'red ribbon' },
+  { at: 5, col: '#ffc531', name: 'gold ribbon' }, { at: 10, col: '#ffc531', name: 'sparkling gold ribbon', sparkle: true }];
+function rosetteTier(wins) { wins = Number.isFinite(+wins) ? +wins : 0; return wins >= 10 ? 4 : wins >= 5 ? 3 : wins >= 3 ? 2 : wins >= 1 ? 1 : 0; }
+// Golden Loaves won before today's show (counted when the show began, from the Waddle of Fame)
+function playerWins(pl) { const R = S.race, c = R && R.career && R.career.who && pl && R.career.who[pl.key]; return c && Number.isFinite(+c.wins) ? +c.wins : 0; }
+// where it sits on a duck (in the painter's own units: on the flank, below the wing, clear of anything at the neck)
+function rosetteSpot(duck) { const G = DUCK_GEO[duck && duck.legendary === 'goose' ? 'goose' : duck && duck.base] || DUCK_GEO.mallard, B = G.body; return { x: B[0] - B[2] * 0.45, y: B[1] + B[3] * 0.45 }; }
+function drawRosette(ctx, x, y, r, tier, t) {
+  const R = ROSETTES[tier];
+  if (!R) return;
+  ctx.save(); ctx.translate(x, y);
+  // a light outline of its own (the duck's would swamp it at card size), and the fine detail only when it shows
+  const m = ctx.getTransform(), onScreen = r * Math.hypot(m.a, m.b);   // (its radius in canvas pixels)
+  const lw = Math.max(r * 0.1, Math.min(r * 0.16, 2.2 / Math.max(0.01, Math.hypot(m.a, m.b))));
+  const tail = sx => { ctx.beginPath(); ctx.moveTo(sx * r * 0.15, r * 0.2); ctx.lineTo(sx * r * 0.72, r * 1.5); ctx.lineTo(sx * r * 0.42, r * 1.32); ctx.lineTo(sx * r * 0.22, r * 1.65); ctx.lineTo(sx * r * -0.2, r * 0.4); ctx.closePath(); fillStroke(ctx, shade(R.col, -0.15), lw); };
+  tail(-1); tail(1);
+  ctx.beginPath(); for (let i = 0; i < 24; i++) { const a = i / 24 * TAU, rr0 = i % 2 ? r * 0.88 : r; ctx.lineTo(Math.cos(a) * rr0, Math.sin(a) * rr0); } ctx.closePath(); fillStroke(ctx, R.col, lw);
+  circ(ctx, 0, 0, r * 0.55); ctx.fillStyle = mix(R.col, '#ffffff', 0.55); ctx.fill(); ctx.strokeStyle = shade(R.col, -0.25); ctx.lineWidth = lw * 0.7; ctx.stroke();
+  if (onScreen >= 13) { ell(ctx, 0, r * 0.04, r * 0.3, r * 0.19, 0); ctx.fillStyle = '#e7a64b'; ctx.fill(); ctx.strokeStyle = OUT; ctx.lineWidth = lw * 0.6; ctx.stroke(); }
+  if (R.sparkle) {   // a twinkle that wanders round the rim
+    const a = (t || 0) * 1.3, k = 0.55 + 0.45 * Math.sin((t || 0) * 5.1);
+    ctx.translate(Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.95); ctx.scale(k, k); ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); for (let i = 0; i < 8; i++) { const aa = i / 8 * TAU, rr1 = i % 2 ? r * 0.12 : r * 0.55; ctx.lineTo(Math.cos(aa) * rr1, Math.sin(aa) * rr1); } ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
 // The main duck painter. size = pixel height of the duck (head+body, no hat).
 function drawDuck(ctx, duck, x, y, size, o) {
   o = o || {};
@@ -2695,6 +2735,8 @@ function drawDuck(ctx, duck, x, y, size, o) {
   if (has('mug')) { rr(ctx, -W[2] * 1.5, W[3] * 0.05, 13, 15, 3); fillStroke(ctx, '#ffffff', lw * 0.8); ctx.fillStyle = '#7a4a2a'; ctx.fillRect(-W[2] * 1.5 + 2, W[3] * 0.05 + 2, 9, 4); ctx.strokeStyle = OUT; ctx.lineWidth = lw * 0.6; ctx.beginPath(); ctx.arc(-W[2] * 1.5 - 1, W[3] * 0.05 + 8, 4, Math.PI * 0.5, Math.PI * 1.5); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); const sy = Math.sin(t * 5) * 2; ctx.moveTo(-W[2] * 1.5 + 4, W[3] * 0.05 - 3); ctx.quadraticCurveTo(-W[2] * 1.5 + 8 + sy, W[3] * 0.05 - 9, -W[2] * 1.5 + 4, W[3] * 0.05 - 15); ctx.stroke(); }
   ctx.restore();
   if (has('briefcase')) { const bx = B[0] + 8, by = B[1] + B[3] - 2; rr(ctx, bx, by, 22, 15, 3); fillStroke(ctx, '#7a4a2a', lw * 0.9); ctx.strokeStyle = OUT; ctx.lineWidth = lw * 0.6; ctx.beginPath(); ctx.moveTo(bx + 7, by); ctx.lineTo(bx + 7, by - 4); ctx.lineTo(bx + 15, by - 4); ctx.lineTo(bx + 15, by); ctx.stroke(); ctx.fillStyle = '#ffc531'; ctx.fillRect(bx + 9, by + 5, 4, 3); }
+
+  if (o.rosette && pose !== 'peek') { const rs = rosetteSpot(duck); drawRosette(ctx, rs.x, rs.y, 13, o.rosette, t); }
 
   // --- beak ---
   const bk = G.beak;
@@ -2876,6 +2918,7 @@ function drawPixelDuck(ctx, duck, x, y, size, o) {
     ctx.fillStyle = pal[ch];
     ctx.fillRect(Math.floor(c * px), Math.floor(r * px), Math.ceil(px), Math.ceil(px));
   }
+  if (o.rosette) drawRosette(ctx, 4 * px, 10 * px, size * 0.11, o.rosette, t);   // (on the 16 x 14 grid's flank)
   if (o.blink) { ctx.fillStyle = pal.Y; ctx.fillRect(Math.floor(7 * px), Math.floor(2 * px), Math.ceil(2 * px), Math.ceil(2 * px)); ctx.fillStyle = OUT; ctx.fillRect(Math.floor(7 * px), Math.floor(3 * px), Math.ceil(2 * px), Math.ceil(px * 0.6)); }
   ctx.restore();
 }
@@ -2889,7 +2932,8 @@ function duckPortrait(duck, size, extra) {
   cv = document.createElement('canvas');
   cv.width = cv.height = Math.ceil(size * 1.5);
   const c = cv.getContext('2d');
-  drawDuck(c, duck, cv.width * 0.47, cv.height * 0.6, size, { pose: 'stand', crown: extra && extra.indexOf('crown') >= 0, party: extra && extra.indexOf('party') >= 0, bigHead: extra && extra.indexOf('big') >= 0 });
+  const rk = /r(\d)/.exec(extra || '');   // 'r2': wearing a red trophy rosette
+  drawDuck(c, duck, cv.width * 0.47, cv.height * 0.6, size, { pose: 'stand', crown: extra && extra.indexOf('crown') >= 0, party: extra && extra.indexOf('party') >= 0, bigHead: extra && extra.indexOf('big') >= 0, rosette: rk ? +rk[1] : 0, t: 1 });
   if (PortraitCache.size > 400) PortraitCache.clear();
   PortraitCache.set(key, cv);
   return cv;
@@ -6400,7 +6444,7 @@ const POSE_NAME = ['fly', 'scared', 'dizzy', 'sleep', 'eat', 'smug', 'scared', '
 let LowRes = null;
 function duckDrawOpts(pl, extra) {
   const R = S.race;
-  return Object.assign({ party: S.cond.friday, bigHead: S.cond.mod === 'bighead', crown: R && R.champ === pl.key, t: S.time, blink: (S.time + pl.duck.seed % 5) % 3.3 < 0.12 }, extra || {});
+  return Object.assign({ party: S.cond.friday, bigHead: S.cond.mod === 'bighead', crown: R && R.champ === pl.key, rosette: rosetteTier(playerWins(pl)), t: S.time, blink: (S.time + pl.duck.seed % 5) % 3.3 < 0.12 }, extra || {});
 }
 // A soft shadow on the ground under a duck: big and dark when it is low, small and faint when it is high, so height
 // and the moment of touchdown read at a glance. (A flat ellipse, no blur: cheap enough for 40 ducks.)
@@ -6896,7 +6940,7 @@ function drawDockCard(ctx, pl) {
   const x = 20, y = 14, w = 520, h = 136;
   rr(ctx, x, y, w, h, 24); fillStrokeLifted(ctx, '#fff8e6', 5);
   rr(ctx, x + 8, y + 8, 120, 120, 18); fillStroke(ctx, rarityColor(pl.duck.rarity), 4);
-  const ex = (S.race.champ === pl.key ? 'crown' : '') + (S.cond.friday ? 'party' : '') + (S.cond.mod === 'bighead' ? 'big' : '');
+  const ex = (S.race.champ === pl.key ? 'crown' : '') + (S.cond.friday ? 'party' : '') + (S.cond.mod === 'bighead' ? 'big' : '') + 'r' + rosetteTier(playerWins(pl));
   const pc = duckPortrait(pl.duck, 92, ex);
   ctx.drawImage(pc, x + 8 + 60 - pc.width / 2, y + 8 + 66 - pc.height * 0.6);
   txt(ctx, pl.name + "'s duck", x + 142, y + 38, { px: 28, color: teamOf(pl).color === '#F0E442' ? OUT : shade(teamOf(pl).color, -0.25), sw: 0, align: 'left', maxW: w - 160 });
@@ -8184,7 +8228,7 @@ function drawSalvoResult(ctx, r) {
   const title = r.leaderInVolley ? (S.race.idx >= S.race.queue.length ? 'FARTHEST DUCK!' : 'IN THE LEAD!') : r.n > 1 ? 'BEST OF THE VOLLEY' : SV.bonus ? 'BONUS SHOT' : 'LATE DUCK';
   rr(ctx, x + W / 2 - 230, y - 26, 460, 54, 18); fillStroke(ctx, r.leaderInVolley ? '#ffd23f' : '#e9eef5', 5);
   txt(ctx, title, x + W / 2, y + 2, { px: 34, color: OUT, sw: 0, maxW: 430 });
-  const pc = duckPortrait(w.pl.duck, 150, S.cond.friday ? 'party' : '');
+  const pc = duckPortrait(w.pl.duck, 150, (S.cond.friday ? 'party' : '') + 'r' + rosetteTier(playerWins(w.pl)));
   ctx.drawImage(pc, x + 110 - pc.width / 2, y + 150 - pc.height * 0.6);
   txt(ctx, w.pl.duck.name, x + 220, y + 78, { px: 46, minPx: 28, color: OUT, sw: 0, align: 'left', maxW: W - 250 });
   txt(ctx, w.pl.name + "'s duck", x + 220, y + 124, { px: 30, color: shade(teamOf(w.pl).color === '#F0E442' ? '#8a7d00' : teamOf(w.pl).color, -0.2), sw: 0, align: 'left', maxW: W - 250 });
@@ -8372,7 +8416,9 @@ function champWalker() {
   if (!L || !last || L.id !== last.id || !Array.isArray(L.players) || !L.results || typeof L.results !== 'object') return null;
   let best = null, n = 0;
   for (const p of L.players) { const r = p && L.results[p.key]; if (r && Number.isFinite(r.dist)) { n++; if (!best || r.dist > best.r.dist) best = { p, r }; } }
-  return n >= 2 && best && best.p.duck && typeof best.p.duck === 'object' ? { duck: best.p.duck, crown: true } : null;
+  if (!(n >= 2 && best && best.p.duck && typeof best.p.duck === 'object')) return null;
+  const c = careerOf(personKey(best.p.name), S.history);   // (that show is in the history: its Golden Loaf counts)
+  return { duck: best.p.duck, crown: true, rosette: rosetteTier(c ? c.wins : 1) };
 }
 const DEMO = { cyc: -1, duck: null };
 // The running story for people joining the call: champion, record, the month's race, Bill's record. Rebuilt only
@@ -8419,7 +8465,7 @@ function drawTitle(ctx, dt) {
   if (!titleDuck) titleDuck = champWalker() || { duck: generateDuck(hash('title', S.day), {}), crown: false };
   const wx = 26 + Math.sin(t * 0.35) * 22, dir = Math.cos(t * 0.35) > 0;
   ctx.save();
-  try { drawDuck(ctx, titleDuck.duck, V.sx(wx), V.sy(SIM.groundY(wx)) - 58, 120, { pose: 'walk', flip: !dir, t, crown: titleDuck.crown, crownK: 0.9, party: S.cond.friday, blink: (t % 3.1) < 0.12 }); }
+  try { drawDuck(ctx, titleDuck.duck, V.sx(wx), V.sy(SIM.groundY(wx)) - 58, 120, { pose: 'walk', flip: !dir, t, crown: titleDuck.crown, rosette: titleDuck.rosette || 0, crownK: 0.9, party: S.cond.friday, blink: (t % 3.1) < 0.12 }); }
   catch (e) { titleDuck = { duck: generateDuck(hash('title', S.day), {}), crown: false }; }   // (a saved duck that won't draw: today's random one)
   finally { ctx.restore(); }
   Weather.draw(ctx, dt, t, 0);
@@ -8612,7 +8658,7 @@ function drawCard(ctx, rc, pl, flipK, num, pick, hop) {
     rr(ctx, x + 8, y + 8, w - 16, artH, 16); fillStroke(ctx, mix(R0.color, '#ffffff', 0.55), 4);
     const ex = (S.race && S.race.champ === pl.key ? 'crown' : '') + (S.cond.friday ? 'party' : '');
     const ps = Math.min(artH * 0.72, w * 0.62);
-    drawDuck(ctx, d, x + w / 2, y + 8 + artH * 0.56 - (hop || 0) * artH * 0.12, ps, { pose: 'stand', t: S.time, aura: true, crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
+    drawDuck(ctx, d, x + w / 2, y + 8 + artH * 0.56 - (hop || 0) * artH * 0.12, ps, { pose: 'stand', t: S.time, aura: true, rosette: rosetteTier(playerWins(pl)), crown: ex.includes('crown'), party: ex.includes('party'), blink: (S.time + d.seed % 7) % 3.4 < 0.12 });
     const top = y + 8 + artH + 4, room = yb - top;
     let npx = clamp(Math.round(Math.min(h * 0.13, w * 0.11)), 19, 30), lines = [d.name];
     if (room >= npx * 2.2) ({ lines, px: npx } = wrapFit(ctx, d.name, w - 20, 2, npx, Math.max(16, Math.round(npx * 0.72))));   // shrink a little before cutting a long name short
@@ -8690,7 +8736,7 @@ function crownWinner() {
   Caps.reset();
   setBig('DONE', true);
   const st = standings();
-  RS.crowned = !st.length; RS.ru = null;
+  RS.crowned = !st.length; RS.ru = null; RS.pin = null;
   if (!st.length) return;
   // a drumroll while second and third rise and the loaf comes down; the cymbal lands with it (crownMoment)
   SFX.startDrum(CROWN_T - 0.2);
@@ -8704,6 +8750,14 @@ function crownMoment() {
   SFX.stopDrum(0.04); SFX.play('cymbal'); SFX.play('fanfare'); setTimeout(() => SFX.play('cheer', 2), 300);
   Shake.add(5);
   burst('confetti', 70, { x: 960, y: 330, sp0: 260, sp1: 640, l0: 1.6, l1: 2.6, r0: 7, r1: 11, colors: ['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a'], extra: { layer: 'screen', g: 420, drag: 1.2 } });
+  // a Golden Loaf that takes its winner up a rosette tier: the new one is pinned on a moment after the crown
+  if (!R.practice && st.length > 1) {
+    const before = playerWins(st[0].pl), from = rosetteTier(before), to = rosetteTier(before + 1);
+    if (to > from) {
+      RS.pin = { key: st[0].pl.key, from, to, at: RS.t + 1.4, landed: false };
+      if (to >= 2) say('rosetteUp', { player: st[0].pl.name, n: before + 1, ribbon: ROSETTES[to].name }, { prio: 1, delay: 2.0 });
+    }
+  }
   const cw = R.career && R.career.who[st[0].pl.key];   // a first Golden Loaf is for someone who has played before and never won
   const newChamp = !R.practice && st.length > 1 && !!cw && R.career.shows >= 3 && cw.races > 0 && cw.wins === 0;
   if (RS.margin != null) say('closeWin', { duck: st[0].pl.duck.name, margin: marginText(RS.margin) }, { prio: 2, delay: 0.3 });
@@ -8743,6 +8797,11 @@ function updateResults(dt) {
   RS.t += dt;
   const party = S.cond.friday ? 2 : 1;
   if (RS.page === 0 && !RS.crowned && RS.t >= CROWN_T) crownMoment();
+  const pin = RS.pin;
+  if (pin && !pin.landed && RS.page === 0 && RS.t >= pin.at + 0.55) {
+    pin.landed = true; SFX.play('ding'); Shake.add(2);
+    if (pin.tx != null) burst('confetti', 22, { x: pin.tx, y: pin.ty, sp0: 80, sp1: 260, l0: 0.6, l1: 1.1, r0: 4, r1: 7, colors: ['#ffd23f', '#ffffff', ROSETTES[pin.to].col], extra: { layer: 'screen', g: 300, drag: 1.5 } });
+  }
   if (RS.page === 0 && RS.crowned && RS.t - (RS.crownAt || 0) < 6 && (RS.conf += dt * 22 * party * Math.min(1, Particles.max / 260)) > 1) {
     const n = Math.floor(RS.conf); RS.conf -= n;
     for (let i = 0; i < n; i++) Particles.add({ type: 'confetti', layer: 'screen', x: fx.range(0, 1920), y: -20, vx: fx.range(-60, 60), vy: fx.range(80, 220), g: 60, life: fx.range(3, 5), r: fx.range(7, 11), rot: fx.range(0, TAU), spin: fx.range(-5, 5), color: fx.pick(['#ffd23f', '#e8412c', '#4ad7ff', '#ff6fb5', '#5cbf4a', '#b28cff']) });
@@ -8784,7 +8843,19 @@ function drawPodium(ctx, st) {
     const win = sp.i === 0;
     const sz = win ? 190 : 160;
     const dance = win ? Math.sin(t * 6) * 0.15 : 0, bob = win ? Math.abs(Math.sin(t * 6)) * 16 : 0;
-    drawDuck(ctx, e.pl.duck, sp.x, top - sz * 0.48 - bob, sz, duckDrawOpts(e.pl, { pose: win ? 'smug' : 'stand', rot: dance, flap: win ? t * 2 : null, aura: win }));
+    const pin = RS.pin && RS.pin.key === e.pl.key ? RS.pin : null, landed = pin && RS.t >= pin.at + 0.55;
+    const dOpts = { pose: win ? 'smug' : 'stand', rot: dance, flap: win ? t * 2 : null, aura: win };
+    if (pin) dOpts.rosette = landed ? pin.to : pin.from;
+    drawDuck(ctx, e.pl.duck, sp.x, top - sz * 0.48 - bob, sz, duckDrawOpts(e.pl, dOpts));
+    if (pin) {
+      // where it goes on this duck, on screen (the painter's units, scaled and turned with the dance)
+      const rs = e.pl.duck.legendary === 'pixel' ? { x: -4 * 95 / 14, y: 3 * 95 / 14 } : rosetteSpot(e.pl.duck), k0 = sz / 95;
+      const X = rs.x * k0, Y = rs.y * k0, dy = top - sz * 0.48 - bob;
+      pin.tx = sp.x + Math.cos(dance) * X - Math.sin(dance) * Y; pin.ty = dy + Math.sin(dance) * X + Math.cos(dance) * Y;
+      // it flies in from the open sky right of the podium (below the winner's name, left of the side boxes); drawn last
+      if (RS.t >= pin.at && !landed) { const u = easeIn(clamp((RS.t - pin.at) / 0.55, 0, 1)); pin.fly = { x: lerp(sp.x + 330, pin.tx, u), y: lerp(300, pin.ty, u), r: lerp(46, 13 * k0, u), rot: (1 - u) * 2.4 }; }
+      else pin.fly = null;
+    }
     if (!win) {
       const ty = top - sz - 125;   // clear of tall hats and ears
       txt(ctx, e.pl.duck.name, sp.x, ty, { px: 32, color: '#fff', sw: 6, maxW: 330 });
@@ -8852,6 +8923,8 @@ function drawPodium(ctx, st) {
     ctx.globalAlpha = 1;
     if (pages > 1) txt(ctx, 'page ' + (pg + 1) + ' of ' + pages, x + 200, y + 76 + rows * 44 - 6, { px: 22, color: '#6b6577', sw: 0 });
   }
+  const fly = RS.pin && RS.pin.fly;
+  if (fly) { ctx.save(); ctx.translate(fly.x, fly.y); ctx.rotate(fly.rot); drawRosette(ctx, 0, 0, fly.r, RS.pin.to, t); ctx.restore(); }
 }
 // the runner-up's one-liner: a small bubble above its name (clear of the winner's lines and the loaf), for a few seconds
 function drawPodiumQuip(ctx, q, x, y) {
@@ -9013,7 +9086,7 @@ function drawFame(ctx, dt) {
   }
   if (FM.page === 0) {
     panel(40, 120, 900, 760, 'MOST WINS');
-    F.players.slice(0, 12).forEach((p, i) => { const y = 200 + i * 54; txt(ctx, (i + 1) + '. ' + p.name, 80, y, { px: 30, minPx: 24, color: OUT, sw: 0, align: 'left', maxW: 330 }); txt(ctx, p.wins + ' win' + (p.wins === 1 ? '' : 's') + ' · ' + p.podiums + ' podium' + (p.podiums === 1 ? '' : 's') + ' · best ' + fmtFt(p.best), 900, y, { px: 26, minPx: 20, color: '#4a4458', sw: 0, align: 'right', weight: 800, maxW: 500 }); });
+    F.players.slice(0, 12).forEach((p, i) => { const y = 200 + i * 54; txt(ctx, (i + 1) + '. ' + p.name, 80, y, { px: 30, minPx: 24, color: OUT, sw: 0, align: 'left', maxW: 330 }); drawRosette(ctx, 432, y - 6, 13, rosetteTier(p.wins), S.time); txt(ctx, p.wins + ' win' + (p.wins === 1 ? '' : 's') + ' · ' + p.podiums + ' podium' + (p.podiums === 1 ? '' : 's') + ' · best ' + fmtFt(p.best), 900, y, { px: 26, minPx: 20, color: '#4a4458', sw: 0, align: 'right', weight: 800, maxW: 440 }); });
     panel(980, 120, 900, 250, 'TEAM WINS');
     teams().forEach((tm, i) => { const row = F.teams.find(x => x.i === i); const y = 200 + i * 56; teamShape(ctx, tm.shape, 1030, y, 14); ctx.fillStyle = tm.color; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = OUT; ctx.stroke(); txt(ctx, tm.name, 1060, y, { px: 30, color: OUT, sw: 0, align: 'left', maxW: 500 }); txt(ctx, String(row ? row.wins : 0), 1840, y, { px: 32, color: OUT, sw: 0, align: 'right' }); });
     panel(980, 390, 900, 130, F.streak && F.streak.n < 2 ? 'LAST WINNER' : 'CURRENT WIN STREAK');   // (one win is not a streak yet)
