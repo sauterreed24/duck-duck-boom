@@ -15,10 +15,10 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: #14121c; overflow: hidden; font-family: var(--font); color: var(--ink); }
-  #wrap { position: fixed; inset: 0; overflow: hidden; }
+  #wrap { position: fixed; top: 0; right: 0; bottom: 0; left: 0; overflow: hidden; }
   #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; background: #7ec8f0; }
   #cv { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; touch-action: manipulation; }
-  #ui { position: absolute; inset: 0; pointer-events: none; }
+  #ui { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
   #ui > * { pointer-events: auto; }
   .hidden { display: none !important; }
 
@@ -72,7 +72,7 @@
   #roster #rundo { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* ---------- modal (settings / pause / text fallback) ---------- */
-  #modal { position: absolute; inset: 0; background: rgba(20,18,28,.55); display: flex; align-items: center; justify-content: center; }
+  #modal { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(20,18,28,.55); display: flex; align-items: center; justify-content: center; }
   #modal .panel { width: 1240px; max-height: 960px; overflow-y: auto; padding: 26px 32px; display: flex; flex-direction: column; gap: 16px; }
   #modal h2 { margin: 0; font-size: 46px; }
   #modal h3 { margin: 6px 0 0; font-size: 26px; }
@@ -238,6 +238,9 @@ const NAME_MAX = 40;
 // limit: names saved that way must keep matching. < and > go: names also reach the settings' HTML.)
 function cleanName(name) { return Array.from(String(name || '').normalize('NFC').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/[<>]/g, '').trim().replace(/\s+/g, ' ')).slice(0, NAME_MAX).join('').trim(); }
 function firstWord(name) { return (cleanName(name).split(' ')[0] || '').toLowerCase(); }
+// focus that came from the keyboard. Safari before 15.4 throws on ':focus-visible': there, treat it as not keyboard
+// focus, so Space stays the big button and the roster keeps working
+function focusVisible(el) { try { return el.matches(':focus-visible'); } catch (e) { return false; } }
 function deepClone(o) { return o == null ? o : JSON.parse(JSON.stringify(o)); }
 
 
@@ -739,6 +742,7 @@ const Store = (() => {
     ls = t;
   } catch (e) { ls = null; }
   let warned = false;
+  const unsaved = new Set();   // keys whose last write did not reach the browser (storage full): this session's copy stays
   function failed() {
     full = true;
     if (!warned && typeof Toast !== 'undefined') { warned = true; setTimeout(() => Toast.show('Browser storage is full, so changes are not being saved. Export your data (Settings), then clear some site data.', 6000), 0); }
@@ -769,7 +773,8 @@ const Store = (() => {
     try { raw = JSON.stringify({ schema: SCHEMA, data }); } catch (e) { return false; }
     mem[key] = raw;
     if (!ls) return true;
-    try { ls.setItem(PREFIX + key, raw); return true; } catch (e) {
+    try { ls.setItem(PREFIX + key, raw); unsaved.delete(key); if (full && !unsaved.size) full = false; return true; } catch (e) {
+      unsaved.add(key);
       // probably quota: the browser keeps only the newest races, and says so. This session keeps all of them (mem
       // still holds the full copy), so an Export right now has everything.
       if (key === 'history' && data && Array.isArray(data.races) && data.races.length > 30) {
@@ -784,8 +789,10 @@ const Store = (() => {
       return false;
     }
   }
+  // another tab of the game changed this key: read it afresh next time (unless this session holds a copy it could not save)
+  function refresh(key) { if (!unsaved.has(key)) delete mem[key]; }
   function del(key) {
-    delete mem[key];
+    delete mem[key]; unsaved.delete(key);
     if (ls) { try { ls.removeItem(PREFIX + key); } catch (e) { /* ignore */ } }
   }
   function wipe() {
@@ -822,9 +829,9 @@ const Store = (() => {
     let n = 0;
     // a damaged race in the history (from an old bug or a hand edit) is left out; the rest of the backup comes in
     for (const k of KEYS) { if (k in D && D[k] != null) { set(k, k === 'history' ? Object.assign({}, D[k], { races: D[k].races.filter(validRace) }) : D[k]); n++; } else del(k); }
-    return n;
+    return n;   // (a write that did not fit leaves Store.full set: the caller says so)
   }
-  return { get, set, del, wipe, exportAll, importAll, persistent: !!ls, get full() { return full; }, SCHEMA, PREFIX };
+  return { get, set, del, wipe, refresh, exportAll, importAll, persistent: !!ls, get full() { return full; }, SCHEMA, PREFIX };
 })();
 
 /* ---------- typed accessors ---------- */
@@ -850,7 +857,8 @@ function loadRoster() {
   const people = (r && Array.isArray(r.people)) ? r.people : [];
   const day = r && typeof r.day === 'string' ? r.day : null;
   // td = the day this person was ticked (older saves only have the roster-wide day)
-  return people.filter(p => p && p.name).map(p => ({ id: p.id || ('p' + hex8(hash(p.name, p.team || 0))), name: cleanName(p.name), team: clamp(p.team | 0, 0, 2), checked: !!p.checked, ammo: clamp(p.ammo | 0, 0, 3), td: p.checked ? (typeof p.td === 'string' ? p.td : day) : null }));
+  const seen = new Set();
+  return people.filter(p => p && p.name).map((p, i) => ({ id: (() => { let id = typeof p.id === 'string' && p.id ? p.id : 'p' + hex8(hash(p.name, p.team || 0)); if (seen.has(id)) id += '-' + i; seen.add(id); return id; })(), name: cleanName(p.name), team: clamp(p.team | 0, 0, 2), checked: !!p.checked, ammo: clamp(p.ammo | 0, 0, 3), td: p.checked ? (typeof p.td === 'string' ? p.td : day) : null }));
 }
 // ticksChanged: only deliberate tick edits move the 'ticks are from <day>' date forward
 function saveRoster(ticksChanged) {
@@ -892,7 +900,7 @@ function recentNameSet(dayKey) {
 function rememberNames(dayKey, names) {
   const r = Store.get('recentNames', null) || {};
   const by = (r.byDate && typeof r.byDate === 'object') ? r.byDate : {};
-  const cur = new Set(by[dayKey] || []);
+  const cur = new Set(Array.isArray(by[dayKey]) ? by[dayKey] : []);
   names.forEach(n => cur.add(n));
   by[dayKey] = Array.from(cur);
   const keep = Object.keys(by).sort().slice(-35);
@@ -4887,7 +4895,8 @@ function importDataFromText(text, confirmed) {
     S.settings = loadSettings(); S.roster = loadRoster(); S.history = loadHistory();
     SFX.setVolume(S.settings.volume); SFX.setMuted(S.settings.muted);
     S.race = null;
-    Toast.show('Imported ' + n + ' sections. ' + S.history.length + ' races in history.' + (savedShow() ? ' The saved show can be resumed from the title screen.' : ''), 3200);
+    if (Store.full) Toast.show('Imported, but browser storage is full: not all of it is saved in this browser yet. This session has everything; clear some site data, then import again.', 7000);
+    else Toast.show('Imported ' + n + ' sections. ' + S.history.length + ' races in history.' + (savedShow() ? ' The saved show can be resumed from the title screen.' : ''), 3200);
     Modal.close(); go('title');
     return true;
   } catch (e) { Toast.show('Import failed: ' + e.message, 3000); return false; }
@@ -5092,7 +5101,7 @@ const Roster = {
       if (a && this.el.contains(a) && keepIds.includes(a.id)) { focusId = a.id; try { selS = a.selectionStart; selE = a.selectionEnd; } catch (e) { /* select */ } }
       // a tick box or button worked from the keyboard keeps the focus through the re-render (otherwise focus fell to
       // the page and the next Space started the show). After a mouse click nothing changes: Space is the big button.
-      else if (a && this.el.contains(a) && a !== this.el && a.matches(':focus-visible')) {
+      else if (a && this.el.contains(a) && a !== this.el && focusVisible(a)) {
         if (a.id) refocus = '#' + a.id;
         else { const at = ['data-chk', 'data-all', 'data-none', 'data-ammo', 'data-move'].find(n => a.hasAttribute(n)); if (at) refocus = '[' + at + '="' + a.getAttribute(at) + '"]' + (at === 'data-move' ? '[data-to="' + a.dataset.to + '"]' : ''); }
       }
@@ -5299,7 +5308,22 @@ function addLatePlayer(name, team) {
   const insertAt = () => { const fb = R.queue.findIndex((q, i) => q.bonus && i >= R.idx + flying); return fb >= 0 ? Math.max(fb, R.idx + flying + (loadedNow ? 1 : 0)) : R.queue.length; };
   // putting back someone who was removed by mistake: same person, same duck
   const back = R.players.findIndex(p => p.key === key && p.out && !R.results[p.key]);
-  if (back >= 0) { R.players[back].out = false; R.queue.splice(insertAt(), 0, { p: back, s: 0 }); saveRace(); refreshIdleBig(); Toast.show(R.players[back].name + "'s duck is back in" + (R.mode === 'salvo' ? '!' : ' and will launch last!'), 2600); if (R.mode === 'salvo' && S.screen === 'launch' && L.phase === 'salvo') salvoQueueChanged(); return; }
+  if (back >= 0 && activePlayers().length >= 40) { Toast.show('The cannon tops out at 40 ducks.'); return; }
+  if (back >= 0) {
+    R.players[back].out = false; R.queue.splice(insertAt(), 0, { p: back, s: 0 });
+    // and their bonus shots (removing them took those out of the queue too): one-by-one at the end; in a salvo, each in
+    // its own round's volley, never into a volley that is already lit
+    const firstFree = R.idx + flying + (loadedNow ? 1 : 0);
+    for (let k = 1; k <= ((R.players[back].ammo | 0)); k++) {
+      let at = R.queue.length;
+      if (R.mode === 'salvo') {
+        let last = -1, next = -1;
+        R.queue.forEach((q, i) => { if (i >= firstFree && q.bonus) { if (q.s === k) last = i; else if (q.s > k && next < 0) next = i; } });
+        at = last >= 0 ? last + 1 : next >= 0 ? next : R.queue.length;
+      }
+      R.queue.splice(Math.max(at, firstFree), 0, { p: back, s: k, bonus: true });
+    }
+    saveRace(); refreshIdleBig(); Toast.show(R.players[back].name + "'s duck is back in" + (R.mode === 'salvo' ? '!' : ' and will launch last!'), 2600); if (R.mode === 'salvo' && S.screen === 'launch' && L.phase === 'salvo') salvoQueueChanged(); return; }
   let nm = name, i = 2;
   while (R.players.some(p => p.key === personKey(nm))) nm = name + ' (' + (i++) + ')';
   if (activePlayers().length >= 40) { Toast.show('The cannon tops out at 40 ducks.'); return; }
@@ -5587,7 +5611,7 @@ function computeHighlights(R, max, awards) {
 function resultsText(R) {
   const st = standings();
   const { awards, feather } = computeAwards(R);
-  const hl = computeHighlights(R, 5, awards);
+  const hl = computeHighlights(R, 3, awards);   // (the same three the screen and the history show)
   const cond = S.cond;
   const head = 'Duck Duck BOOM! · ' + shortDate(R.day) + ' · ' + st.length + ' duck' + (st.length === 1 ? '' : 's') + ' · ' + modName(cond) + ' · Race ID ' + R.id + (R.practice ? ' · Practice' : '');
   const lines = [head];
@@ -5623,7 +5647,11 @@ function finalizeRace() {
     };
     const pk = billPickKey(R), pi = st.findIndex(e => e.pl.key === pk);
     if (pk && pi >= 0) rec.pick = { p: st[pi].pl.name, rank: pi + 1 };
+    Store.refresh('history');   // another tab of the game may have saved a race since this one loaded: start from the saved list
+    const saved = loadHistory(), ids = new Set(saved.map(r => r.id));
+    S.history = saved.concat(S.history.filter(r => !ids.has(r.id)));
     S.history.push(rec);
+    if (S.history.length > 400) S.history = S.history.slice(-400);   // (what saveHistory keeps)
     saveHistory(S.history);
   }
   R.saved = true;
@@ -5658,7 +5686,8 @@ function loadDuck(first) {
   const go2 = () => {
     if (!S.race || S.screen !== 'launch') return;
     const q2 = curQ();
-    if (!q2) { if (standings().length) { L.phase = 'idle'; setBig('SEE RESULTS', true); } return; }
+    // nobody left to load (the last ducks were removed while the screen wiped): results if anyone flew, else the title
+    if (!q2) { if (standings().length) { L.phase = 'idle'; setBig('SEE RESULTS', true); } else { Store.del('current'); S.race = null; go('title'); } return; }
     const q = q2;
     L.q = q; L.pi = q.p; L.pl = R.players[q.p];
     L.tl = null; L.pb = null; L.result = null; L.replay = false; L.photo = false; L.drum = false; L.fuseOut = false; L.boomed = false;
@@ -8294,7 +8323,7 @@ function finishedShow() {
   return l && l.saved && !l.practice && Array.isArray(l.players) && l.players.length && Array.isArray(l.queue) ? l : null;
 }
 function showLabel(c) { return (c.day === todayKey() ? "Today's show" : 'Unfinished show from ' + shortDate(c.day)) + ' · ' + c.players.length + ' duck' + (c.players.length === 1 ? '' : 's') + ' · ' + (c.stage === 'launch' ? Math.min(c.idx, c.queue.length) + ' of ' + c.queue.length + ' launched' : c.stage === 'results' ? 'results' : 'reveal'); }
-function viewLastResults(c) { S.race = c; refreshWorld(); RS.back = true; RS.page = 2; RS.t = 0; RS.ru = null; go('results'); }
+function viewLastResults(c) { S.race = tidyShow(c); refreshWorld(); RS.back = true; RS.page = 2; RS.t = 0; RS.ru = null; go('results'); }
 function stopShowAudio() { SFX.stopLong(0.08); Voice.stop(); }
 function primary(fromPointer) {
   if (Modal.isOpen) return;
@@ -8314,8 +8343,17 @@ function primary(fromPointer) {
     case 'gallery': GL.seed = freshSeed(); SFX.play('flip'); break;
   }
 }
+// a show saved by an older version (or edited by hand) may lack a field the show reads every step: fill those in
+function tidyShow(c) {
+  const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+  if (!isObj(c.results)) c.results = {};
+  if (!isObj(c.shots)) c.shots = {};
+  if (!Array.isArray(c.legend)) c.legend = [];
+  c.idx = clamp(Number.isFinite(+c.idx) ? Math.floor(+c.idx) : 0, 0, c.queue.length);
+  return c;
+}
 function resumeRace(c) {
-  S.race = c;
+  S.race = tidyShow(c);
   L.phase = 'idle';   // never inherit a finished show's 'on the way to the results' state
   refreshWorld();
   Lines.reset(c.seed);
@@ -8323,7 +8361,7 @@ function resumeRace(c) {
   Toast.show('Resuming race ' + c.id, 2000);
   if (c.stage === 'reveal' || c.stage === 'forecast') go('reveal');
   else if (c.stage === 'launch') { Particles.clear(); Caps.reset(); go('launch'); if (c.mode === 'salvo') salvoLoad(true); else loadDuck(true); }
-  else go('results');
+  else { if (!c.saved) finalizeRace(); go('results'); }   // (a show left on the results by an older version, never filed: file it)
 }
 
 /* ---------- title ---------- */
@@ -9123,7 +9161,7 @@ window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (Modal.isOpen) { if (k === 'p' || k === 'escape') { e.preventDefault(); Modal.close(); } return; }
   // a checkbox / button reached with the keyboard keeps Space for itself (after a mouse click, Space is the big button)
-  if ((k === ' ' || e.code === 'Space') && e.target && e.target.closest && e.target.closest('#roster, #modal') && /^(input|button|select)$/i.test(e.target.tagName) && e.target.matches(':focus-visible')) return;
+  if ((k === ' ' || e.code === 'Space') && e.target && e.target.closest && e.target.closest('#roster, #modal') && /^(input|button|select)$/i.test(e.target.tagName) && focusVisible(e.target)) return;
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); primeAudio(); if (!e.repeat) primary(); return; }
   if (k === 'f') { toggleFullscreen(); return; }
   if (k === 'n') { primeAudio(); S.settings.music = !S.settings.music; SFX.setMusicOn(S.settings.music); saveSettings(); Toast.show(S.settings.music ? 'Music on' : 'Music off'); if (S.screen === 'roster') Roster.render(); return; }
@@ -9135,6 +9173,15 @@ window.addEventListener('keydown', e => {
     if (k === 'r') { if (L.phase === 'salvo') salvoReplay(); else replayFlight(); return; }
     if (k === 's') { if (L.phase === 'salvo') salvoSkip(); else skipFlight(); return; }
   }
+});
+// another tab of the game saved something: read it afresh (so a show run there is never lost when this tab saves its
+// own), and pick up its history and roster (not while the roster is being edited here)
+window.addEventListener('storage', e => {
+  if (!e.key) { ['history', 'roster', 'last', 'current'].forEach(k => Store.refresh(k)); }
+  else if (e.key.indexOf(Store.PREFIX) === 0) Store.refresh(e.key.slice(Store.PREFIX.length));
+  else return;
+  S.history = loadHistory();
+  if (S.screen !== 'roster') S.roster = loadRoster();
 });
 window.addEventListener('resize', resize);
 document.addEventListener('fullscreenchange', resize);
