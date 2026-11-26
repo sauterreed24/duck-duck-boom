@@ -41,11 +41,12 @@ measured, train seeds (held-out in brackets where it was run).
 | 4 | Pacing: flight length p10 / p50 / p90, 12 ducks; reveal → fire with a prompt host | experience | p90 ≤ 38 s | 23.6 / 31.2 / 37.2 s; 15 s | unchanged |
 | 5 | Commentary: longest silence p90; repeated lines; captions cut off | experience | ≤ 6 s; 0; 0 | 5.5 s; 0; 0 | unchanged |
 | 6 | Fairness: win share by roster slot (chi² p), max share | fairness | p > 0.01, ≤ 1.3× | p 0.75, 1.1× | unchanged |
-| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 16.3 / 17.2 ms (noise ≈ ±3%) |
-| 8 | Robustness: page errors; `eval/play.js` (19 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 19/19; pass; 2/2 |
+| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 16.8 / 17.3 ms (noise ≈ ±3%) |
+| 12 | First look: a first-time visitor (empty browser) reaches the cannon firing; presses and characters typed before it | onboarding | possible without typing | needs names typed (≥ 2 names) | **5 presses, 0 typed** (sample ducks) |
+| 8 | Robustness: page errors; `eval/play.js` (20 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 20/20; pass; 2/2 |
 | 9 | Contrast: worst text-on-team-colour pair drawn in a flight (WCAG ratio) | accessibility | ≥ 3.0 | 2.25 (white on orange) | **4.36** |
 | 10 | Events told: distance-changing events whose duck got a call-out drawn while it was in the picture, a big impact caption naming it, or a Bill line naming it, within ~2 s (6 rendered shows) | readability (guard) | no worse | 0.982 (0.966) | 0.982 (0.966) |
-| 11 | Results readability: highlight rows (and the copied results' highlight) that say whose duck each mentioned duck is; rows cut off (2-line limit) | experience | ≥ 0.95; 0 cut | 0.00, 0.00; 0 cut | **1.00, 1.00** (1.00); 0 cut (also with 40-character names) |
+| 11 | Results readability: highlight rows (and the copied results' highlight) that say whose duck each mentioned duck is; rows cut off (2-line limit) | experience | ≥ 0.95; 0 cut | 0.00, 0.00; 0 cut | **1.00, 1.00** (1.00); 0 cut (also with 40-character names). Award cards naming another duck that say whose: 0/15 → **15/15** (16/16), 0 cut |
 
 "Drawn" counts (checks 2 and 10) count a call-out only while its duck is in the picture that frame (corrected this
 session; see Log). Noise: two train runs are identical (timings aside). Between seed sets (train vs holdout): ≈ 0.03 on "everyone",
@@ -56,12 +57,10 @@ Not measurable by bots (checks for a human): how the show looks and sounds, whet
 change feels better on a real screen share.
 
 ## Backlog
-1. **Award descriptions naming another duck** ("Closest Call: Just 21 ft from Ranger Sprinkles.") don't say whose duck
-   that is; the card has room for two lines only, so it needs a layout check first.
-2. **Sample ducks for a first look:** an empty roster could offer a practice show with sample names, so someone trying
-   the game reaches the cannon without typing names. Onboarding idea; measure inputs from page open to first launch.
-3. Bill's "WRONG WAY! WRONG WAY!" and "We've lost the duck" lines name no duck (the big caption and arrows do).
-4. Tension (check 3) cannot move without touching the flight sim; see Decisions.
+1. The sample banner pushes the roster down; the right column scrolls (its Tick all / Untick all row is below the fold
+   on an empty roster, where it does nothing). Fine today; revisit if the banner grows.
+2. Bill's "WRONG WAY! WRONG WAY!" and "We've lost the duck" lines name no duck (the big caption and arrows do).
+3. Tension (check 3) cannot move without touching the flight sim; see Decisions.
 
 ## Alternatives
 - **A′, player's name written into Bill's line** ("Whiteboard (Cyrus) bounced right back!"): scored the same as the
@@ -72,8 +71,8 @@ change feels better on a real screen share.
 ## Strategy
 | Kind of change | Tried | Kept | Notes |
 |---|---|---|---|
-| Readability (who is who on screen) | 4 (A, A′, B3′, H1) | 3 | Cheap, large measured gains; found by reading screenshots of every screen. Session 2's gain was smaller (one screen left) |
-| Onboarding (first-time host) | 1 | 1 | Small; found by playing from an empty browser; the review found two gaps in it |
+| Readability (who is who on screen) | 5 (A, A′, B3′, H1, C1) | 4 | Cheap, large measured gains; found by reading screenshots of every screen. Session 2's gain was smaller (one screen left) |
+| Onboarding (first-time host) | 2 | 2 | Found by playing from an empty browser; session 3's sample show was the bolder one |
 | Measurement fixes | 2 | 2 | Both found by screenshotting a "miss" before treating it as a game problem |
 | Accessibility (contrast) | 1 | 1 | Found by measuring every text-on-colour pair drawn |
 | Commentary routing (Bill) | 1 | 0 | Bill's channel is saturated; route new information visually instead |
@@ -147,6 +146,23 @@ Process notes (why things failed this round):
 - The first highlight invariant passed a broken copy: it checked presence, not exact count and reversibility.
 - I edited `index.html` while two evaluator runs were going (Playbook rule). They had already loaded the page, so the
   numbers stood, but the final numbers come from a fresh run of the final commit.
+
+### Session 3 (2026-11-26): round 3
+Baseline reproduced session 2's end exactly. Played the screens no round had looked at (title with history, Waddle of
+Fame, settings): no new problems (a team colour already in use swaps). Strategy said change focus; candidates were the
+backlog top (award cards) and a bolder onboarding idea.
+- **C1: Closest Call says whose duck** ("Just 21 ft from Ranger Sprinkles (Kit)."). Predicted cards saying whose
+  0/15 → 15/15, 0 cut. First version cut 1 of 36 cards with 40-character names (the current game cut none): added a
+  last-resort "Kit's duck" version; then 15/15 train, 16/16 held-out, 0 cut, also with long names. New self-test case
+  (fails without the fallback). **Kept.**
+- **C2: sample ducks for a first look** (bolder, onboarding). An empty roster offers a practice show with 8 sample
+  guests. Predicted: a first-time visitor reaches the cannon without typing. Measured: 5 presses, 0 characters typed
+  (before: at least two names to type); afterwards the roster, history and Last results are empty, and the sample's
+  duck names don't use up names for real shows. New playthrough check (fails on the previous version). Every other
+  check identical on train and held-out. **Kept.** Cost: the banner pushes the roster down (Backlog 1).
+- **Round gain:** small readability gain (last place naming a duck alone) and an onboarding gain for new visitors.
+  Readability is now done everywhere I can find; the last three rounds' gains shrank. Next session should look at a
+  new area (performance on a real laptop, sound, or a decision below) rather than more readability.
 
 ## Decisions for me
 1. **Closer finishes?** (tension) The distance spread is long-tailed (p90 ≈ 2,700 ft, p99 ≈ 4,400 ft), so the winner
