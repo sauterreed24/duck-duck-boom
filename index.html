@@ -5252,6 +5252,7 @@ const Roster = {
     this.el.innerHTML =
       '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick who booked · click a name to fix it · dots move teams · up to 40 ducks</div></div>' +
       '<div style="text-align:right;flex:none"><div class="bar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap">' + (this.undo ? '<button class="btn small" id="rundo" title="Put this person back on the roster">↶ Undo: put ' + esc(this.undo.p.name) + ' back</button>' : '') + '<button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn"' + (warnText ? ' title="' + esc(warnFull) + '"' : '') + '>' + esc(warnText) + '</div></div></div>' +
+      (!S.roster.length ? '<div class="stale">New here? <button class="btn small green" id="rsample">Try a practice show with ' + SAMPLE_NAMES.length + ' sample ducks</button> It stays off your roster and the Waddle of Fame.</div>' : '') +
       (stale ? '<div class="stale">' + (oldTicks.length === checked ? 'These ticks are' : oldTicks.length + ' of the ticks are') + ' from ' + esc(prettyDate(oldDay)) + '. New day? <button class="btn small" id="rfresh">' + (oldTicks.length === checked ? 'Untick everyone' : 'Untick those ' + oldTicks.length) + '</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
@@ -5311,6 +5312,7 @@ const Roster = {
     $('#pastebtn').onclick = () => useList(false);
     // find: just hide rows, no re-render
     $('#rfind').oninput = e => { this.filter = e.target.value; const q = personKey(this.filter); this.el.querySelectorAll('.list .row[data-key]').forEach(r => { r.style.display = !q || r.dataset.key.includes(q) ? '' : 'none'; }); this.el.querySelectorAll('.team .list').forEach(l => { const nm = l.querySelector('.nomatch'); if (nm) nm.style.display = [...l.querySelectorAll('.row[data-key]')].some(r => r.style.display !== 'none') ? 'none' : 'flex'; }); };
+    const smp = $('#rsample'); if (smp) smp.onclick = () => { if (createRace(SAMPLE_NAMES.map((name, i) => ({ name, team: i % 3, checked: true })))) { SFX.play('click'); go('reveal'); } };
     const fr = $('#rfresh'); if (fr) fr.onclick = () => { oldTicks.forEach(p => { p.checked = false; }); save(true); };
     $('#tpractice').onchange = e => { S.settings.practice = e.target.checked; saveSettings(); setBig(S.settings.practice ? 'REVEAL (PRACTICE)' : 'REVEAL DUCKS', checked > 0); };   // only the label changes: focus stays on the box
     $('#tauto').onchange = e => { S.settings.autoAdvance = e.target.checked; saveSettings(); };
@@ -5343,11 +5345,13 @@ function makePlayer(name, team, rerolls, ctx, day) {
 // Salvo (every duck at once) is the main mode. One-by-one is still there: untick Salvo on the roster or in
 // Settings, or open the page with ?classic.
 function showMode() { return /[?&]classic\b/.test(QS) ? 'classic' : /[?&]salvo\b/.test(QS) ? 'salvo' : S.settings.salvo === false ? 'classic' : 'salvo'; }
-function createRace() {
+// a first look without typing names: these guests fly a practice show (it stays off the roster and the Waddle of Fame)
+const SAMPLE_NAMES = ['Alex', 'Blair', 'Casey', 'Drew', 'Emery', 'Finley', 'Harper', 'Jordan'];
+function createRace(sample) {
   const people = [];
   const seenKeys = new Set();
   // same order as the roster columns (team, then name), so who's left out past 40 is predictable
-  const ticked = S.roster.filter(p => p.checked).slice().sort((a, b) => (a.team | 0) - (b.team | 0) || String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }));
+  const ticked = (sample || S.roster).filter(p => p.checked).slice().sort((a, b) => (a.team | 0) - (b.team | 0) || String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }));
   const left = [];
   for (const p of ticked) {
     if (people.length >= 40) { left.push(cleanName(p.name)); continue; }
@@ -5363,7 +5367,7 @@ function createRace() {
   S.day = day;
   const seed = S.dbg.seed != null ? S.dbg.seed >>> 0 : freshSeed();
   const rer = loadRerolls(day);
-  const ctx = { recent: recentNameSet(day), taken: new Set(), takenWords: new Set(), firsts: new Set(S.roster.map(p => firstWord(p.name)).filter(w => w.length >= 2)) };
+  const ctx = { recent: recentNameSet(day), taken: new Set(), takenWords: new Set(), firsts: new Set((sample || S.roster).map(p => firstWord(p.name)).filter(w => w.length >= 2)) };
   const players = people.map(p => {
     const pl = makePlayer(p.name, p.team, rer[personKey(p.name)] || 0, ctx, day);
     pl.ammo = S.settings.bonusAmmo ? (p.ammo | 0) : 0;
@@ -5380,7 +5384,7 @@ function createRace() {
   const career = { shows: races.length, who: {} };
   for (const p of players) { const c = careerOf(p.key, races); if (c) career.who[p.key] = c; }
   S.race = {
-    v: 1, id: hex8(seed), seed, day, practice: !!S.settings.practice, created: Date.now(), mode: showMode(),
+    v: 1, id: hex8(seed), seed, day, practice: !!S.settings.practice || !!sample, sample: !!sample || undefined, created: Date.now(), mode: showMode(),
     players, queue: order.map(pi => ({ p: pi, s: 0 })), idx: 0, stage: 'reveal', results: {}, shots: {},
     ov: Object.keys(S.dbg.ov).length ? deepClone(S.dbg.ov) : null,
     champ: lastWinner ? personKey(lastWinner.p) : null, career,
@@ -5397,7 +5401,7 @@ function createRace() {
   S.race.pbs = {};
   F.players.forEach(p => { const k = personKey(p.name); if (players.some(x => x.key === k)) S.race.pbs[k] = Math.round(p.best); });
   S.race.streak = F.streak && F.streak.n >= 2 && players.some(x => x.key === F.streak.key) ? { key: F.streak.key, n: F.streak.n } : null;
-  rememberNames(day, players.map(p => p.duck.name));
+  if (!sample) rememberNames(day, players.map(p => p.duck.name));   // (sample guests don't use up names for the real shows)
   refreshWorld();
   Lines.reset(seed);
   saveRace();
