@@ -88,7 +88,8 @@
     const people = R.players.map(p => ({ duck: p.duck.name, name: p.name }));
     // award cards (the card's own rule: 24 down to 20 px, the race's line first, then shorter versions; else cut)
     const cw = 420 - 30;   // (card width w - 30, as drawn)
-    const awardCards = aw.map(a => { let fit = null; for (const d of awardDescs(a)) { for (let px = 24; px >= 20 && !fit; px -= 2) { mc.font = font(px, 800); if (wrapText(mc, d, cw).length <= 2) fit = d; } if (fit) break; } return { id: a.id, text: fit || awardDesc(a), cut: !fit }; });
+    // (a line wider than the card, one long word that can't wrap, doesn't fit either: it would run past the card)
+    const awardCards = aw.map(a => { let fit = null; for (const d of awardDescs(a)) { for (let px = 24; px >= 20 && !fit; px -= 2) { mc.font = font(px, 800); const l = wrapText(mc, d, cw); if (l.length <= 2 && l.every(x => mc.measureText(x).width <= cw)) fit = d; } if (fit) break; } return { id: a.id, text: fit || awardDesc(a), cut: !fit }; });
     const res = Object.entries(R.results).map(([k, r]) => ({ k, d: r.dist, ev: r.ev.map(e => e[0]), team: (R.players.find(p => p.key === k) || {}).team }));
     res.sort((a, b) => b.d - a.d);
     return {

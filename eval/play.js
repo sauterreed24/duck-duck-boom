@@ -95,7 +95,8 @@ async function main() {
       ok = s2.phase === 'flight';
       s2 = await hostUntil(v.page, s => s.crowned, 60 * 120); await steps(v.page, 60 * 6);
       await v.page.keyboard.press('Space'); await steps(v.page, 40);
-      ok = ok && await v.page.evaluate(() => S.screen === 'title' && !S.roster.length && !Store.get('roster', []).length && !(Store.get('history', []) || []).length && !finishedShow());
+      // (read back from storage as the game does: loadRoster / loadHistory return lists)
+      ok = ok && await v.page.evaluate(() => S.screen === 'title' && !S.roster.length && !loadRoster().length && !loadHistory().length && !finishedShow());
     }
     check('a first-time visitor can watch a sample show without typing a name, and nothing is kept', ok);
     errExtra += v.errors.length;
