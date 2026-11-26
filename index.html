@@ -2406,6 +2406,20 @@ function runSelfTest() {
     check('every duck has a scouting report', someDucks.every(d => d.bio && d.stats && d.stats.length === 3 && d.stats.every(st => st.k && st.v && !/\{n\}/.test(st.v))));
     const close = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent' };
     const cds = awardDescs(close);
+    {   // the closest call names whose duck it was so close to, and its card always fits (generated cases: real duck
+        // names, long player names with and without spaces, short and long margins)
+      const mc2 = document.createElement('canvas').getContext('2d'), longs = ['Anastasia Konstantinova Featherbottom-S', 'Bartholomew-Featherstonehaugh', 'Christopher Alexander Vanderbilt'], shorts = ['Kit', 'Alexandra Smith'];
+      let bad = '';
+      for (let k = 0; k < 200 && !bad; k++) {
+        const dk = generateDuck(hash('closest', k), {}).name;
+        for (const pn of longs.concat(shorts)) for (const v of ['0.2 ft', '21 ft', '59 ft']) {
+          const f = awardFit(mc2, { id: 'closest', e: champ[1], v, other: dk + ' (' + pn + ')', alt: pn + "'s duck", alt2: 'the duck just ahead' }, 390);
+          mc2.font = font(f.px, 800); const wide = f.lines.some(l => mc2.measureText(l).width > 390);   // (measured here, not taken from awardFit)
+          if (f.cut || wide || (pn.length <= 20 && f.text.indexOf(pn) < 0)) { bad = (f.cut ? 'cut: ' : wide ? 'too wide: ' : 'no player: ') + f.text; break; }
+        }
+      }
+      check('a closest call card always fits, and says whose duck when the names allow', !bad, bad);
+    }
     check('a long award line has its other versions ready, shortest first', cds.length === C.AWARDS.closest.desc.length && cds[0] === awardDesc(close) && cds.slice(1).every((d, i, a) => !i || a[i - 1].length <= d.length));
     // captions: a distance never breaks between the number and its unit
     const mctx = document.createElement('canvas').getContext('2d');
@@ -5246,6 +5260,7 @@ const Roster = {
     this.el.innerHTML =
       '<div class="top"><div><h1>Who booked today?</h1><div class="sub">' + esc(prettyDate(today)) + ' · tick who booked · click a name to fix it · dots move teams · up to 40 ducks</div></div>' +
       '<div style="text-align:right;flex:none"><div class="bar" style="justify-content:flex-end;margin-bottom:6px;flex-wrap:nowrap">' + (this.undo ? '<button class="btn small" id="rundo" title="Put this person back on the roster">↶ Undo: put ' + esc(this.undo.p.name) + ' back</button>' : '') + '<button class="btn small ghost" id="rback">◀ Title</button><button class="btn small ghost" id="rset">Settings</button></div><div class="total">' + checked + ' duck' + (checked === 1 ? '' : 's') + ' booked</div><div class="warn" id="rwarn"' + (warnText ? ' title="' + esc(warnFull) + '"' : '') + '>' + esc(warnText) + '</div></div></div>' +
+      (!S.roster.length ? '<div class="stale">New here? <button class="btn small green" id="rsample">Try a practice show with ' + SAMPLE_NAMES.length + ' sample ducks</button> It stays off your roster and the Waddle of Fame.</div>' : '') +
       (stale ? '<div class="stale">' + (oldTicks.length === checked ? 'These ticks are' : oldTicks.length + ' of the ticks are') + ' from ' + esc(prettyDate(oldDay)) + '. New day? <button class="btn small" id="rfresh">' + (oldTicks.length === checked ? 'Untick everyone' : 'Untick those ' + oldTicks.length) + '</button></div>' : '') +
       '<div class="teams">' + col(0) + col(1) + col(2) +
       '<div class="side">' +
@@ -5305,6 +5320,7 @@ const Roster = {
     $('#pastebtn').onclick = () => useList(false);
     // find: just hide rows, no re-render
     $('#rfind').oninput = e => { this.filter = e.target.value; const q = personKey(this.filter); this.el.querySelectorAll('.list .row[data-key]').forEach(r => { r.style.display = !q || r.dataset.key.includes(q) ? '' : 'none'; }); this.el.querySelectorAll('.team .list').forEach(l => { const nm = l.querySelector('.nomatch'); if (nm) nm.style.display = [...l.querySelectorAll('.row[data-key]')].some(r => r.style.display !== 'none') ? 'none' : 'flex'; }); };
+    const smp = $('#rsample'); if (smp) smp.onclick = () => { if (createRace(SAMPLE_NAMES.map((name, i) => ({ name, team: i % 3, checked: true })))) { SFX.play('click'); go('reveal'); } };
     const fr = $('#rfresh'); if (fr) fr.onclick = () => { oldTicks.forEach(p => { p.checked = false; }); save(true); };
     $('#tpractice').onchange = e => { S.settings.practice = e.target.checked; saveSettings(); setBig(S.settings.practice ? 'REVEAL (PRACTICE)' : 'REVEAL DUCKS', checked > 0); };   // only the label changes: focus stays on the box
     $('#tauto').onchange = e => { S.settings.autoAdvance = e.target.checked; saveSettings(); };
@@ -5337,11 +5353,13 @@ function makePlayer(name, team, rerolls, ctx, day) {
 // Salvo (every duck at once) is the main mode. One-by-one is still there: untick Salvo on the roster or in
 // Settings, or open the page with ?classic.
 function showMode() { return /[?&]classic\b/.test(QS) ? 'classic' : /[?&]salvo\b/.test(QS) ? 'salvo' : S.settings.salvo === false ? 'classic' : 'salvo'; }
-function createRace() {
+// a first look without typing names: these guests fly a practice show (it stays off the roster and the Waddle of Fame)
+const SAMPLE_NAMES = ['Alex', 'Blair', 'Casey', 'Drew', 'Emery', 'Finley', 'Harper', 'Jordan'];
+function createRace(sample) {
   const people = [];
   const seenKeys = new Set();
   // same order as the roster columns (team, then name), so who's left out past 40 is predictable
-  const ticked = S.roster.filter(p => p.checked).slice().sort((a, b) => (a.team | 0) - (b.team | 0) || String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }));
+  const ticked = (sample || S.roster).filter(p => p.checked).slice().sort((a, b) => (a.team | 0) - (b.team | 0) || String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }));
   const left = [];
   for (const p of ticked) {
     if (people.length >= 40) { left.push(cleanName(p.name)); continue; }
@@ -5357,7 +5375,7 @@ function createRace() {
   S.day = day;
   const seed = S.dbg.seed != null ? S.dbg.seed >>> 0 : freshSeed();
   const rer = loadRerolls(day);
-  const ctx = { recent: recentNameSet(day), taken: new Set(), takenWords: new Set(), firsts: new Set(S.roster.map(p => firstWord(p.name)).filter(w => w.length >= 2)) };
+  const ctx = { recent: recentNameSet(day), taken: new Set(), takenWords: new Set(), firsts: new Set((sample || S.roster).map(p => firstWord(p.name)).filter(w => w.length >= 2)) };
   const players = people.map(p => {
     const pl = makePlayer(p.name, p.team, rer[personKey(p.name)] || 0, ctx, day);
     pl.ammo = S.settings.bonusAmmo ? (p.ammo | 0) : 0;
@@ -5366,7 +5384,7 @@ function createRace() {
     return pl;
   });
   const order = new Rng(hash(seed, 'order')).shuffle(players.map((_, i) => i));
-  const races = S.history;
+  const races = sample ? [] : S.history;   // (sample guests have no past: no crown or streak borrowed from a real Jordan)
   const last = lastRealRace(races);
   const rec = allTimeRecord(races);
   const lastWinner = last ? last.res.slice().sort((a, b) => b.dist - a.dist)[0] : null;
@@ -5374,7 +5392,7 @@ function createRace() {
   const career = { shows: races.length, who: {} };
   for (const p of players) { const c = careerOf(p.key, races); if (c) career.who[p.key] = c; }
   S.race = {
-    v: 1, id: hex8(seed), seed, day, practice: !!S.settings.practice, created: Date.now(), mode: showMode(),
+    v: 1, id: hex8(seed), seed, day, practice: !!S.settings.practice || !!sample, sample: !!sample || undefined, created: Date.now(), mode: showMode(),
     players, queue: order.map(pi => ({ p: pi, s: 0 })), idx: 0, stage: 'reveal', results: {}, shots: {},
     ov: Object.keys(S.dbg.ov).length ? deepClone(S.dbg.ov) : null,
     champ: lastWinner ? personKey(lastWinner.p) : null, career,
@@ -5391,7 +5409,7 @@ function createRace() {
   S.race.pbs = {};
   F.players.forEach(p => { const k = personKey(p.name); if (players.some(x => x.key === k)) S.race.pbs[k] = Math.round(p.best); });
   S.race.streak = F.streak && F.streak.n >= 2 && players.some(x => x.key === F.streak.key) ? { key: F.streak.key, n: F.streak.n } : null;
-  rememberNames(day, players.map(p => p.duck.name));
+  if (!sample) rememberNames(day, players.map(p => p.duck.name));   // (sample guests don't use up names for the real shows)
   refreshWorld();
   Lines.reset(seed);
   saveRace();
@@ -5410,10 +5428,10 @@ function rerollDuck(pi) {
   if (!R || R.stage !== 'reveal') return;
   const pl = R.players[pi];
   pl.rerolls = (pl.rerolls | 0) + 1;
-  const rer = loadRerolls(R.day); rer[pl.key] = pl.rerolls; saveRerolls(R.day, rer);
+  if (!R.sample) { const rer = loadRerolls(R.day); rer[pl.key] = pl.rerolls; saveRerolls(R.day, rer); }   // (a sample guest's reroll is not a real person's)
   const np = makePlayer(pl.name, pl.team, pl.rerolls, nameCtx(pl.key), R.day);
   pl.duck = np.duck;
-  rememberNames(R.day, [pl.duck.name]);
+  if (!R.sample) rememberNames(R.day, [pl.duck.name]);
   saveRace();
 }
 function addLatePlayer(name, team) {
@@ -5458,7 +5476,7 @@ function addLatePlayer(name, team) {
   if (!R.streak && F.streak && F.streak.n >= 2 && F.streak.key === pl.key) R.streak = { key: F.streak.key, n: F.streak.n };
   // launches last among the main round (before any bonus shots)
   R.queue.splice(insertAt(), 0, { p: R.players.length - 1, s: 0 });
-  const onRoster = S.roster.find(p => personKey(p.name) === personKey(nm));
+  const onRoster = R.sample ? true : S.roster.find(p => personKey(p.name) === personKey(nm));   // (a sample show stays off the roster)
   if (!onRoster) { S.roster.push({ id: 'p' + hex8(hash(nm, Date.now())), name: nm, team, checked: true, ammo: 0, td: localDayKey() }); saveRoster(); }
   else if (!onRoster.checked) { onRoster.checked = true; onRoster.td = localDayKey(); saveRoster(true); }   // they booked after all: tick them too
   rememberNames(R.day, [pl.duck.name]);
@@ -5591,7 +5609,7 @@ function computeAwards(R) {
     let best = null;
     for (let i = 0; i + 1 < st.length; i++) { const g = st[i].dist - st[i + 1].dist; if (!best || g < best.g) best = { g, a: st[i + 1], b: st[i], i }; }
     // quote the gap between the two distances as they are shown, so it always agrees with the board and the podium
-    if (best && best.g < 60) out.push({ id: 'closest', e: best.a, v: marginText(shownGap(best.b.dist, best.a.dist, showsTenths(st, best.i) || showsTenths(st, best.i + 1))), other: best.b.pl.duck.name });
+    if (best && best.g < 60) out.push({ id: 'closest', e: best.a, v: marginText(shownGap(best.b.dist, best.a.dist, showsTenths(st, best.i) || showsTenths(st, best.i + 1))), other: best.b.pl.duck.name + ' (' + best.b.pl.name + ')', alt: best.b.pl.name + "'s duck", alt2: 'the duck just ahead' });   // (whose duck it was so close to; the short way when a long name won't fit)
   }
   const nap = st.find(e => has(e, 'hammock')); if (nap) out.push({ id: 'napper', e: nap, v: '' });
   if (st.length >= 3) {
@@ -5657,9 +5675,18 @@ function awardDescs(a) {
   if (!Array.isArray(d)) return [Lines.fill(d, { v: a.v, other: a.other || '' })];
   const all = d.map(t => Lines.fill(t, { v: a.v, other: a.other || '' }));
   const first = all[hash(seed, 'award', a.id) % all.length];
-  return [first].concat(all.filter(t => t !== first).sort((x, y) => x.length - y.length));
+  // last resorts for a card that won't fit: still says whose, then names nobody (but always fits)
+  const alts = [a.alt, a.alt2].filter(Boolean).map(o => d.map(t => Lines.fill(t, { v: a.v, other: o })).sort((x, y) => x.length - y.length));
+  return [first].concat(all.filter(t => t !== first).sort((x, y) => x.length - y.length), ...alts);
 }
 function awardDesc(a) { return awardDescs(a)[0]; }
+// the award card's description: the first version that fits two lines at 24 down to 20 px (a line wider than the card,
+// one long word that can't wrap, doesn't fit either); failing all, the race's line cut to two lines
+function awardFit(ctx, a, maxW) {
+  for (const d of awardDescs(a)) for (let px = 24; px >= 20; px -= 2) { ctx.font = font(px, 800); const l = wrapText(ctx, d, maxW); if (l.length <= 2 && l.every(x => ctx.measureText(x).width <= maxW)) return { lines: l, px, text: d, cut: false }; }
+  ctx.font = font(20, 800);
+  return { lines: wrapText(ctx, awardDesc(a), maxW, 2), px: 20, text: awardDesc(a), cut: true };
+}
 // awards: when given, a story one of the awards already tells about that duck is only used if there is nothing else
 const AWARD_STORY = { wrongway: 'backfire', space: 'space', hat: 'hatWin', bread: 'bread', comeback: 'misfire', napper: 'hammock', early: 'early', climber: 'climber' };
 function computeHighlights(R, max, awards) {
@@ -5771,7 +5798,7 @@ function finalizeRace() {
   if (!R || R.stage === 'done' || R.saved) return;
   const st = standings();
   // one tick of Practice race is one practice show: the next show is a real one again
-  if (R.practice && S.settings.practice) { S.settings.practice = false; saveSettings(); }
+  if (R.practice && S.settings.practice && !R.sample) { S.settings.practice = false; saveSettings(); }   // (a sample show isn't the practice show the tick was for)
   if (!R.practice && st.length) {
     const { awards } = computeAwards(R);
     const rec = {
@@ -8761,7 +8788,7 @@ function drawReveal(ctx, dt) {
   if (RV.fc >= 0) { ctx.fillStyle = 'rgba(31,26,46,' + (0.5 * (RV.fc > 50 ? 1 : clamp(RV.fc / 0.35, 0, 1))) + ')'; ctx.fillRect(0, 0, 1920, 1080); }
   if (RV.fc >= 0) drawForecast(ctx, RV.fc > 50 ? 1 : easeBack(clamp(RV.fc / 0.5, 0, 1)));
   // a name is wrong or someone is missing: go back to the roster (the race hasn't started yet)
-  if (RV.shuf < 0) button(ctx, 'editnames', 40, 948, 330, 76, '◀ Edit names', { bg: '#fff8e6', fn: () => { Store.del('current'); S.race = null; Caps.reset(); go('roster'); Toast.show('Fix the names, then press REVEAL DUCKS again'); } });
+  if (RV.shuf < 0) button(ctx, 'editnames', 40, 948, 330, 76, '◀ Edit names', { bg: '#fff8e6', fn: () => { const smp = S.race && S.race.sample; Store.del('current'); S.race = null; Caps.reset(); go('roster'); if (!smp) Toast.show('Fix the names, then press REVEAL DUCKS again'); } });
 }
 function drawCard(ctx, rc, pl, flipK, num, pick, hop) {
   const { x, y, w, h } = rc;
@@ -9150,13 +9177,8 @@ function drawAwards(ctx) {
     txt(ctx, a.e.pl.name, x + w / 2, y + 358, { px: 26, color: '#6b6577', sw: 0, maxW: w - 24, weight: 800 });
     // a long duck name in the description gets smaller type before it gets cut off
     // (and if it still needs a third line, another version of the line that fits whole is used instead)
-    let dpx = 24, dl = null;
-    for (const d of awardDescs(a)) {
-      for (dpx = 24; dpx >= 20; dpx -= 2) { ctx.font = font(dpx, 800); const l = wrapText(ctx, d, w - 30); if (l.length <= 2) { dl = l; break; } }
-      if (dl) break;
-    }
-    if (!dl) { dpx = 20; ctx.font = font(dpx, 800); dl = wrapText(ctx, awardDesc(a), w - 30, 2); }
-    dl.forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 390 + j * 27, { px: dpx, color: '#4a4458', sw: 0, weight: 800 }));   // two lines end inside the card
+    const fit = awardFit(ctx, a, w - 30), dpx = fit.px, dl = fit.lines;
+    dl.forEach((ln, j) => txt(ctx, ln, x + w / 2, y + 390 + j * 27, { px: dpx, color: '#4a4458', sw: 0, weight: 800, maxW: w - 30 }));   // two lines end inside the card
     ctx.restore();
   });
   // highlights

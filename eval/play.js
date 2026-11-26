@@ -42,6 +42,7 @@ async function toRoster(page) {
   return true;
 }
 
+let errExtra = 0;
 async function main() {
   // ---- 1. first-time host, the whole show ----
   let g = await openGame({ date: DAY });
@@ -82,6 +83,25 @@ async function main() {
   st = await state(g.page);
   check('DONE returns to the title, with Last results kept', st.screen === 'title' && await g.page.evaluate(() => !!finishedShow()), st.screen);
   check('the finished show is in the history', await g.page.evaluate(() => S.history.length === 1));
+
+  // ---- 1b. a first-time visitor tries it without typing: sample ducks, a practice show, nothing kept ----
+  {
+    const v = await openGame({ date: DAY });
+    await v.page.keyboard.press('Space'); await steps(v.page, 30);
+    let ok = !!(await v.page.$('#rsample')), acts = 1;
+    if (ok) {
+      await v.page.click('#rsample'); acts++; await steps(v.page, 20);
+      let s2 = await hostUntil(v.page, s => s.phase === 'flight', 60 * 60);
+      ok = s2.phase === 'flight';
+      s2 = await hostUntil(v.page, s => s.crowned, 60 * 120); await steps(v.page, 60 * 6);
+      await v.page.keyboard.press('Space'); await steps(v.page, 40);
+      // (read back from storage as the game does: loadRoster / loadHistory return lists)
+      ok = ok && await v.page.evaluate(() => S.screen === 'title' && !S.roster.length && !loadRoster().length && !loadHistory().length && !finishedShow());
+    }
+    check('a first-time visitor can watch a sample show without typing a name, and nothing is kept', ok);
+    errExtra += v.errors.length;
+    await v.close();
+  }
 
   // ---- 2. pause freezes the show ----
   await g.page.evaluate(() => { S.dbg.seed = 0x5EED1234; S.settings.practice = true; });
@@ -135,7 +155,7 @@ async function main() {
   }
   check('a key-mashing host still reaches the crowning', done, st.screen + '/' + st.phase);
   check('mashing (skips, replays, turbo) never changes a distance', JSON.stringify(await dists(g.page)) === JSON.stringify(calm));
-  const errs = g.errors.length;
+  const errs = g.errors.length + errExtra;
   await g.close();
   check('no page errors in any playthrough', errs === 0, errs + ' errors');
   const fails = checks.filter(c => !c.ok).length;

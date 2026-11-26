@@ -86,6 +86,10 @@
     const hlRows = hl.map(h => ({ text: h, lines: wrapText(mc, '• ' + h, 1520, 0).length }));
     const copyHl = (resultsText(R).split('\n').find(l => l.indexOf('Highlight: ') === 0) || '').slice(11);
     const people = R.players.map(p => ({ duck: p.duck.name, name: p.name }));
+    // award cards (the card's own rule: 24 down to 20 px, the race's line first, then shorter versions; else cut)
+    const cw = 420 - 30;   // (card width w - 30, as drawn)
+    // (a line wider than the card, one long word that can't wrap, doesn't fit either: it would run past the card)
+    const awardCards = aw.map(a => { let fit = null; for (const d of awardDescs(a)) { for (let px = 24; px >= 20 && !fit; px -= 2) { mc.font = font(px, 800); const l = wrapText(mc, d, cw); if (l.length <= 2 && l.every(x => mc.measureText(x).width <= cw)) fit = d; } if (fit) break; } return { id: a.id, text: fit || awardDesc(a), cut: !fit }; });
     const res = Object.entries(R.results).map(([k, r]) => ({ k, d: r.dist, ev: r.ev.map(e => e[0]), team: (R.players.find(p => p.key === k) || {}).team }));
     res.sort((a, b) => b.d - a.d);
     return {
@@ -95,7 +99,7 @@
       res, leads: rec.leads, bill: rec.bill, tags: rec.tags, evFired: rec.evFired, presses: rec.presses,
       frameMs: rec.frameMs, drawnCalls: rec.drawnCalls, drawnKeys: Object.keys(rec.drawnKeys), drawnTags: rec.drawnTags, bigs: rec.bigs,
       cond: { mod: S.cond.mod || null, wind: S.cond.wind, sky: S.cond.sky },
-      hlRows, copyHl, people,
+      hlRows, copyHl, people, awardCards,
     };
   };
 

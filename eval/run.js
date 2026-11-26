@@ -53,6 +53,10 @@ function measure(r) {
   return {
     hlNamed: rows.length ? rows.filter(x => hlOk(x.text)).length / rows.length : 1, hlCut: rows.filter(x => x.lines > 2).length,
     hlWrapped: rows.filter(x => x.lines > 1).length, copyNamed: r.copyHl ? (hlOk(r.copyHl) ? 1 : 0) : 1,
+    // award cards: one that names another duck says whose; no card cut off
+    cardsNamingDuck: (r.awardCards || []).filter(c => (r.people || []).some(p => mentions(c.text, p.duck))).length,
+    cardsNamed: (r.awardCards || []).filter(c => (r.people || []).some(p => mentions(c.text, p.duck)) && hlOk(c.text)).length,
+    cardsCut: (r.awardCards || []).filter(c => c.cut).length,
     linkedStrict: about.length ? strict.length / about.length : 1, linkedLoose: about.length ? loose.length / about.length : 1, aboutN: about.length,
     pointed: pointed.size / keys.length, unseen: keys.length - pointed.size,
     lockFrac: Math.min(1, lockT / r.dur), leadChanges: Math.max(0, leads.length - 1),
@@ -77,6 +81,7 @@ function summarize(ms) {
     gap: { p50: r1(q(col('gap'), 0.5)), p90: r1(q(col('gap'), 0.9)) },
     repeats: { total: col('repeats').reduce((a, b) => a + b, 0) },
     trunc: { total: col('trunc').reduce((a, b) => a + b, 0) },
+    cards: { naming: col('cardsNamingDuck').reduce((a, b) => a + b, 0), named: col('cardsNamed').reduce((a, b) => a + b, 0), cut: col('cardsCut').reduce((a, b) => a + b, 0) },
     hl: { named: r2(mean(col('hlNamed'))), copy: r2(mean(col('copyNamed'))), cut: col('hlCut').reduce((a, b) => a + b, 0), wrapped: col('hlWrapped').reduce((a, b) => a + b, 0), rows: ms.length * 3 },
   };
 }
@@ -188,6 +193,7 @@ function printCard(c) {
   L.push('7 frame time   40-duck flight: mean draw ms per frame ' + c.render40.mean + ' (' + c.render40.frames + ' frames, headless software rendering)');
   if (c.ink) L.push('9 contrast     worst text on a team colour: ' + c.ink.min + ':1 over ' + c.ink.swatches + ' swatches (' + Object.entries(c.ink.worst).map(([k, w]) => k + ' ' + w.c).join(', ') + ')');
   L.push('11 results    highlights that say whose duck ' + s.hl.named + '; copied highlight ' + s.hl.copy + (c.n30 ? ' (n30 ' + c.n30.hl.named + ')' : '') + '; rows wrapped ' + s.hl.wrapped + ', cut off ' + s.hl.cut + (c.n30 ? ' (n30 cut ' + c.n30.hl.cut + ')' : ''));
+  L.push('   award cards naming another duck that say whose ' + s.cards.named + '/' + s.cards.naming + '; cards cut off ' + s.cards.cut + (c.n30 ? ' (n30 ' + c.n30.cards.named + '/' + c.n30.cards.naming + ', cut ' + c.n30.cards.cut + ')' : ''));
   if (c.told) L.push('10 events told distance-changing events the audience is told about (drawn call-out, big caption or Bill) ' + c.told.share + ' of ' + c.told.events);
   L.push('8 errors       ' + c.errors + ' page errors; one-by-one shows reaching the crowning ' + (c.classic || []).filter(Boolean).length + '/' + (c.classic || []).length + '   (' + c.secs + ' s)');
   console.log(L.join('\n'));
