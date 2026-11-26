@@ -2406,6 +2406,12 @@ function runSelfTest() {
     check('every duck has a scouting report', someDucks.every(d => d.bio && d.stats && d.stats.length === 3 && d.stats.every(st => st.k && st.v && !/\{n\}/.test(st.v))));
     const close = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent' };
     const cds = awardDescs(close);
+    {   // the closest call names whose duck it was so close to, and some version of it fits the card even with long names
+      const lp = 'Anastasia Konstantinova Featherbottom-S', mc2 = document.createElement('canvas').getContext('2d'); mc2.font = font(20, 800);
+      const lc = { id: 'closest', e: champ[1], v: '2 ft', other: 'Commodore Wiggles Reedwhistle the Magnificent (' + lp + ')', alt: lp + "'s duck" };
+      const fits = awardDescs(lc).filter(d => wrapText(mc2, d, 390).length <= 2);
+      check('a closest call says whose duck, and a version of it fits the card', fits.length > 0 && fits.every(d => d.indexOf(lp) >= 0), fits[0] || 'nothing fits');
+    }
     check('a long award line has its other versions ready, shortest first', cds.length === C.AWARDS.closest.desc.length && cds[0] === awardDesc(close) && cds.slice(1).every((d, i, a) => !i || a[i - 1].length <= d.length));
     // captions: a distance never breaks between the number and its unit
     const mctx = document.createElement('canvas').getContext('2d');
@@ -5591,7 +5597,7 @@ function computeAwards(R) {
     let best = null;
     for (let i = 0; i + 1 < st.length; i++) { const g = st[i].dist - st[i + 1].dist; if (!best || g < best.g) best = { g, a: st[i + 1], b: st[i], i }; }
     // quote the gap between the two distances as they are shown, so it always agrees with the board and the podium
-    if (best && best.g < 60) out.push({ id: 'closest', e: best.a, v: marginText(shownGap(best.b.dist, best.a.dist, showsTenths(st, best.i) || showsTenths(st, best.i + 1))), other: best.b.pl.duck.name });
+    if (best && best.g < 60) out.push({ id: 'closest', e: best.a, v: marginText(shownGap(best.b.dist, best.a.dist, showsTenths(st, best.i) || showsTenths(st, best.i + 1))), other: best.b.pl.duck.name + ' (' + best.b.pl.name + ')', alt: best.b.pl.name + "'s duck" });   // (whose duck it was so close to; the short way when a long name won't fit)
   }
   const nap = st.find(e => has(e, 'hammock')); if (nap) out.push({ id: 'napper', e: nap, v: '' });
   if (st.length >= 3) {
@@ -5657,7 +5663,8 @@ function awardDescs(a) {
   if (!Array.isArray(d)) return [Lines.fill(d, { v: a.v, other: a.other || '' })];
   const all = d.map(t => Lines.fill(t, { v: a.v, other: a.other || '' }));
   const first = all[hash(seed, 'award', a.id) % all.length];
-  return [first].concat(all.filter(t => t !== first).sort((x, y) => x.length - y.length));
+  const alt = a.alt ? d.map(t => Lines.fill(t, { v: a.v, other: a.alt })).sort((x, y) => x.length - y.length) : [];   // (last resort: still says whose)
+  return [first].concat(all.filter(t => t !== first).sort((x, y) => x.length - y.length), alt);
 }
 function awardDesc(a) { return awardDescs(a)[0]; }
 // awards: when given, a story one of the awards already tells about that duck is only used if there is nothing else
