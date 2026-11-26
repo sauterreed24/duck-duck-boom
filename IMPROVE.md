@@ -73,7 +73,7 @@ change feels better on a real screen share.
 |---|---|---|---|
 | Readability (who is who on screen) | 5 (A, A′, B3′, H1, C1) | 4 | Cheap, large measured gains; found by reading screenshots of every screen. Session 2's gain was smaller (one screen left) |
 | Onboarding (first-time host) | 2 | 2 | Found by playing from an empty browser; session 3's sample show was the bolder one |
-| Measurement fixes | 2 | 2 | Both found by screenshotting a "miss" before treating it as a game problem |
+| Measurement fixes | 4 | 4 | Both found by screenshotting a "miss" before treating it as a game problem |
 | Accessibility (contrast) | 1 | 1 | Found by measuring every text-on-colour pair drawn |
 | Commentary routing (Bill) | 1 | 0 | Bill's channel is saturated; route new information visually instead |
 | Tuning / mechanics / balance | 0 | 0 | Balance changes would make old pond records incomparable: owner decision |
@@ -88,11 +88,16 @@ change feels better on a real screen share.
   rendered twin of every experience check ("drawn").
 - Before routing anything new through Bill, count his blocked lines: he is already saturated during a salvo.
 - Screenshot every new on-screen element at the busiest moment it can appear (a pile-up near the end of a flight).
-- Every new hint or control gets both a keyboard and a pointer playthrough check. (provisional)
+- Every new hint or control gets both a keyboard and a pointer playthrough check. (confirmed: the session 3 review
+  found no keyboard/pointer gap)
+- An evaluator check must measure the outcome itself, not re-run the game's rule (session 3: the copied fit rule
+  inherited its bug). (provisional)
+- Edge-case tests generate hundreds of cases from the game's own generators (names, margins), not a handful.
+  (provisional)
 - Before treating a measured miss as a game problem, screenshot the moment: in session 2 the "untold" trip to space
   was told by a big caption the check didn't count. (provisional)
-- A new invariant test must fail on a deliberately broken copy: session 2's first version of the highlight test passed
-  a broken one. (provisional)
+- A new invariant test, or playthrough check, must fail on a deliberately broken copy: session 2's first highlight
+  test and session 3's "nothing is kept" check both passed broken copies. (confirmed)
 
 ## Log
 
@@ -163,6 +168,33 @@ backlog top (award cards) and a bolder onboarding idea.
 - **Round gain:** small readability gain (last place naming a duck alone) and an onboarding gain for new visitors.
   Readability is now done everywhere I can find; the last three rounds' gains shrank. Next session should look at a
   new area (performance on a real laptop, sound, or a decision below) rather than more readability.
+
+Independent review (separate agent, commits only) found real defects, all fixed in one commit:
+- a reroll in a sample show saved the reroll and remembered the duck name: a real "Alex" got a different duck that
+  day, and the name was held back for 35 days. Sample rerolls now write nothing;
+- a sample show used up the "Practice race (next show only)" tick, so the next real show was saved. Now left alone;
+- Closest Call was still cut with long names (1,419 of 1,520 generated cards with a 39-character spaced name), and a
+  long name without spaces ran past the card's edge (the fit rule accepted one over-wide word). Now: the fit rule
+  (one function, `awardFit`) rejects over-wide lines, the text has a width limit, and a last-resort version ("the duck
+  just ahead") always fits. My earlier long-name test (36 cards) was too small to see it;
+- minor: a late player added in a sample show joined the saved roster; sample guests borrowed a real player's crown,
+  streak and records; "Edit names" from a sample said to fix the names. All fixed.
+Re-measured with the corrected checks (80 training shows with long names, one without spaces): session start 0/15
+Closest Call cards say whose; now 15/15 (9 "Duck (Kit)", 6 "Kit's duck"), 0 cut; generated self test: 0 cut or
+too wide over 3,000 cards. Every other check identical on train and held-out; playthroughs 20/20.
+Two of my checks could not catch what they claimed (own commit, each proven on a broken copy):
+- the award-card check copied the card's flawed fit rule (over-wide lines counted as fitting);
+- the sample-show playthrough read storage with `.length` on objects, so it could never fail (a copy leaking a name
+  into storage passed it).
+
+Process notes (why things failed this round):
+- The card cut and the over-wide word were missed because my long-name test used 36 cards and one kind of long name.
+  Next time: generate hundreds of cases from the game's own name generator, with and without spaces, as the self
+  test now does.
+- An evaluator that copies the game's rule inherits its bug: measure the outcome independently (here: the drawn
+  line's width) instead of re-running the rule.
+- A playthrough check that "nothing is kept" was never shown to fail. The Playbook rule (prove a check fails on a
+  broken copy) applies to playthrough checks too, not only to self-test cases.
 
 ## Decisions for me
 1. **Closer finishes?** (tension) The distance spread is long-tailed (p90 ≈ 2,700 ft, p99 ≈ 4,400 ft), so the winner
