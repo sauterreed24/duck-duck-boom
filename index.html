@@ -7076,8 +7076,9 @@ function hostKeys(ctx, ph, salvo) {
   if (!S.touch) { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · N music · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); return; }
   const done = ph === 'idle' || ph === 'result';
   // every button keeps its own slot (an empty slot when it can't be used), so a second tap never lands on a different
-  // button that moved into the spot; and one tap at a time (a double tap on Skip must not also start a replay)
-  const tap = fn => () => { if (S.rt - (S.tkAt || -9) < 0.6) return; S.tkAt = S.rt; fn(); };
+  // button that moved into the spot; and a double tap on one button counts once (Skip in the countdown fires the cannon;
+  // its second tap must not also land the ducks)
+  const tap = (id, fn) => () => { const at = S.tkAt || (S.tkAt = {}); if (S.rt - (at[id] == null ? -9 : at[id]) < 0.6) return; at[id] = S.rt; fn(); };
   const keys = [['tkpause', 'Pause', () => openSettings(true)],
     // (skip where it skips something; replay once there is a landed flight to replay)
     (ph === 'flight' || ph === 'countdown' || ph === 'load') && ['tkskip', 'Skip', () => { if (salvo) salvoSkip(); else skipFlight(); }],
@@ -7085,7 +7086,7 @@ function hostKeys(ctx, ph, salvo) {
     ['tkmute', S.settings.muted ? 'Unmute' : 'Mute', toggleMute]];
   // as big as the corner allows (the stage is a third of its size on a phone): clear of Bill's bar and the big button
   ctx.save(); ctx.globalAlpha = 0.92;
-  keys.forEach((k, i) => { if (k) button(ctx, k[0], 20 + i * 206, 952, 192, 104, k[1], { px: 38, bg: '#fff8e6', fn: tap(k[2]) }); });
+  keys.forEach((k, i) => { if (k) button(ctx, k[0], 20 + i * 206, 952, 192, 104, k[1], { px: 38, bg: '#fff8e6', fn: tap(k[0], k[2]) }); });
   ctx.restore();
 }
 function rarityColor(r) { return C.RARITIES[RARITY_INDEX[r] || 0].color; }

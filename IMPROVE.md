@@ -67,10 +67,12 @@ enforce the phone autoplay rule, so the session 4 fix could not be shown failing
    buttons ≈ 10 px tall). The sample show sidesteps it; a real phone roster would need its own layout. Measure tap
    target sizes before building anything.
 2. Phone: Copy results / Panorama / Settings buttons are ≈ 28 px tall sideways; fine, but check on the owner's phone.
-3. The sample banner pushes the roster down; the right column scrolls (its Tick all / Untick all row is below the fold
+3. Touch host gaps (review, session 4): no Pause / Mute on the reveal and results screens, no skip of a one-by-one
+   intro, no turbo mid-show, no fullscreen button (Android).
+4. The sample banner pushes the roster down; the right column scrolls (its Tick all / Untick all row is below the fold
    on an empty roster, where it does nothing). Fine today; revisit if the banner grows.
-4. Bill's "WRONG WAY! WRONG WAY!" and "We've lost the duck" lines name no duck (the big caption and arrows do).
-5. Tension (check 3) cannot move without touching the flight sim; see Decisions.
+5. Bill's "WRONG WAY! WRONG WAY!" and "We've lost the duck" lines name no duck (the big caption and arrows do).
+6. Tension (check 3) cannot move without touching the flight sim; see Decisions.
 
 ## Alternatives
 - **A′, player's name written into Bill's line** ("Whiteboard (Cyrus) bounced right back!"): scored the same as the
@@ -148,7 +150,21 @@ which phones don't count as a gesture that may start sound.
 - **Round gain:** a new platform made usable: a phone host can now run and control a whole show by touch. Desktop
   numbers unchanged (train and held-out).
 
+Independent review (separate agent, commits only; desktop pixel-identical to before at ~20 checkpoints, distances
+identical, rotation mapping exact). Defects found, all fixed in one commit:
+- the buttons shifted slots with the phase, so a double tap on Skip landed on Replay (a replay started), and while
+  loading on Mute (the show muted, and the mute was saved). Now fixed slots plus a per-button double-tap guard; the
+  playthrough check now double-taps Skip (fails on the previous version: 2/4). My first guard was shared across all
+  buttons and swallowed a Mute tap right after Resume: the same check caught it (3/4), fixed per button;
+- buttons ≈ 47×23 px on a sideways iPhone: now ≈ 61×33 px (still under 44 px; the corner is the limit);
+- `?try=100%` (a bad escape) left a blank page; the sideways trial also turned a tall desktop window; the turn note
+  said "phone" on tablets; a tablet host using a keyboard lost the empty-roster cursor. All fixed and checked.
+Accepted, not fixed (Backlog 3): a touch host still can't pause on the reveal or results screens, skip a one-by-one
+intro, use turbo mid-show or go fullscreen.
+
 Process notes (why things failed this round):
+- The slot-shifting buttons: I built and tested each button alone, never a second tap at the same spot after the
+  phase changed. Next time a control that changes with state gets a double-tap check in the same spot.
 - The sound bug could not be reproduced: the only browser here is Chromium, which doesn't enforce the phone rule
   headless. Real-device checks go on the playtest card; no evaluator check claims them.
 - One wasted command: a syntax check (`node -e require(...)`) ran the playthroughs instead. Use `node --check`.
