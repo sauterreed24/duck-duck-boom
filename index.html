@@ -21,6 +21,11 @@
   #ui { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
   #ui > * { pointer-events: auto; }
   .hidden { display: none !important; }
+  /* a phone held upright: the 16:9 show is a strip across the middle, so the space under it says to turn the phone */
+  #turn { position: absolute; left: 0; right: 0; text-align: center; color: #fff8e6; font: 900 17px var(--font); padding: 0 16px; pointer-events: none; }
+  /* a phone shows the 1920-wide stage at a third of its size: the sample show's button gets a finger-sized target */
+  .touch #rsample { font-size: 34px; padding: 14px 26px; margin-right: 8px; }
+  #turn b { display: block; font-size: 34px; line-height: 1.1; color: var(--gold); }
 
   /* ---------- shared form look (host screens) ---------- */
   .panel { background: var(--paper); border: 6px solid var(--ink); border-radius: 28px; box-shadow: 0 10px 0 rgba(31,26,46,.55); }
@@ -110,6 +115,7 @@
       <div id="toast"></div>
     </div>
   </div>
+  <div id="turn" class="hidden"><b>&#8635;</b>Turn your phone sideways for a bigger show.<br>(If it doesn't turn, switch off rotation lock.)</div>
 </div>
 <script>
 'use strict';
@@ -4660,6 +4666,8 @@ const S = {
   debugOn: /[?&]debug\b/.test(QS), galleryOn: /[?&]gallery\b/.test(QS),
   dbg: { day: null, seed: null, ov: {}, force: '', rarity: '', special: '' },
   fps: 60, lastFrame: 0,
+  // a phone or tablet: the show's key reminders become buttons (set again by the first touch on a touch laptop)
+  touch: (() => { try { return matchMedia('(hover: none) and (pointer: coarse)').matches; } catch (e) { return false; } })(),
 };
 function teams() { return S.settings.teams; }
 // lazy: the caller only draws the field (title, roster). A new day's course is then test-flown in small slices while
@@ -5421,6 +5429,8 @@ function createRace(sample) {
 function rosterHint() {
   const box = document.getElementById('paste'), btn = document.getElementById('onlybtn');
   if (box && box.value.trim() && btn) { Toast.show("Press Tick only these (or Add to ticked) to add the names in Today's list.", 3600); btn.focus(); }
+  // (on a phone the cursor would pop up the keyboard over everything: point at the sample show instead)
+  else if (!S.roster.length && S.touch) Toast.show("Nobody on the roster yet: tap Try a practice show, or type today's names in Today's list.", 3600);
   else if (!S.roster.length) { Toast.show("Nobody on the roster yet: type or paste today's names in Today's list.", 3600); if (box) box.focus(); }
   else Toast.show('Tick at least one person first.');
 }
@@ -7048,7 +7058,7 @@ function drawLaunchHUD(ctx, V, t) {
   if (L.q && L.q.bonus) badge('BONUS SHOT', '#ffd23f');
   drawSidebar(ctx);
   // a quiet reminder of the host keys
-  if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · N music · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
+  hostKeys(ctx, ph, false);
   Caps.drawBigs(ctx, L.duckScreen && (ph === 'flight' || ph === 'result') ? L.duckScreen.y : null, 1040);
   // after landing the bubble goes up-left of the duck, unless NEW LEADER / RECORD is up there: then it sits low as before
   const bannerLive = Caps.bigs.some(b => b.fixedY && S.rt >= b.t0 && S.rt < b.t0 + b.dur);
@@ -7056,6 +7066,21 @@ function drawLaunchHUD(ctx, V, t) {
   // the landed duck's own name plate goes back on top of the bubble's tail
   if (L.curLabel && ph !== 'flight') drawFlag(ctx, ...L.curLabel, { t: S.time, px: 26, maxW: 320, labelOnly: true });
   else if (ph === 'armed' || ph === 'countdown' || ph === 'ladder') { const m = cannonMuzzle(L.barrel); Caps.drawBubble(ctx, V.sx(m.x) + 20, V.sy(m.y) - 40); }
+}
+// a quiet reminder of the host keys; on a phone or tablet (no keys) the same corner holds buttons for them
+function hostKeys(ctx, ph, salvo) {
+  if (!(ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed' || (S.touch && (ph === 'countdown' || ph === 'load')))) return;
+  if (!S.touch) { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · N music · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); return; }
+  const done = ph === 'idle' || ph === 'result';
+  const keys = [['tkpause', 'Pause', () => openSettings(true)]];
+  // (skip where it skips something; replay once there is a landed flight to replay)
+  if (ph === 'flight' || ph === 'countdown' || ph === 'load') keys.push(['tkskip', 'Skip', () => { if (salvo) salvoSkip(); else skipFlight(); }]);
+  if (done && (salvo ? SV.fl.length && SV.fl[0].tl : L.tl)) keys.push(['tkreplay', 'Replay', () => { if (salvo) salvoReplay(); else replayFlight(); }]);
+  keys.push(['tkmute', S.settings.muted ? 'Sound on' : 'Mute', toggleMute]);
+  let x = 24;
+  ctx.save(); ctx.globalAlpha = 0.92;
+  for (const [id, label, fn] of keys) { const w = label.length > 5 ? 178 : 150; button(ctx, id, x, 982, w, 72, label, { px: 28, bg: '#fff8e6', fn }); x += w + 14; }
+  ctx.restore();
 }
 function rarityColor(r) { return C.RARITIES[RARITY_INDEX[r] || 0].color; }
 function drawDockCard(ctx, pl) {
@@ -8369,7 +8394,7 @@ function drawSalvoHUD(ctx, V, t) {
   if (R.practice) badge('PRACTICE', '#8fd3ff');
   if (SV.replay) badge('REPLAY', '#ffffff');
   drawSalvoBoard(ctx);
-  if (ph === 'idle' || ph === 'result' || ph === 'flight' || ph === 'armed') { ctx.save(); ctx.globalAlpha = 0.85; txt(ctx, 'R replay · S skip · T turbo · M mute · N music · P pause', 40, 1050, { px: 21, color: '#fff', sw: 5, align: 'left' }); ctx.restore(); }
+  hostKeys(ctx, ph, true);
   // impact captions go on the far side of the flock (up in the sky while it rolls along the ground, low while it is up
   // in the air), and a caption with a long player name stays clear of the leaderboard
   let flockY = null;
@@ -8665,7 +8690,7 @@ function drawTitle(ctx, dt) {
     const hy = Store.full ? py + 278 + sh : py + 186 + sh + (c ? 40 : 0);   // (below the storage-full warning when there is one)
     // on a plate: it lands among the field's signs and set pieces, which would show through plain outlined text
     rr(ctx, px - 250, hy - 27, 500, 50, 14); ctx.fillStyle = '#2a2438'; ctx.fill();   // tucked up against the card, and solid
-    txt(ctx, 'Click anywhere to turn on sound', px, hy, { px: 26, color: '#fff', sw: 0 });
+    txt(ctx, (S.touch ? 'Tap' : 'Click') + ' anywhere to turn on sound', px, hy, { px: 26, color: '#fff', sw: 0 });
   }
 }
 
@@ -9352,9 +9377,13 @@ const QUAL = { k: 1, slow: 0, fast: 0, iv: [], probe: null, locked: false };
 function medianIv() { const a = QUAL.iv.slice().sort((x, y) => x - y); return a.length ? a[a.length >> 1] : 1 / 60; }
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
+  const upright = h > w * 1.05;
   const scale = Math.min(w / 1920, h / 1080);
   const ox = (w - 1920 * scale) / 2, oy = (h - 1080 * scale) / 2;
   STAGE.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
+  if (S.touch) document.body.classList.add('touch');
+  const turn = document.getElementById('turn');
+  if (turn) { turn.classList.toggle('hidden', !(upright && S.touch)); turn.style.top = Math.round(oy + 1080 * scale + 18) + 'px'; }
   const dpr = window.devicePixelRatio || 1;
   const k = Math.max(0.42, clamp(scale * dpr, 0.5, 1.5) * QUAL.k);   // up to 1.5x on a sharp screen (a Retina laptop, 1440p); slow frames step it down
   const bw = Math.round(1920 * k), bh = Math.round(1080 * k);
@@ -9371,11 +9400,12 @@ function primeAudio() {
 }
 CV.addEventListener('pointermove', e => { const p = toLogical(e); S.mouse = p; const b = hitButton(p.x, p.y); S.hover = b ? b.id : null; CV.style.cursor = b ? 'pointer' : 'default'; });
 CV.addEventListener('pointerleave', () => { S.hover = null; });
-CV.addEventListener('pointerdown', e => { primeAudio(); const p = toLogical(e); const b = hitButton(p.x, p.y); S.pressed = b ? b.id : null; });
+CV.addEventListener('pointerdown', e => { if (e.pointerType === 'touch' && !S.touch) { S.touch = true; document.body.classList.add('touch'); resize(); } primeAudio(); const p = toLogical(e); const b = hitButton(p.x, p.y); S.pressed = b ? b.id : null; });
 CV.addEventListener('pointerup', e => { const p = toLogical(e); const b = hitButton(p.x, p.y); if (b && b.id === S.pressed && b.fn) b.fn(); S.pressed = null; if (e.pointerType === 'touch') S.hover = null; });   // (a finger lifted is not hovering)
 document.addEventListener('pointerdown', () => primeAudio(), { capture: true });
 // on a phone, a finger going down doesn't count as a gesture that may start sound: lifting it (or the click after) does
 ['pointerup', 'touchend', 'click'].forEach(ev => document.addEventListener(ev, () => primeAudio(), { capture: true, passive: true }));
+function toggleMute() { primeAudio(); S.settings.muted = !S.settings.muted; SFX.setMuted(S.settings.muted); if (S.settings.muted) Voice.stop(); saveSettings(); Toast.show(S.settings.muted ? 'Muted' : 'Sound on'); }
 function typingTarget(e) {
   const t = e.target; if (!t) return false;
   const tag = (t.tagName || '').toLowerCase();
@@ -9399,7 +9429,7 @@ window.addEventListener('keydown', e => {
   if (k === ' ' || e.code === 'Space') { e.preventDefault(); if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur(); primeAudio(); if (!e.repeat) primary(); return; }
   if (k === 'f') { toggleFullscreen(); return; }
   if (k === 'n') { primeAudio(); S.settings.music = !S.settings.music; SFX.setMusicOn(S.settings.music); saveSettings(); Toast.show(S.settings.music ? 'Music on' : 'Music off'); if (S.screen === 'roster') Roster.render(); return; }
-  if (k === 'm') { primeAudio(); S.settings.muted = !S.settings.muted; SFX.setMuted(S.settings.muted); if (S.settings.muted) Voice.stop(); saveSettings(); Toast.show(S.settings.muted ? 'Muted' : 'Sound on'); return; }
+  if (k === 'm') { toggleMute(); return; }
   if (k === 'p') { openSettings(S.screen === 'launch' && !!S.race); return; }
   // with no show running, T sets how the next show starts (the roster's Turbo tick box)
   if (k === 't') { S.turbo = S.race ? !S.turbo : !S.settings.turboDefault; if (S.race) { S.race.turbo = S.turbo; saveRace(); } else { S.settings.turboDefault = S.turbo; saveSettings(); if (S.screen === 'roster') Roster.render(); } Toast.show(S.turbo ? 'Turbo ON (2x)' : 'Turbo off'); if (S.screen === 'launch' && L.phase === 'salvo') salvoReplan(); else if (S.screen === 'launch' && L.phase === 'flight' && L.tl && L.pb) replanFlight(); return; }
