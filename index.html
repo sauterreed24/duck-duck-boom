@@ -4658,6 +4658,9 @@ function drawTurkey(ctx, x, y, size, t) {
 
 /* =========================== UI ====================================== */
 const QS = (() => { try { return location.search || ''; } catch (e) { return ''; } })();
+// trials: ideas waiting for the owner's verdict, switched on with ?try=name (several: ?try=a,b). Off, the game is as before.
+const TRIALS = (() => { const m = /[?&]try=([^&#]*)/.exec(QS); return m ? decodeURIComponent(m[1]).toLowerCase().split(',') : []; })();
+function trial(name) { return TRIALS.indexOf(name) >= 0; }
 const S = {
   settings: loadSettings(), roster: loadRoster(), history: loadHistory(),
   day: localDayKey(), cond: null, course: null,
@@ -9378,19 +9381,24 @@ function medianIv() { const a = QUAL.iv.slice().sort((x, y) => x - y); return a.
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   const upright = h > w * 1.05;
-  const scale = Math.min(w / 1920, h / 1080);
-  const ox = (w - 1920 * scale) / 2, oy = (h - 1080 * scale) / 2;
-  STAGE.style.transform = 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
+  // trial "sideways": a phone held upright shows the stage turned a quarter, filling the screen (rotation lock or not)
+  const rot = upright && trial('sideways');
+  const scale = rot ? Math.min(h / 1920, w / 1080) : Math.min(w / 1920, h / 1080);
+  const ox = rot ? (w - 1080 * scale) / 2 : (w - 1920 * scale) / 2, oy = rot ? (h - 1920 * scale) / 2 : (h - 1080 * scale) / 2;
+  STAGE.style.transform = rot ? 'translate(' + (ox + 1080 * scale) + 'px,' + oy + 'px) rotate(90deg) scale(' + scale + ')' : 'translate(' + ox + 'px,' + oy + 'px) scale(' + scale + ')';
   if (S.touch) document.body.classList.add('touch');
   const turn = document.getElementById('turn');
-  if (turn) { turn.classList.toggle('hidden', !(upright && S.touch)); turn.style.top = Math.round(oy + 1080 * scale + 18) + 'px'; }
+  if (turn) { turn.classList.toggle('hidden', !(upright && !rot && S.touch)); turn.style.top = Math.round(oy + 1080 * scale + 18) + 'px'; }
   const dpr = window.devicePixelRatio || 1;
   const k = Math.max(0.42, clamp(scale * dpr, 0.5, 1.5) * QUAL.k);   // up to 1.5x on a sharp screen (a Retina laptop, 1440p); slow frames step it down
   const bw = Math.round(1920 * k), bh = Math.round(1080 * k);
   if (CV.width !== bw || CV.height !== bh) { CV.width = bw; CV.height = bh; }
-  VIEW = { scale, ox, oy, k: bw / 1920 };
+  VIEW = { scale, ox, oy, k: bw / 1920, rot };
 }
-function toLogical(e) { return { x: (e.clientX - VIEW.ox) / VIEW.scale, y: (e.clientY - VIEW.oy) / VIEW.scale }; }
+function toLogical(e) {
+  if (VIEW.rot) return { x: (e.clientY - VIEW.oy) / VIEW.scale, y: (VIEW.ox + 1080 * VIEW.scale - e.clientX) / VIEW.scale };
+  return { x: (e.clientX - VIEW.ox) / VIEW.scale, y: (e.clientY - VIEW.oy) / VIEW.scale };
+}
 let audioPrimed = false, primedAt = -9;
 function primeAudio() {
   if (audioPrimed) { SFX.resume(); return; }
