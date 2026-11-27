@@ -4053,7 +4053,8 @@ const SFX = (() => {
   let held = false;
   // no state checks: suspend()/resume() apply in call order, so a quick off-on (Cancel in a confirm box) still ends suspended
   function pause(on) { held = !!on; try { if (!ac || ac.state === 'closed') return; if (held) ac.suspend().catch(() => {}); else ac.resume().catch(() => {}); } catch (e) { /* ignore */ } }
-  function resume() { try { if (!ac) init(); if (ac && ac.state === 'suspended' && !held) ac.resume(); } catch (e) { /* ignore */ } }
+  // (an iPhone also leaves the sound 'interrupted' after a call or a trip to another app)
+  function resume() { try { if (!ac) init(); if (ac && (ac.state === 'suspended' || ac.state === 'interrupted') && !held) ac.resume().catch(() => {}); } catch (e) { /* ignore */ } }
   function setVolume(v) { vol = clamp(v, 0, 1); if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.05); }
   function setMuted(m) { muted = !!m; if (master) master.gain.setTargetAtTime(muted ? 0 : vol, ac.currentTime, 0.03); if (muted) music(null); }
   const now = () => ac.currentTime + 0.01;
@@ -9373,6 +9374,8 @@ CV.addEventListener('pointerleave', () => { S.hover = null; });
 CV.addEventListener('pointerdown', e => { primeAudio(); const p = toLogical(e); const b = hitButton(p.x, p.y); S.pressed = b ? b.id : null; });
 CV.addEventListener('pointerup', e => { const p = toLogical(e); const b = hitButton(p.x, p.y); if (b && b.id === S.pressed && b.fn) b.fn(); S.pressed = null; if (e.pointerType === 'touch') S.hover = null; });   // (a finger lifted is not hovering)
 document.addEventListener('pointerdown', () => primeAudio(), { capture: true });
+// on a phone, a finger going down doesn't count as a gesture that may start sound: lifting it (or the click after) does
+['pointerup', 'touchend', 'click'].forEach(ev => document.addEventListener(ev, () => primeAudio(), { capture: true, passive: true }));
 function typingTarget(e) {
   const t = e.target; if (!t) return false;
   const tag = (t.tagName || '').toLowerCase();
