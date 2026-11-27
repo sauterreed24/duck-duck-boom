@@ -178,10 +178,12 @@ async function main() {
     const m0 = await v.page.evaluate(() => S.settings.muted);
     if (await tapId('tkmute')) { await steps(v.page, 5); if (await v.page.evaluate(m0 => S.settings.muted !== m0, m0)) reach.add('mute'); await steps(v.page, 30); await tapId('tkmute'); }
     await steps(v.page, 30);
-    if (await tapId('tkskip')) { await steps(v.page, 10); if (['result', 'idle'].includes((await state(v.page)).phase)) reach.add('skip'); }
+    // (a double tap on Skip: the second tap must not land on a button that moved into the spot, e.g. Replay)
+    const sk = await v.page.evaluate(() => S.buttons.find(b => b.id === 'tkskip'));
+    if (sk) { await tap(sk.x + sk.w / 2, sk.y + sk.h / 2); await steps(v.page, 8); await tap(sk.x + sk.w / 2, sk.y + sk.h / 2); await steps(v.page, 10); if (['result', 'idle'].includes((await state(v.page)).phase) && !(await v.page.evaluate(() => SV.replay))) reach.add('skip'); }
     await steps(v.page, 60);
     if (await tapId('tkreplay')) { await steps(v.page, 10); if (await v.page.evaluate(() => SV.replay && SV.phase === 'flight')) reach.add('replay'); }
-    check('a phone host (touch only) can pause, mute, skip and replay the show', reach.size === 4, [...reach].join(', ') + ' (' + reach.size + '/4)');
+    check('a phone host (touch only) can pause, mute, skip (a double tap too) and replay the show', reach.size === 4, [...reach].join(', ') + ' (' + reach.size + '/4)');
     s5 = await host(s => s.crowned, 60 * 150);
     check('a phone host (touch only) reaches the crowning', s5.crowned, s5.screen + '/' + s5.phase);
     errs += v.errors.length;
