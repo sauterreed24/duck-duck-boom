@@ -10,9 +10,11 @@ results and both reach the crowning.
 Core loop: title → roster (tick today's people) → reveal (cards, rerolls) → salvo (load, fuse, ~30 s flight with
 Bill's commentary) → results (awards, highlights, podium) → DONE.
 
-- **Play:** open `index.html` in Chrome or Edge (`?debug` for the debug panel, `?classic` for one-by-one mode).
+- **Play:** open `index.html` in Chrome or Edge (`?debug` for the debug panel, `?classic` for one-by-one mode,
+  `?try=name` for a trial). The owner playtests on a phone (the Play link, https://sauterreed24.github.io/duck-duck-boom/,
+  serves `main`), so every round also looks at the phone: touch only, small screen, upright and sideways.
 - **Evaluate:** `node eval/run.js` (train seeds, ~2 min), `node eval/run.js --set holdout`, `node eval/run.js --quick`,
-  `node eval/play.js` (scripted playthroughs, ~2 min). `DDB_GAME=path/to/copy.html` evaluates a candidate copy.
+  `node eval/play.js` (scripted playthroughs incl. a touch-only phone host, ~5 min). `DDB_GAME=path/to/copy.html` evaluates a candidate copy.
   In the browser console, `DDB.selfTest()` and `DDB.balance(10000)` are the game's own tests.
 - The evaluator injects `eval/bot.js`, which replaces `requestAnimationFrame` and steps the real game code at 60 Hz on
   a virtual clock (no wall-clock time), with `S.dbg.day` / `S.dbg.seed` seeding every race.
@@ -22,12 +24,14 @@ Bill's commentary) → results (awards, highlights, podium) → DONE.
   Never call `localStorage.clear()`. Old best scores / pond records must stay comparable: **no change to the flight
   sim or distances** without a decision from the owner.
 - Fairness: every random number seeded; launch order, looks, team, mashing, skipping, replay never change a distance.
-- Controls: Space = big button; R, S, T, M, N, F, P as documented in the README. Esc stays the browser's.
+- Controls: Space = big button; R, S, T, M, N, F, P as documented in the README. Esc stays the browser's. On a touch
+  screen, Pause / Skip / Replay / Mute buttons stand in for the keys during a show (a desktop never shows them).
 - Platform: one self-contained `index.html`, no dependencies, no network, works offline in Chrome/Edge, older-browser
   syntax (the self test checks this).
 - Identity: Bill Featherstone's commentary roasts the duck, never the player; every line passes the content blocklist.
 
 ## Scorecard
+Session 4 changed nothing a desktop draws: checks 1–12 are identical to session 3's end on train and held-out.
 Measured by `node eval/run.js` (80 twelve-duck salvo shows on train seeds; 12 thirty-duck and 12 five-duck shows;
 6 rendered twelve-duck shows; 1,500 sim-only races for fairness; one rendered 40-duck show; text contrast from
 rendered frames with all 8 team swatches). Held-out: `--set holdout` (60 shows, 2027 dates). All numbers below are
@@ -41,9 +45,10 @@ measured, train seeds (held-out in brackets where it was run).
 | 4 | Pacing: flight length p10 / p50 / p90, 12 ducks; reveal → fire with a prompt host | experience | p90 ≤ 38 s | 23.6 / 31.2 / 37.2 s; 15 s | unchanged |
 | 5 | Commentary: longest silence p90; repeated lines; captions cut off | experience | ≤ 6 s; 0; 0 | 5.5 s; 0; 0 | unchanged |
 | 6 | Fairness: win share by roster slot (chi² p), max share | fairness | p > 0.01, ≤ 1.3× | p 0.75, 1.1× | unchanged |
-| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 16.8 / 17.3 ms (noise ≈ ±3%) |
+| 7 | Frame time: mean draw ms per frame, 40-duck flight (headless software rendering; compare same machine, one process at a time) | responsiveness | no worse than +5% | 16.6 / 17.0 ms | 16.8 / 17.3 ms (noise ≈ ±3%). Session 4's machine is slower: 24.8 ms at start and end |
 | 12 | First look: a first-time visitor (empty browser) reaches the cannon firing; presses and characters typed before it | onboarding | possible without typing | needs names typed (≥ 2 names) | **5 presses, 0 typed** (sample ducks) |
-| 8 | Robustness: page errors; `eval/play.js` (20 checks); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 20/20; pass; 2/2 |
+| 13 | Phone host (emulated iPhone 13, touch only): show controls a touch host can reach (pause, mute, skip, replay); share of an upright phone's screen the show covers; sound starts on the first tap | experience / platform | 4/4; hint or ≥ 0.9 with the trial; yes on a real phone | 0/4; 33%, no hint; unverifiable here | **4/4**; 33% + "turn sideways" hint (trial `sideways`: **96%**); fix built, **needs the owner's phone** |
+| 8 | Robustness: page errors; `eval/play.js` (23 checks since session 4); `DDB.selfTest()`; one-by-one shows reach the crowning | robustness | 0; all; pass; all | 0; 16/16; pass; 2/2 | 0; 23/23; pass; 2/2 |
 | 9 | Contrast: worst text-on-team-colour pair drawn in a flight (WCAG ratio) | accessibility | ≥ 3.0 | 2.25 (white on orange) | **4.36** |
 | 10 | Events told: distance-changing events whose duck got a call-out drawn while it was in the picture, a big impact caption naming it, or a Bill line naming it, within ~2 s (6 rendered shows) | readability (guard) | no worse | 0.982 (0.966) | 0.982 (0.966) |
 | 11 | Results readability: highlight rows (and the copied results' highlight) that say whose duck each mentioned duck is; rows cut off (2-line limit) | experience | ≥ 0.95; 0 cut | 0.00, 0.00; 0 cut | **1.00, 1.00** (1.00); 0 cut (also with 40-character names). Award cards naming another duck that say whose: 0/15 → **15/15** (16/16), 0 cut |
@@ -54,13 +59,20 @@ session; see Log). Noise: two train runs are identical (timings aside). Between 
 reads up to 10% high, so only compare frame times measured one process at a time.
 
 Not measurable by bots (checks for a human): how the show looks and sounds, whether commentary is funny, whether a
-change feels better on a real screen share.
+change feels better on a real screen share, **whether sound plays on a real phone** (headless Chromium here doesn't
+enforce the phone autoplay rule, so the session 4 fix could not be shown failing or passing), and real touch feel.
 
 ## Backlog
-1. The sample banner pushes the roster down; the right column scrolls (its Tick all / Untick all row is below the fold
+1. Phone roster: the 1920-wide roster is drawn at about a third of its size on a phone (checkboxes ≈ 11 px, small
+   buttons ≈ 10 px tall). The sample show sidesteps it; a real phone roster would need its own layout. Measure tap
+   target sizes before building anything.
+2. Phone: Copy results / Panorama / Settings buttons are ≈ 28 px tall sideways; fine, but check on the owner's phone.
+3. Touch host gaps (review, session 4): no Pause / Mute on the reveal and results screens, no skip of a one-by-one
+   intro, no turbo mid-show, no fullscreen button (Android).
+4. The sample banner pushes the roster down; the right column scrolls (its Tick all / Untick all row is below the fold
    on an empty roster, where it does nothing). Fine today; revisit if the banner grows.
-2. Bill's "WRONG WAY! WRONG WAY!" and "We've lost the duck" lines name no duck (the big caption and arrows do).
-3. Tension (check 3) cannot move without touching the flight sim; see Decisions.
+5. Bill's "WRONG WAY! WRONG WAY!" and "We've lost the duck" lines name no duck (the big caption and arrows do).
+6. Tension (check 3) cannot move without touching the flight sim; see Decisions.
 
 ## Alternatives
 - **A′, player's name written into Bill's line** ("Whiteboard (Cyrus) bounced right back!"): scored the same as the
@@ -76,6 +88,7 @@ change feels better on a real screen share.
 | Measurement fixes | 4 | 4 | Both found by screenshotting a "miss" before treating it as a game problem |
 | Accessibility (contrast) | 1 | 1 | Found by measuring every text-on-colour pair drawn |
 | Commentary routing (Bill) | 1 | 0 | Bill's channel is saturated; route new information visually instead |
+| Platform: phone (the owner's playtest device) | 4 (sound, touch controls, upright hint, sideways trial) | 3 + 1 trial | Found by playing on an emulated phone, touch only. A whole area no earlier round looked at |
 | Tuning / mechanics / balance | 0 | 0 | Balance changes would make old pond records incomparable: owner decision |
 
 ## Playbook (confirmed in session 2 unless marked provisional)
@@ -96,105 +109,73 @@ change feels better on a real screen share.
   (provisional)
 - Before treating a measured miss as a game problem, screenshot the moment: in session 2 the "untold" trip to space
   was told by a big caption the check didn't count. (provisional)
+- Play on an emulated phone (touch only, upright and sideways) every session: the owner playtests there. (provisional)
+- Each session's evaluator run is slower or faster per machine: re-baseline frame time at the start of every session
+  (session 4: 24.8 ms vs 17.3 ms last session, same code). (provisional)
 - A new invariant test, or playthrough check, must fail on a deliberately broken copy: session 2's first highlight
   test and session 3's "nothing is kept" check both passed broken copies. (confirmed)
 
 ## Log
 
-### Session 1 (2026-11-25): evaluator built, round 1 (summary)
-Built `eval/`; fixed three evaluator bugs before trusting it (bot ran while paused; vacuous resume check; "Player 1"
-matched in "Player 12"). Kept: **A** name chip on Bill's bar (readability 0.01 → 1.00), **D** contrast-picked ink
-(2.25 → 4.36), **B3′** landing call-out for quiet ducks (drawn "everyone" 0.78 → 1.00). Rejected: **B** Bill's roll
-call (0.87 → 0.88; Bill's airtime is saturated). A′ (name in the line) tied with A, lost on judgment (Alternatives).
-An independent review found three flaws in B3′ (drawn for off-screen ducks, duplicated the name tag, long names lost
-the distance) and an over-counting check; all fixed, the check corrected and re-measured.
+### Sessions 1–3 (2026-11-25/26): summary
+Built `eval/` (fixed three evaluator bugs before trusting it). Kept: **A** name chip on Bill's bar (readability
+0.01 → 1.00), **D** contrast-picked ink (2.25 → 4.36), **B3′** landing call-out for quiet ducks (drawn "everyone"
+0.78 → 1.00), **H1** highlights say whose duck (0 → 1.00, also in the copied results), **O** empty-roster hint,
+**C1** Closest Call says whose duck (0/15 → 15/15, 0 cut), **C2** sample ducks for a first look (a first-time visitor
+reaches the cannon in 5 presses, 0 typed). Rejected: **B** Bill's roll call (0.87 → 0.88; Bill is saturated). A′
+(name in Bill's line) tied A, lost on judgment. Independent reviews each round found real defects (off-screen
+call-outs, long names cutting cards, sample rerolls leaking into real days, checks that could never fail); all fixed,
+each now a check proven on a broken copy. Gains shrank over the three rounds (readability done everywhere) and
+session 3 said: change area.
 
-### Session 2 (2026-11-25): round 2
-Baseline reproduced session 1's end exactly. Played every screen (reveal, awards, podium, first-run roster) and
-looked at the biggest moment (a forced trip to space).
-- **H1: highlights say whose duck** ("Nibbles Honkington the Brave (Kit) was abducted…"), on the awards page, in the
-  copied results text and in saved history (new shows only; old history untouched). Found by playing: the highlights
-  were the last place naming ducks only, and the copied text goes to the team chat, where no chip can reach. A chip
-  version was not built: it could only fix the screen. Predicted check 11: 0 → ≥ 0.95, 0 cut. Measured 1.00 / 1.00
-  train and held-out (n30 too), 3 of 240 rows wrap, 0 cut; with 40-character names 12 of 24 rows wrap, 0 cut. Every
-  other check identical. **Kept.** The first invariant test passed a deliberately broken copy (name inserted twice);
-  strengthened until it failed it.
-- **Backlog top, events told / trip to space:** forced five trips to space. Bill's line names no duck ("We've lost
-  the duck"), but the screen tells it: big caption "TO SPACE! Lu" and the edge arrow "▲ Lu · 1,558 ft up". **Not a
-  game problem; the check was wrong** (it ignored big captions). Corrected in its own commit; session start and now
-  re-measured: identical (0.982 / 0.966, was 0.973 / 0.952 under the old check).
-- **O: first-time host on an empty roster** pressing Space was told "Tick at least one person first" with nobody to
-  tick. Now: "Nobody on the roster yet: type or paste today's names in Today's list", with the cursor in that box. New
-  playthrough check (fails on the old version). **Kept.**
-- Considered, not built: sample ducks for a first look (Backlog 2): bigger UI addition, worth a measured round.
-- **Round gain:** smaller than round 1 (one more screen made readable, one onboarding fix, two measurement fixes).
-  Readability is close to done; next session should change focus (Backlog 2, or a decision below).
+### Session 4 (2026-11-27): round 4, the phone
+Baseline reproduced session 3 exactly (frame time reads 24.8 ms on this slower machine, same code). New area,
+because the owner playtests on a phone and no round had looked at one: played the whole show on an emulated
+iPhone 13, touch only, upright and sideways. Found: the show's controls (pause, skip, replay, mute, so also late
+players) were keyboard only; the title said "Click"; the sample-show button a phone visitor needs first was ≈ 10 px
+tall; an upright phone shows the show as a strip over 33% of the screen; sound unlocked only on pointerdown/keydown,
+which phones don't count as a gesture that may start sound.
+- **P1 sound on a phone:** unlock also on pointerup / touchend / click; resume an iPhone's "interrupted" audio.
+  Predicted: sound on the first tap on a real phone. **Unverified:** headless Chromium here plays sound with no
+  gesture at all (tested with the gesture-required policy flag), so neither the bug nor the fix shows. Kept on the
+  evidence of how WebKit unlocks audio (touch end, not touch start); on the playtest card.
+- **P2 touch host:** on touch screens, the key-reminder corner becomes Pause / Skip / Replay / Mute buttons; Tap
+  wording; a finger-sized sample-show button; an empty-roster tap points at the sample show instead of popping the
+  keyboard up. Predicted check 13: 0/4 → 4/4. Measured 4/4 (the new playthrough check failed on the old version,
+  0/4); a touch host reaches the crowning; a desktop never shows the buttons; checks 1–12 identical. **Kept.**
+- **P3 upright phone, conventional:** a "Turn your phone sideways" note in the empty space under the show (and what to
+  do if rotation lock stops it turning). **Kept** (playthrough check; desktop never shows it).
+- **P4 upright phone, clever: trial `?try=sideways`** turns the stage a quarter on an upright screen: 33% → 96% of
+  the screen, taps mapped through the turn (a touch host reaches the results with it on). A look change, so a trial.
+- **Round gain:** a new platform made usable: a phone host can now run and control a whole show by touch. Desktop
+  numbers unchanged (train and held-out).
 
-Independent review (separate agent, commits only): nothing throws, no data or winner affected; 75 real highlight rows
-with tricky names (emoji, Zoë, O'Brien, "Sam"/"Sam (2)", "Dee"/"Deer") all attributed once. Defects found, all fixed
-in one commit, each now a check that fails on the previous version:
-- a click on the greyed-out REVEAL DUCKS button gave no hint (my claim "or the big button" was false: the disabled
-  button returns before the roster code). Now it gives the hint;
-- with names typed but not applied, the hint told the host to type names. Now it says "press Tick only these" and
-  focuses that button, so the next Space applies them;
-- a duck named inside a longer duck's name ("Dumpling" / "Judge Dumpling") lost its player; a player's name already
-  in the story ("Golden", "Golden Loaf") suppressed the bracket. Both fixed; idempotent by checking the bracket;
-- whole-name matching treated "ë" as a boundary ("Zo" matched in "Zoëy"), in the highlights and in session 1's
-  caption-bar chip. Fixed with an accent-aware letter test (no newer regex syntax).
-Accepted, not fixed: a photo-finish row can still be cut with two 40-character ALL-CAPS names (none in 105 real
-long-name rows); the copied text brackets "player (duck)" for the feather and "duck (player)" for highlights. Also
-corrected: saved highlights (`rec.hl`) are not shown anywhere in the game, so "in saved history" has no visible effect.
-
-Process notes (why things failed this round):
-- The empty-roster hint was tested from the keyboard only; the mouse path (the likely first-time host's) was missed.
-  Next time: every new hint or control gets a keyboard and a pointer check in `eval/play.js`.
-- The first highlight invariant passed a broken copy: it checked presence, not exact count and reversibility.
-- I edited `index.html` while two evaluator runs were going (Playbook rule). They had already loaded the page, so the
-  numbers stood, but the final numbers come from a fresh run of the final commit.
-
-### Session 3 (2026-11-26): round 3
-Baseline reproduced session 2's end exactly. Played the screens no round had looked at (title with history, Waddle of
-Fame, settings): no new problems (a team colour already in use swaps). Strategy said change focus; candidates were the
-backlog top (award cards) and a bolder onboarding idea.
-- **C1: Closest Call says whose duck** ("Just 21 ft from Ranger Sprinkles (Kit)."). Predicted cards saying whose
-  0/15 → 15/15, 0 cut. First version cut 1 of 36 cards with 40-character names (the current game cut none): added a
-  last-resort "Kit's duck" version; then 15/15 train, 16/16 held-out, 0 cut, also with long names. New self-test case
-  (fails without the fallback). **Kept.**
-- **C2: sample ducks for a first look** (bolder, onboarding). An empty roster offers a practice show with 8 sample
-  guests. Predicted: a first-time visitor reaches the cannon without typing. Measured: 5 presses, 0 characters typed
-  (before: at least two names to type); afterwards the roster, history and Last results are empty, and the sample's
-  duck names don't use up names for real shows. New playthrough check (fails on the previous version). Every other
-  check identical on train and held-out. **Kept.** Cost: the banner pushes the roster down (Backlog 1).
-- **Round gain:** small readability gain (last place naming a duck alone) and an onboarding gain for new visitors.
-  Readability is now done everywhere I can find; the last three rounds' gains shrank. Next session should look at a
-  new area (performance on a real laptop, sound, or a decision below) rather than more readability.
-
-Independent review (separate agent, commits only) found real defects, all fixed in one commit:
-- a reroll in a sample show saved the reroll and remembered the duck name: a real "Alex" got a different duck that
-  day, and the name was held back for 35 days. Sample rerolls now write nothing;
-- a sample show used up the "Practice race (next show only)" tick, so the next real show was saved. Now left alone;
-- Closest Call was still cut with long names (1,419 of 1,520 generated cards with a 39-character spaced name), and a
-  long name without spaces ran past the card's edge (the fit rule accepted one over-wide word). Now: the fit rule
-  (one function, `awardFit`) rejects over-wide lines, the text has a width limit, and a last-resort version ("the duck
-  just ahead") always fits. My earlier long-name test (36 cards) was too small to see it;
-- minor: a late player added in a sample show joined the saved roster; sample guests borrowed a real player's crown,
-  streak and records; "Edit names" from a sample said to fix the names. All fixed.
-Re-measured with the corrected checks (80 training shows with long names, one without spaces): session start 0/15
-Closest Call cards say whose; now 15/15 (9 "Duck (Kit)", 6 "Kit's duck"), 0 cut; generated self test: 0 cut or
-too wide over 3,000 cards. Every other check identical on train and held-out; playthroughs 20/20.
-Two of my checks could not catch what they claimed (own commit, each proven on a broken copy):
-- the award-card check copied the card's flawed fit rule (over-wide lines counted as fitting);
-- the sample-show playthrough read storage with `.length` on objects, so it could never fail (a copy leaking a name
-  into storage passed it).
+Independent review (separate agent, commits only; desktop pixel-identical to before at ~20 checkpoints, distances
+identical, rotation mapping exact). Defects found, all fixed in one commit:
+- the buttons shifted slots with the phase, so a double tap on Skip landed on Replay (a replay started), and while
+  loading on Mute (the show muted, and the mute was saved). Now fixed slots plus a per-button double-tap guard; the
+  playthrough check now double-taps Skip (fails on the previous version: 2/4). My first guard was shared across all
+  buttons and swallowed a Mute tap right after Resume: the same check caught it (3/4), fixed per button;
+- buttons ≈ 47×23 px on a sideways iPhone: now ≈ 61×33 px (still under 44 px; the corner is the limit);
+- `?try=100%` (a bad escape) left a blank page; the sideways trial also turned a tall desktop window; the turn note
+  said "phone" on tablets; a tablet host using a keyboard lost the empty-roster cursor. All fixed and checked.
+Accepted, not fixed (Backlog 3): a touch host still can't pause on the reveal or results screens, skip a one-by-one
+intro, use turbo mid-show or go fullscreen.
 
 Process notes (why things failed this round):
-- The card cut and the over-wide word were missed because my long-name test used 36 cards and one kind of long name.
-  Next time: generate hundreds of cases from the game's own name generator, with and without spaces, as the self
-  test now does.
-- An evaluator that copies the game's rule inherits its bug: measure the outcome independently (here: the drawn
-  line's width) instead of re-running the rule.
-- A playthrough check that "nothing is kept" was never shown to fail. The Playbook rule (prove a check fails on a
-  broken copy) applies to playthrough checks too, not only to self-test cases.
+- The slot-shifting buttons: I built and tested each button alone, never a second tap at the same spot after the
+  phase changed. Next time a control that changes with state gets a double-tap check in the same spot.
+- The sound bug could not be reproduced: the only browser here is Chromium, which doesn't enforce the phone rule
+  headless. Real-device checks go on the playtest card; no evaluator check claims them.
+- One wasted command: a syntax check (`node -e require(...)`) ran the playthroughs instead. Use `node --check`.
+
+## Playtest notes
+(None yet. Add what the owner says after trying it, with dates.)
+
+## Trials
+| Trial | Switch | Built | What to compare | Verdict |
+|---|---|---|---|---|
+| sideways | add `?try=sideways` to the link, phone held upright | session 4 | the show turned to fill an upright phone (rotation lock on or off) vs. the strip with the "turn sideways" note | open |
 
 ## Decisions for me
 1. **Closer finishes?** (tension) The distance spread is long-tailed (p90 ≈ 2,700 ft, p99 ≈ 4,400 ft), so the winner

@@ -155,8 +155,53 @@ async function main() {
   }
   check('a key-mashing host still reaches the crowning', done, st.screen + '/' + st.phase);
   check('mashing (skips, replays, turbo) never changes a distance', JSON.stringify(await dists(g.page)) === JSON.stringify(calm));
-  const errs = g.errors.length + errExtra;
+  let errs = g.errors.length + errExtra;
   await g.close();
+
+  // ---- 5. a phone host: touch only (no keyboard), the sample show ----
+  {
+    const { devices } = require('playwright');
+    const v = await openGame({ date: DAY, device: devices['iPhone 13 landscape'] });
+    await v.page.evaluate(s => { S.dbg.seed = s; }, SEED);
+    const tap = async (x, y) => { const p = await v.page.evaluate(([x, y]) => { const s = VIEW.scale; return VIEW.rot ? { x: VIEW.ox + 1080 * s - y * s, y: VIEW.oy + x * s } : { x: VIEW.ox + x * s, y: VIEW.oy + y * s }; }, [x, y]); await v.page.touchscreen.tap(p.x, p.y); };
+    const tapId = async id => { const b = await v.page.evaluate(id => S.buttons.find(b => b.id === id), id); if (!b) return false; await tap(b.x + b.w / 2, b.y + b.h / 2); return true; };
+    const tapBig = async () => { await tap(await v.page.evaluate(() => Big.x), await v.page.evaluate(() => Big.y)); };
+    const host = async (until, max) => { for (let f = 0; f < max; f += 10) { const s = await state(v.page); if (until(s)) return s; if (s.enabled && s.iris < 0 && !(s.screen === 'results' && s.big === 'DONE')) await tapBig(); await steps(v.page, 10); } return state(v.page); };
+    await steps(v.page, 30); await tapBig(); await steps(v.page, 30);
+    const smp = await v.page.$('#rsample'); if (smp) await smp.tap();
+    await steps(v.page, 20);
+    let s5 = await host(s => s.phase === 'flight' && s.simT > 3, 60 * 60);
+    // the show's host keys, as buttons: pause, skip, replay, mute
+    const reach = new Set();
+    if (await tapId('tkpause')) { await steps(v.page, 5); if ((await state(v.page)).paused) reach.add('pause'); }
+    const sc = await v.page.$('#sclose'); if (sc) await sc.tap(); await steps(v.page, 10);
+    const m0 = await v.page.evaluate(() => S.settings.muted);
+    if (await tapId('tkmute')) { await steps(v.page, 5); if (await v.page.evaluate(m0 => S.settings.muted !== m0, m0)) reach.add('mute'); await steps(v.page, 30); await tapId('tkmute'); }
+    await steps(v.page, 30);
+    // (a double tap on Skip: the second tap must not land on a button that moved into the spot, e.g. Replay)
+    const sk = await v.page.evaluate(() => S.buttons.find(b => b.id === 'tkskip'));
+    if (sk) { await tap(sk.x + sk.w / 2, sk.y + sk.h / 2); await steps(v.page, 8); await tap(sk.x + sk.w / 2, sk.y + sk.h / 2); await steps(v.page, 10); if (['result', 'idle'].includes((await state(v.page)).phase) && !(await v.page.evaluate(() => SV.replay))) reach.add('skip'); }
+    await steps(v.page, 60);
+    if (await tapId('tkreplay')) { await steps(v.page, 10); if (await v.page.evaluate(() => SV.replay && SV.phase === 'flight')) reach.add('replay'); }
+    check('a phone host (touch only) can pause, mute, skip (a double tap too) and replay the show', reach.size === 4, [...reach].join(', ') + ' (' + reach.size + '/4)');
+    s5 = await host(s => s.crowned, 60 * 150);
+    check('a phone host (touch only) reaches the crowning', s5.crowned, s5.screen + '/' + s5.phase);
+    errs += v.errors.length;
+    await v.close();
+    // held upright: the space under the show says to turn the phone; a desktop never shows it, nor the touch buttons
+    const u = await openGame({ date: DAY, device: devices['iPhone 13'] });
+    const upright = await u.page.evaluate(() => { const t = document.getElementById('turn'); return !!t && !t.classList.contains('hidden'); });
+    await u.close();
+    const d = await openGame({ date: DAY });
+    await d.page.keyboard.press('Space'); await steps(d.page, 30);
+    await d.page.evaluate(() => { S.roster = SAMPLE_NAMES.map((name, i) => ({ name, team: i % 3, checked: true })); });
+    await d.page.keyboard.press('Space'); await steps(d.page, 20);
+    let tkSeen = false;
+    for (let f = 0; f < 60 * 50; f += 10) { const s = await state(d.page); if (s.phase === 'result') break; if (s.enabled && s.iris < 0) await d.page.keyboard.press('Space'); await steps(d.page, 10); if (await d.page.evaluate(() => S.buttons.some(b => /^tk/.test(b.id)))) tkSeen = true; }
+    const deskTurn = await d.page.evaluate(() => { const t = document.getElementById('turn'); return !!t && !t.classList.contains('hidden'); });
+    await d.close();
+    check('a phone held upright is told to turn sideways; a desktop sees neither that nor the touch buttons', upright && !deskTurn && !tkSeen, 'upright ' + upright + ', desktop hint ' + deskTurn + ', desktop buttons ' + tkSeen);
+  }
   check('no page errors in any playthrough', errs === 0, errs + ' errors');
   const fails = checks.filter(c => !c.ok).length;
   console.log(fails ? fails + ' FAILED' : 'ALL ' + checks.length + ' PASSED');
