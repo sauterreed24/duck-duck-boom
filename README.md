@@ -80,6 +80,8 @@ The roster is saved in the browser, so you only build it once. Each day you just
 
 Hotkeys are ignored while you're typing in a text field. Esc stays the browser's fullscreen exit.
 
+**On a phone or tablet** there are no keys, so during a show the corner where the key reminder sits holds **Pause**, **Skip**, **Replay** and **Mute** buttons instead (Pause opens the same menu as P). The game is made for a wide screen: turn the phone sideways (an upright phone is told so under the picture). The sound starts with your first tap; an iPhone's silent switch also silences the game.
+
 ### Pacing
 
 A whole salvo show runs about a minute from the first duck hopping in to the results: loading about 5 s, the countdown 3 s, and a flight of about 29 s for a dozen ducks (about 33 s with 40, and rarely past 36 s; an Ice Rink, Low Gravity or Bouncy Day full of long slides and bounces can stretch to about 38 s). One duck alone flies for about 14 s. Turbo brings a 12-duck flight down to about 18 s, and a turbo flight rarely runs past 21 s.

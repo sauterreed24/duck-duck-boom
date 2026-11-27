@@ -10,9 +10,11 @@ results and both reach the crowning.
 Core loop: title → roster (tick today's people) → reveal (cards, rerolls) → salvo (load, fuse, ~30 s flight with
 Bill's commentary) → results (awards, highlights, podium) → DONE.
 
-- **Play:** open `index.html` in Chrome or Edge (`?debug` for the debug panel, `?classic` for one-by-one mode).
+- **Play:** open `index.html` in Chrome or Edge (`?debug` for the debug panel, `?classic` for one-by-one mode,
+  `?try=name` for a trial). The owner playtests on a phone (the Play link, https://sauterreed24.github.io/duck-duck-boom/,
+  serves `main`), so every round also looks at the phone: touch only, small screen, upright and sideways.
 - **Evaluate:** `node eval/run.js` (train seeds, ~2 min), `node eval/run.js --set holdout`, `node eval/run.js --quick`,
-  `node eval/play.js` (scripted playthroughs, ~2 min). `DDB_GAME=path/to/copy.html` evaluates a candidate copy.
+  `node eval/play.js` (scripted playthroughs incl. a touch-only phone host, ~5 min). `DDB_GAME=path/to/copy.html` evaluates a candidate copy.
   In the browser console, `DDB.selfTest()` and `DDB.balance(10000)` are the game's own tests.
 - The evaluator injects `eval/bot.js`, which replaces `requestAnimationFrame` and steps the real game code at 60 Hz on
   a virtual clock (no wall-clock time), with `S.dbg.day` / `S.dbg.seed` seeding every race.
@@ -22,7 +24,8 @@ Bill's commentary) → results (awards, highlights, podium) → DONE.
   Never call `localStorage.clear()`. Old best scores / pond records must stay comparable: **no change to the flight
   sim or distances** without a decision from the owner.
 - Fairness: every random number seeded; launch order, looks, team, mashing, skipping, replay never change a distance.
-- Controls: Space = big button; R, S, T, M, N, F, P as documented in the README. Esc stays the browser's.
+- Controls: Space = big button; R, S, T, M, N, F, P as documented in the README. Esc stays the browser's. On a touch
+  screen, Pause / Skip / Replay / Mute buttons stand in for the keys during a show (a desktop never shows them).
 - Platform: one self-contained `index.html`, no dependencies, no network, works offline in Chrome/Edge, older-browser
   syntax (the self test checks this).
 - Identity: Bill Featherstone's commentary roasts the duck, never the player; every line passes the content blocklist.
