@@ -188,7 +188,7 @@ async function main() {
     await v.close();
     // held upright: the space under the show says to turn the phone; a desktop never shows it, nor the touch buttons
     const u = await openGame({ date: DAY, device: devices['iPhone 13'] });
-    const upright = await u.page.evaluate(() => !document.getElementById('turn').classList.contains('hidden'));
+    const upright = await u.page.evaluate(() => { const t = document.getElementById('turn'); return !!t && !t.classList.contains('hidden'); });
     await u.close();
     const d = await openGame({ date: DAY });
     await d.page.keyboard.press('Space'); await steps(d.page, 30);
@@ -196,7 +196,7 @@ async function main() {
     await d.page.keyboard.press('Space'); await steps(d.page, 20);
     let tkSeen = false;
     for (let f = 0; f < 60 * 50; f += 10) { const s = await state(d.page); if (s.phase === 'result') break; if (s.enabled && s.iris < 0) await d.page.keyboard.press('Space'); await steps(d.page, 10); if (await d.page.evaluate(() => S.buttons.some(b => /^tk/.test(b.id)))) tkSeen = true; }
-    const deskTurn = await d.page.evaluate(() => !document.getElementById('turn').classList.contains('hidden'));
+    const deskTurn = await d.page.evaluate(() => { const t = document.getElementById('turn'); return !!t && !t.classList.contains('hidden'); });
     await d.close();
     check('a phone held upright is told to turn sideways; a desktop sees neither that nor the touch buttons', upright && !deskTurn && !tkSeen, 'upright ' + upright + ', desktop hint ' + deskTurn + ', desktop buttons ' + tkSeen);
   }
