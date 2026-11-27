@@ -10,7 +10,8 @@ const BOT = fs.readFileSync(path.join(__dirname, 'bot.js'), 'utf8');
 async function openGame(opts) {
   opts = opts || {};
   const browser = opts.browser || await chromium.launch();
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  // (opts.device: a Playwright device, e.g. devices['iPhone 13 landscape'], for a touch-only phone host)
+  const ctx = await browser.newContext(opts.device ? Object.assign({}, opts.device, { deviceScaleFactor: 1 }) : { viewport: { width: 1280, height: 720 } });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(String(e)));
